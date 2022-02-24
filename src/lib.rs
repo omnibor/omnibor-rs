@@ -1,3 +1,14 @@
+#![no_std]
+
+extern crate alloc;
+
+use alloc::format;
+use alloc::string::{String, ToString};
+
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(feature = "std")]
 use std::io::{BufReader, Read};
 
 pub fn generate_sha1_git_oid(x: &[u8]) -> String {
@@ -10,6 +21,7 @@ pub fn generate_sha1_git_oid(x: &[u8]) -> String {
     hasher.digest().to_string()
 }
 
+#[cfg(feature = "std")]
 pub fn generate_sha1_git_oid_from_buffer<R>(
     mut reader: BufReader<R>,
     expected_length: usize,
@@ -45,10 +57,15 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "std")]
     use std::fs::File;
+    #[cfg(feature = "std")]
     use std::io::BufReader;
 
-    use crate::{generate_sha1_git_oid, generate_sha1_git_oid_from_buffer};
+    use crate::generate_sha1_git_oid;
+
+    #[cfg(feature = "std")]
+    use crate::generate_sha1_git_oid_from_buffer;
 
     #[test]
     fn it_works() {
@@ -65,6 +82,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_generate_sha1_git_oid_buffer() {
         let file = File::open("test/data/hello_world.txt");
         match file {

@@ -1,6 +1,6 @@
 [package]
 name = "gitbom"
-version = "0.1.1"
+version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "An experimental implementation of gitbom in Rust"
@@ -8,13 +8,12 @@ readme = "README.md"
 homepage = "https://gitbom.dev"
 repository = "https://github.com/git-bom/gitbom-rs"
 keywords = ["gitbom", "sbom"]
-categories = ["cryptography", "development-tools"]
-
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+categories = ["cryptography", "no-std", "development-tools"]
 
 [features]
 std = []
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 sha1_smol = "1.0.0"
