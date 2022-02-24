@@ -1,13 +1,11 @@
 #![no_std]
 
 extern crate alloc;
-
-use alloc::format;
-use alloc::string::{String, ToString};
-
 #[cfg(feature = "std")]
 extern crate std;
 
+use alloc::format;
+use alloc::string::{String, ToString};
 #[cfg(feature = "std")]
 use std::io::{BufReader, Read};
 
@@ -63,7 +61,6 @@ mod tests {
     use std::io::BufReader;
 
     use crate::generate_sha1_git_oid;
-
     #[cfg(feature = "std")]
     use crate::generate_sha1_git_oid_from_buffer;
 
