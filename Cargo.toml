@@ -10,7 +10,10 @@ repository = "https://github.com/git-bom/gitbom-rs"
 keywords = ["gitbom", "sbom"]
 categories = ["cryptography", "no-std", "development-tools"]
 
+[features]
+std = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+sha1_smol = "1.0.0"
