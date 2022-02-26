@@ -8,10 +8,7 @@ readme = "README.md"
 homepage = "https://gitbom.dev"
 repository = "https://github.com/git-bom/gitbom-rs"
 keywords = ["gitbom", "sbom"]
-categories = ["cryptography", "no-std", "development-tools"]
-
-[features]
-std = []
+categories = ["cryptography", "development-tools"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
