@@ -16,13 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Build [no_std]
+    - name: Build
       run: cargo build --verbose
-    - name: Run tests [no_std]
-      run: cargo test --verbose
-    - name: Build [std]
-      run: cargo build --verbose --features=std
     - name: Run tests [std]
-      run: cargo test --verbose --features=std
+      run: cargo test --verbose
     - name: Run clippy
       run: cargo clippy
