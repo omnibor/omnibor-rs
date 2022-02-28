@@ -4,14 +4,10 @@ extern crate std;
 use alloc::format;
 use alloc::string::{String, ToString};
 use std::io::{BufReader, Read};
-use sha2::{Sha256, Digest};
-
-use base64ct::{Base64, Encoding};
-use base16ct;
 
 enum HashAlgorithm {
     SHA1,
-    SHA256
+    SHA2
 }
 
 struct GitOid {
@@ -19,32 +15,14 @@ struct GitOid {
 }
 
 impl GitOid {
-    //pub fn generate_sha1_git_oid(&self, x: &[u8]) -> String {
-    pub fn generate_git_oid(&self, x: &[u8]) -> String {
+    pub fn generate_sha1_git_oid(&self, x: &[u8]) -> String {
         let prefix = format!("blob {}\0", x.len());
+        let mut hasher = sha1_smol::Sha1::new();
 
-        match self.hash_algorithm {
-            HashAlgorithm::SHA1 => {
-                let mut hasher = sha1_smol::Sha1::new();
+        hasher.update(prefix.as_bytes());
+        hasher.update(x);
 
-                hasher.update(prefix.as_bytes());
-                hasher.update(x);
-
-                hasher.digest().to_string()
-            },
-            HashAlgorithm::SHA256 => {
-                let mut hasher = Sha256::new();
-                hasher.update(x);
-
-                let hash = hasher.finalize();
-                println!("Binary hash: {:?}", hash);
-
-                let hash_string = Base64::encode_string(&hash);
-                println!("Base64-encoded hash: {}", hash_string);
-
-                return Base64::encode_string(&hash)
-            }
-        }
+        hasher.digest().to_string()
     }
 
     pub fn generate_sha1_git_oid_from_buffer<R>(
@@ -103,7 +81,7 @@ mod tests {
             hash_algorithm: HashAlgorithm::SHA1
         };
 
-        let result = new_gitoid.generate_git_oid(input);
+        let result = new_gitoid.generate_sha1_git_oid(input);
         assert_eq!(result, "95d09f2b10159347eece71399a7e2e907ea3df4f")
     }
 
@@ -115,7 +93,7 @@ mod tests {
                 let reader = BufReader::new(f);
 
                 let new_gitoid = GitOid {
-                    hash_algorithm: HashAlgorithm::SHA256
+                    hash_algorithm: HashAlgorithm::SHA1
                 };
 
                 let result = new_gitoid.generate_sha1_git_oid_from_buffer(reader, 11);
@@ -126,18 +104,5 @@ mod tests {
                 assert!(false)
             }
         }
-    }
-
-    #[test]
-    fn test_generate_sha2_git_oid() {
-        let input = "hello world".as_bytes();
-
-        let new_gitoid = GitOid {
-            hash_algorithm: HashAlgorithm::SHA256
-        };
-
-        let result = new_gitoid.generate_git_oid(input);
-
-        assert_eq!("uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek=", result);
     }
 }
