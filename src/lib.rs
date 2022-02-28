@@ -19,6 +19,7 @@ struct GitOid {
 }
 
 impl GitOid {
+    //pub fn generate_sha1_git_oid(&self, x: &[u8]) -> String {
     pub fn generate_git_oid(&self, x: &[u8]) -> String {
         let prefix = format!("blob {}\0", x.len());
 
