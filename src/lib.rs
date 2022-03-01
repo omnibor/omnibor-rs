@@ -32,7 +32,8 @@ impl GitOid {
             },
             HashAlgorithm::SHA256 => {
                 let mut hasher = Sha256::new();
-                //TO DO - add in prefix
+
+                hasher.update(prefix.as_bytes());
                 hasher.update(x);
 
                 let hash = hasher.finalize();
@@ -85,7 +86,8 @@ impl GitOid {
             },
             HashAlgorithm::SHA256 => {
                 let mut hasher = Sha256::new();
-                //TO DO - add in prefix
+
+                hasher.update(prefix.as_bytes());
 
                 loop {
                     let y = reader.read(&mut buf);
@@ -169,7 +171,7 @@ mod tests {
 
         let result = new_gitoid.generate_git_oid(input);
 
-        assert_eq!("uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek=", result);
+        assert_eq!("/uU6GNMoIGE8BSeqeb5cswFzyCOptEj6SBd2fMhMbwM=", result);
     }
 
     #[test]
@@ -185,7 +187,7 @@ mod tests {
 
                 let result = new_gitoid.generate_git_oid_from_buffer(reader, 11);
 
-                assert_eq!("uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek=", result);
+                assert_eq!("/uU6GNMoIGE8BSeqeb5cswFzyCOptEj6SBd2fMhMbwM=", result);
             }
             Err(_) => {
                 assert!(false)
