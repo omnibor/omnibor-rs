@@ -3,7 +3,7 @@ extern crate std;
 
 use alloc::format;
 use alloc::string::{String, ToString};
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Read, BufRead};
 use sha2::{Sha256, Digest};
 
 use base64ct::{Base64, Encoding};
@@ -56,15 +56,15 @@ impl GitOid {
     {
         let prefix = format!("blob {}\0", expected_length);
 
+        let mut buf = [0; 4096]; // linux default page size is 4096
+        let mut amount_read = 0;
+
         match self.hash_algorithm {
             HashAlgorithm::SHA1 => {
-
                 let mut hasher = sha1_smol::Sha1::new();
 
                 hasher.update(prefix.as_bytes());
 
-                let mut buf = [0; 4096]; // linux default page size is 4096
-                let mut amount_read = 0;
                 loop {
                     let y = reader.read(&mut buf);
                     match y {
@@ -87,9 +87,6 @@ impl GitOid {
                 let mut hasher = Sha256::new();
                 //TO DO - add in prefix
 
-                let mut buf = [0; 4096]; // linux default page size is 4096
-                let mut amount_read = 0;
-
                 loop {
                     let y = reader.read(&mut buf);
                     match y {
@@ -107,10 +104,8 @@ impl GitOid {
                 }
 
                 let hash = hasher.finalize();
-                println!("Binary hash: {:?}", hash);
 
                 let hash_string = Base64::encode_string(&hash);
-                println!("Base64-encoded hash: {}", hash_string);
 
                 return Base64::encode_string(&hash)
             }
