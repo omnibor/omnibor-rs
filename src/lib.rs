@@ -32,6 +32,7 @@ impl GitOid {
             },
             HashAlgorithm::SHA256 => {
                 let mut hasher = Sha256::new();
+                //TO DO - add in prefix
                 hasher.update(x);
 
                 let hash = hasher.finalize();
@@ -45,7 +46,7 @@ impl GitOid {
         }
     }
 
-    pub fn generate_sha1_git_oid_from_buffer<R>(
+    pub fn generate_git_oid_from_buffer<R>(
         &self,
         mut reader: BufReader<R>,
         expected_length: usize,
@@ -54,29 +55,66 @@ impl GitOid {
         BufReader<R>: std::io::Read,
     {
         let prefix = format!("blob {}\0", expected_length);
-        let mut hasher = sha1_smol::Sha1::new();
 
-        hasher.update(prefix.as_bytes());
+        match self.hash_algorithm {
+            HashAlgorithm::SHA1 => {
 
-        let mut buf = [0; 4096]; // linux default page size is 4096
-        let mut amount_read = 0;
-        loop {
-            let y = reader.read(&mut buf);
-            match y {
-                Ok(0) => {
-                    break;
+                let mut hasher = sha1_smol::Sha1::new();
+
+                hasher.update(prefix.as_bytes());
+
+                let mut buf = [0; 4096]; // linux default page size is 4096
+                let mut amount_read = 0;
+                loop {
+                    let y = reader.read(&mut buf);
+                    match y {
+                        Ok(0) => {
+                            break;
+                        }
+                        Ok(size) => {
+                            hasher.update(&buf[..size]);
+                            amount_read = amount_read + size;
+                        }
+                        Err(_) => {
+                            break;
+                        }
+                    }
                 }
-                Ok(size) => {
-                    hasher.update(&buf[..size]);
-                    amount_read = amount_read + size;
+
+                hasher.digest().to_string()
+            },
+            HashAlgorithm::SHA256 => {
+                let mut hasher = Sha256::new();
+                //TO DO - add in prefix
+
+                let mut buf = [0; 4096]; // linux default page size is 4096
+                let mut amount_read = 0;
+
+                loop {
+                    let y = reader.read(&mut buf);
+                    match y {
+                        Ok(0) => {
+                            break;
+                        }
+                        Ok(size) => {
+                            hasher.update(&buf[..size]);
+                            amount_read = amount_read + size;
+                        }
+                        Err(_) => {
+                            break;
+                        }
+                    }
                 }
-                Err(_) => {
-                    break;
-                }
+
+                let hash = hasher.finalize();
+                println!("Binary hash: {:?}", hash);
+
+                let hash_string = Base64::encode_string(&hash);
+                println!("Base64-encoded hash: {}", hash_string);
+
+                return Base64::encode_string(&hash)
             }
         }
-
-        hasher.digest().to_string()
     }
 }
 
@@ -113,10 +151,10 @@ mod tests {
                 let reader = BufReader::new(f);
 
                 let new_gitoid = GitOid {
-                    hash_algorithm: HashAlgorithm::SHA256
+                    hash_algorithm: HashAlgorithm::SHA1
                 };
 
-                let result = new_gitoid.generate_sha1_git_oid_from_buffer(reader, 11);
+                let result = new_gitoid.generate_git_oid_from_buffer(reader, 11);
 
                 assert_eq!("95d09f2b10159347eece71399a7e2e907ea3df4f", result)
             }
@@ -127,7 +165,7 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_sha2_git_oid() {
+    fn test_generate_sha256_git_oid() {
         let input = "hello world".as_bytes();
 
         let new_gitoid = GitOid {
@@ -137,5 +175,26 @@ mod tests {
         let result = new_gitoid.generate_git_oid(input);
 
         assert_eq!("uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek=", result);
+    }
+
+    #[test]
+    fn test_generate_sha256_git_oid_buffer() {
+        let file = File::open("test/data/hello_world.txt");
+        match file {
+            Ok(f) => {
+                let reader = BufReader::new(f);
+
+                let new_gitoid = GitOid {
+                    hash_algorithm: HashAlgorithm::SHA256
+                };
+
+                let result = new_gitoid.generate_git_oid_from_buffer(reader, 11);
+
+                assert_eq!("uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek=", result);
+            }
+            Err(_) => {
+                assert!(false)
+            }
+        }
     }
 }
