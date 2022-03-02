@@ -1,12 +1,8 @@
 extern crate alloc;
 extern crate std;
 
-use alloc::format;
-use alloc::string::{String, ToString};
-use std::io::{BufReader, Read, BufRead};
+use std::io::{BufReader, Read};
 use sha2::{Sha256, Digest};
-
-use base64ct::{Base64, Encoding};
 
 enum HashAlgorithm {
     SHA1,
@@ -37,9 +33,8 @@ impl GitOid {
                 hasher.update(content);
 
                 let hash = hasher.finalize();
-                let hash_string = Base64::encode_string(&hash);
 
-                return Base64::encode_string(&hash)
+                return hex::encode(hash)
             }
         }
     }
@@ -104,9 +99,7 @@ impl GitOid {
 
                 let hash = hasher.finalize();
 
-                let hash_string = Base64::encode_string(&hash);
-
-                return Base64::encode_string(&hash)
+                return hex::encode(hash)
             }
         }
     }
@@ -168,7 +161,7 @@ mod tests {
 
         let result = new_gitoid.generate_git_oid(input);
 
-        assert_eq!("/uU6GNMoIGE8BSeqeb5cswFzyCOptEj6SBd2fMhMbwM=", result);
+        assert_eq!("fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03", result);
     }
 
     #[test]
@@ -184,7 +177,7 @@ mod tests {
 
                 let result = new_gitoid.generate_git_oid_from_buffer(reader, 11);
 
-                assert_eq!("/uU6GNMoIGE8BSeqeb5cswFzyCOptEj6SBd2fMhMbwM=", result);
+                assert_eq!("fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03", result);
             }
             Err(_) => {
                 assert!(false)
