@@ -14,5 +14,5 @@ categories = ["cryptography", "development-tools"]
 
 [dependencies]
 hex = "0.4.3"
-sha1_smol = "1.0.0"
+sha1 = "0.10.1"
 sha2 = "0.10.2"

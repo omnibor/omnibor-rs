@@ -1,6 +1,3 @@
-extern crate alloc;
-extern crate std;
-
 use std::io::{BufReader, Read};
 use sha2::{Sha256, Digest};
 
@@ -17,14 +14,15 @@ impl GitOid {
     pub fn generate_git_oid(&self, content: &[u8]) -> String {
         let prefix = format!("blob {}\0", content.len());
 
-        match self.hash_algorithm {
+        return match self.hash_algorithm {
             HashAlgorithm::SHA1 => {
-                let mut hasher = sha1_smol::Sha1::new();
+                let mut hasher = sha1::Sha1::new();
 
                 hasher.update(prefix.as_bytes());
                 hasher.update(content);
 
-                hasher.digest().to_string()
+                let hash = hasher.finalize();
+                hex::encode(hash)
             },
             HashAlgorithm::SHA256 => {
                 let mut hasher = Sha256::new();
@@ -34,7 +32,7 @@ impl GitOid {
 
                 let hash = hasher.finalize();
 
-                return hex::encode(hash)
+                hex::encode(hash)
             }
         }
     }
@@ -52,9 +50,9 @@ impl GitOid {
         let mut buf = [0; 4096]; // linux default page size is 4096
         let mut amount_read = 0;
 
-        match self.hash_algorithm {
+        return match self.hash_algorithm {
             HashAlgorithm::SHA1 => {
-                let mut hasher = sha1_smol::Sha1::new();
+                let mut hasher = sha1::Sha1::new();
 
                 hasher.update(prefix.as_bytes());
 
@@ -74,7 +72,8 @@ impl GitOid {
                     }
                 }
 
-                hasher.digest().to_string()
+                let hash = hasher.finalize();
+                hex::encode(hash)
             },
             HashAlgorithm::SHA256 => {
                 let mut hasher = Sha256::new();
@@ -99,7 +98,7 @@ impl GitOid {
 
                 let hash = hasher.finalize();
 
-                return hex::encode(hash)
+                hex::encode(hash)
             }
         }
     }
