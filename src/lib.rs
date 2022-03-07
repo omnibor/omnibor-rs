@@ -7,7 +7,6 @@ enum HashAlgorithm {
     SHA256
 }
 
-
 #[derive(Debug)]
 struct GitOid {
     hash_algorithm: HashAlgorithm,
@@ -216,7 +215,6 @@ mod tests {
         let generated_gitoid = new_gitoid.generate_git_oid(input);
 
         let mut new_gitbom = GitBom::new();
-
         new_gitbom.add(generated_gitoid);
 
         assert_eq!("fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03", new_gitbom.gitOids[0])
