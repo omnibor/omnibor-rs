@@ -1,11 +1,13 @@
 use std::io::{BufReader, Read};
 use sha2::{Sha256, Digest};
 
+#[derive(Debug)]
 enum HashAlgorithm {
     SHA1,
     SHA256
 }
 
+#[derive(Debug)]
 struct GitOid {
     hash_algorithm: HashAlgorithm,
 }
@@ -104,6 +106,24 @@ impl GitOid {
     }
 }
 
+#[derive(Debug)]
+struct GitBom {
+    gitOids: Vec<String>
+}
+
+impl GitBom {
+    pub fn new() -> Self {
+        Self {
+            gitOids: Vec::new()
+        }
+    }
+
+    pub fn add(&mut self, gitoid: String) {
+      self.gitOids.push(gitoid) 
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use std::fs::File;
@@ -182,5 +202,21 @@ mod tests {
                 assert!(false)
             }
         }
+    }
+
+    #[test]
+    fn test_add_gitoid_to_gitbom() {
+        let input = "hello world".as_bytes();
+
+        let new_gitoid = GitOid {
+            hash_algorithm: HashAlgorithm::SHA256
+        };
+
+        let generated_gitoid = new_gitoid.generate_git_oid(input);
+
+        let mut new_gitbom = GitBom::new();
+        new_gitbom.add(generated_gitoid);
+
+        assert_eq!("fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03", new_gitbom.gitOids[0])
     }
 }
