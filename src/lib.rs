@@ -119,7 +119,8 @@ impl GitBom {
     }
 
     pub fn add(&mut self, gitoid: String) {
-      self.gitOids.push(gitoid) 
+      self.gitOids.push(gitoid);
+      self.gitOids.sort();
     }
 }
 
@@ -218,5 +219,26 @@ mod tests {
         new_gitbom.add(generated_gitoid);
 
         assert_eq!("fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03", new_gitbom.gitOids[0])
+    }
+
+    #[test]
+    fn test_gitbom_gitoids_are_sorted() {
+
+        let new_gitoid = GitOid {
+            hash_algorithm: HashAlgorithm::SHA256
+        };
+
+        let mut new_gitbom = GitBom::new();
+
+        //prefix is fee5
+        new_gitbom.add(new_gitoid.generate_git_oid("hello world".as_bytes()));
+        // prefix is ca50
+        new_gitbom.add(new_gitoid.generate_git_oid("hello world!".as_bytes()));
+        // prefix is 8f0d
+        new_gitbom.add(new_gitoid.generate_git_oid("hello world!!".as_bytes()));
+
+        assert_eq!("8f0d781335ac4b6a53ba4a941b3c30bdaf7a4aa5302460dfbcff41789153c2c3", new_gitbom.gitOids[0]);
+        assert_eq!("ca505bc4d562eed2fe8e6842bc345a244a1ffa9b01be21cad66f5f1de6a71dfe", new_gitbom.gitOids[1]);
+        assert_eq!("fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03", new_gitbom.gitOids[2]);
     }
 }
