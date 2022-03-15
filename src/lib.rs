@@ -1,4 +1,4 @@
-use im::Vector;
+use im::{HashSet, Vector};
 use sha2::{digest::DynDigest, Digest, Sha256};
 use std::io::{BufReader, Error, ErrorKind, Read, Result as IOResult};
 
@@ -115,14 +115,14 @@ impl GitOid {
 /// to a function eliminates a class of errors.
 #[derive(Clone, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub struct GitBom {
-    git_oids: Vector<String>,
+    git_oids: HashSet<String>,
 }
 
 impl GitBom {
     /// Create a new instance
     pub fn new() -> Self {
         Self {
-            git_oids: Vector::new(),
+            git_oids: HashSet::new(),
         }
     }
 
@@ -144,16 +144,24 @@ impl GitBom {
         S: ToString,
         I: IntoIterator<Item = S>,
     {
-        let mut updated = self.git_oids.clone(); // im::Vector has O(1) cloning
+        let mut updated = self.git_oids.clone(); // im::HashSet has O(1) cloning
         for gitoid in gitoids {
-            updated.push_back(gitoid.to_string());
+            updated = updated.update(gitoid.to_string());
         }
         Self { git_oids: updated }
     }
 
     /// Return the `Vector` of git oids
-    pub fn get_vector(&self) -> Vector<String> {
+    pub fn get_oids(&self) -> HashSet<String> {
         self.git_oids.clone()
+    }
+
+    /// In some cases, getting a sorted `Vector` of oids is desirable.
+    /// This function (cost O(n log n)) returns a `Vector` of sorted oids
+    pub fn get_sorted_oids(&self) -> Vector<String> {
+        let mut ret: Vector<String> = self.git_oids.clone().into_iter().collect();
+        ret.sort();
+        return ret;
     }
 }
 
@@ -174,7 +182,7 @@ mod tests {
     #[test]
     fn test_add() {
         assert_eq!(
-            GitBom::new().add("Hello").get_vector(),
+            GitBom::new().add("Hello").get_sorted_oids(),
             vector!["Hello".to_string()]
         )
     }
@@ -184,8 +192,8 @@ mod tests {
         assert_eq!(
             GitBom::new()
                 .add_many(vec!["Hello", "Cat", "Dog"])
-                .get_vector(),
-            vector!["Hello".to_string(), "Cat".to_string(), "Dog".to_string()]
+                .get_sorted_oids(),
+            vector!["Cat".to_string(), "Dog".to_string(), "Hello".to_string(),]
         )
     }
 
@@ -269,7 +277,7 @@ mod tests {
 
         assert_eq!(
             "fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
-            new_gitbom.get_vector()[0]
+            new_gitbom.get_sorted_oids()[0]
         )
     }
 }
