@@ -24,6 +24,10 @@ impl HashAlgorithm {
     }
 }
 
+/// The number of bytes required to store the largest hash. Currently 32 for SHA256
+/// If another `HashAlgorithm` is added, update to reflect.
+const NUM_HASH_BYTES: usize = 32;
+
 impl Display for HashAlgorithm {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
@@ -39,7 +43,7 @@ impl Display for HashAlgorithm {
 pub struct GitOid {
     hash_algorithm: HashAlgorithm,
     len: usize,
-    value: [u8; 32],
+    value: [u8; NUM_HASH_BYTES],
 }
 
 impl Display for GitOid {
@@ -114,7 +118,7 @@ impl GitOid {
         mut digest: Box<dyn DynDigest>,
         mut reader: BufReader<R>,
         expected_length: usize,
-    ) -> IOResult<(usize, [u8; 32])>
+    ) -> IOResult<(usize, [u8; NUM_HASH_BYTES])>
     where
         BufReader<R>: std::io::Read,
     {
@@ -159,9 +163,9 @@ impl GitOid {
         }
 
         let hash = digest.finalize();
-        let mut ret = [0u8; 32];
+        let mut ret = [0u8; NUM_HASH_BYTES];
 
-        let len = std::cmp::min(32, hash.len());
+        let len = std::cmp::min(NUM_HASH_BYTES, hash.len());
         ret[..len].copy_from_slice(&hash);
         return Ok((len, ret));
     }
