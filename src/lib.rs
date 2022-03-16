@@ -1,5 +1,6 @@
-use im::Vector;
+use im::{HashSet, Vector};
 use sha2::{digest::DynDigest, Digest, Sha256};
+use std::fmt::{Display, Formatter, Result};
 use std::io::{BufReader, Error, ErrorKind, Read, Result as IOResult};
 
 /// The available algorithms for computing hashes
@@ -10,41 +11,97 @@ pub enum HashAlgorithm {
     /// [SHA256](https://en.wikipedia.org/wiki/SHA-2)
     SHA256,
 }
+impl HashAlgorithm {
+    /// Based on the `GitOid`'s hashing algorithm, generate an instance of
+    /// a digester
+    pub fn create_digest(&self) -> Box<dyn DynDigest> {
+        let ret: Box<dyn sha2::digest::DynDigest> = match self {
+            HashAlgorithm::SHA1 => Box::new(sha1::Sha1::new()),
+            HashAlgorithm::SHA256 => Box::new(Sha256::new()),
+        };
+
+        return ret;
+    }
+}
+
+impl Display for HashAlgorithm {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match self {
+            HashAlgorithm::SHA1 => write!(f, "SHA1"),
+            HashAlgorithm::SHA256 => write!(f, "SHA256"),
+        }
+    }
+}
 
 /// A struct that computes [git oids](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects)
 /// based on the selected algorithm
 #[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub struct GitOid {
     hash_algorithm: HashAlgorithm,
+    len: usize,
+    value: [u8; 32],
+}
+
+impl Display for GitOid {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{}:{}", self.hash_algorithm, self.hex_hash())
+    }
 }
 
 impl GitOid {
-    pub fn new(hash_algo: HashAlgorithm) -> Self {
+    /// return the hex value of the hashcode, without the hash type
+    pub fn hex_hash(&self) -> String {
+        hex::encode(&self.value[0..self.len])
+    }
+
+    /// get a slice with the hash value. The lifetime of the slice
+    /// is the same as the lifetime of the GitOid
+    pub fn hash_value<'a>(&'a self) -> &'a [u8] {
+        &self.value[0..self.len]
+    }
+
+    /// Get the hash algorithm used for this GitOid
+    pub fn hash_algorithm(&self) -> HashAlgorithm {
+        self.hash_algorithm
+    }
+
+    /// create a new GitOid based on an in-memory array
+    pub fn new(hash_algo: HashAlgorithm, content: &[u8]) -> Self {
+        let v = GitOid::generate_git_oid_from_buffer(
+            hash_algo.create_digest(),
+            BufReader::new(content),
+            content.len(),
+        )
+        .unwrap(); // `unwrap` is usually code smell. In this case, we know there will be no I/O errors and the length will be correct
         GitOid {
             hash_algorithm: hash_algo,
+            value: v.1,
+            len: v.0,
         }
     }
-    /// Given a byte array, generate a hash based on the `GitOid`'s
-    /// hashing algorithm
-    pub fn generate_git_oid(&self, content: &[u8]) -> String {
-        let r = BufReader::new(content);
 
-        // normally `unwrap` is code smell... but in this case, we know
-        // that there will not be an I/O error reading the content and
-        // we know that the length of the content is the number of bytes
-        // to be read
-        return self.generate_git_oid_from_buffer(r, content.len()).unwrap();
+    /// create a GitOid using SHA256 for the string... mostly a helper method
+    pub fn new_from_str(the_string: &str) -> Self {
+        GitOid::new(HashAlgorithm::SHA256, the_string.as_bytes())
     }
 
-    /// Based on the `GitOid`'s hashing algorithm, generate an instance of
-    /// a digester
-    fn create_digest(&self) -> Box<dyn DynDigest> {
-        let ret: Box<dyn sha2::digest::DynDigest> = match self.hash_algorithm {
-            HashAlgorithm::SHA1 => Box::new(sha1::Sha1::new()),
-            HashAlgorithm::SHA256 => Box::new(Sha256::new()),
-        };
-
-        return ret;
+    pub fn new_from_reader<R>(
+        hash_algo: HashAlgorithm,
+        content: BufReader<R>,
+        expected_length: usize,
+    ) -> IOResult<Self>
+    where
+        BufReader<R>: std::io::Read,
+    {
+        let digest = hash_algo.create_digest();
+        match GitOid::generate_git_oid_from_buffer(digest, content, expected_length) {
+            Ok(v) => Ok(GitOid {
+                hash_algorithm: hash_algo,
+                len: v.0,
+                value: v.1,
+            }),
+            Err(e) => Err(e),
+        }
     }
 
     /// Take a `BufReader` and generate a hash based on the `GitOid`'s hashing
@@ -53,11 +110,11 @@ impl GitOid {
     /// the latter `Err`? The prefix string includes the number of bytes
     /// being hashed and that's the `expected_length`. If the actual bytes
     /// hashed differs, then something went wrong and the hash is not valid
-    pub fn generate_git_oid_from_buffer<R>(
-        &self,
+    fn generate_git_oid_from_buffer<R>(
+        mut digest: Box<dyn DynDigest>,
         mut reader: BufReader<R>,
         expected_length: usize,
-    ) -> IOResult<String>
+    ) -> IOResult<(usize, [u8; 32])>
     where
         BufReader<R>: std::io::Read,
     {
@@ -66,10 +123,8 @@ impl GitOid {
         let mut buf = [0; 4096]; // Linux default page size is 4096
         let mut amount_read: usize = 0;
 
-        let mut hasher = self.create_digest();
-
         // set the prefix
-        hasher.update(prefix.as_bytes());
+        digest.update(prefix.as_bytes());
 
         // keep reading the input until there is no more
         loop {
@@ -81,7 +136,7 @@ impl GitOid {
 
                 // update the hash and accumulate the count
                 Ok(size) => {
-                    hasher.update(&buf[..size]);
+                    digest.update(&buf[..size]);
                     amount_read = amount_read + size;
                 }
 
@@ -103,8 +158,12 @@ impl GitOid {
             ));
         }
 
-        let hash = hasher.finalize();
-        return Ok(hex::encode(hash));
+        let hash = digest.finalize();
+        let mut ret = [0u8; 32];
+
+        let len = std::cmp::min(32, hash.len());
+        ret[..len].copy_from_slice(&hash);
+        return Ok((len, ret));
     }
 }
 
@@ -115,14 +174,14 @@ impl GitOid {
 /// to a function eliminates a class of errors.
 #[derive(Clone, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub struct GitBom {
-    git_oids: Vector<String>,
+    git_oids: HashSet<GitOid>,
 }
 
 impl GitBom {
     /// Create a new instance
     pub fn new() -> Self {
         Self {
-            git_oids: Vector::new(),
+            git_oids: HashSet::new(),
         }
     }
 
@@ -131,29 +190,33 @@ impl GitBom {
     ///
     /// Why `ToString` rather than `String` or `&str` or other stuff?
     /// Mostly convenience. Make it easy to call the function.
-    pub fn add<I>(&self, gitoid: I) -> Self
-    where
-        I: ToString,
-    {
+    pub fn add(&self, gitoid: GitOid) -> Self {
         self.add_many(vec![gitoid])
     }
 
     /// Append many git oids and return a new `GitBom`
-    pub fn add_many<I, S>(&self, gitoids: I) -> Self
+    pub fn add_many<I>(&self, gitoids: I) -> Self
     where
-        S: ToString,
-        I: IntoIterator<Item = S>,
+        I: IntoIterator<Item = GitOid>,
     {
-        let mut updated = self.git_oids.clone(); // im::Vector has O(1) cloning
+        let mut updated = self.git_oids.clone(); // im::HashSet has O(1) cloning
         for gitoid in gitoids {
-            updated.push_back(gitoid.to_string());
+            updated = updated.update(gitoid);
         }
         Self { git_oids: updated }
     }
 
     /// Return the `Vector` of git oids
-    pub fn get_vector(&self) -> Vector<String> {
+    pub fn get_oids(&self) -> HashSet<GitOid> {
         self.git_oids.clone()
+    }
+
+    /// In some cases, getting a sorted `Vector` of oids is desirable.
+    /// This function (cost O(n log n)) returns a `Vector` of sorted oids
+    pub fn get_sorted_oids(&self) -> Vector<GitOid> {
+        let mut ret: Vector<GitOid> = self.git_oids.clone().into_iter().collect();
+        ret.sort();
+        return ret;
     }
 }
 
@@ -166,110 +229,85 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-
-    #[test]
     fn test_add() {
-        assert_eq!(
-            GitBom::new().add("Hello").get_vector(),
-            vector!["Hello".to_string()]
-        )
+        let oid = GitOid::new_from_str("Hello");
+        assert_eq!(GitBom::new().add(oid).get_sorted_oids(), vector![oid])
     }
 
     #[test]
     fn test_add_many() {
-        assert_eq!(
-            GitBom::new()
-                .add_many(vec!["Hello", "Cat", "Dog"])
-                .get_vector(),
-            vector!["Hello".to_string(), "Cat".to_string(), "Dog".to_string()]
-        )
+        let mut oids: Vector<GitOid> = vec!["eee", "Hello", "Cat", "Dog"]
+            .into_iter()
+            .map(GitOid::new_from_str)
+            .collect();
+
+        let da_bom = GitBom::new().add_many(oids.clone());
+        oids.sort();
+        assert_eq!(da_bom.get_sorted_oids(), oids);
     }
 
     #[test]
     fn test_generate_sha1_git_oid() {
         let input = "hello world".as_bytes();
 
-        let new_gitoid = GitOid::new(HashAlgorithm::SHA1);
+        let result = GitOid::new(HashAlgorithm::SHA1, input);
 
-        let result = new_gitoid.generate_git_oid(input);
-        assert_eq!(result, "95d09f2b10159347eece71399a7e2e907ea3df4f")
+        assert_eq!(
+            result.to_string(),
+            "SHA1:95d09f2b10159347eece71399a7e2e907ea3df4f"
+        )
     }
 
     #[test]
     fn test_generate_sha1_git_oid_buffer() {
-        let file = File::open("test/data/hello_world.txt");
-        match file {
-            Ok(f) => {
-                let reader = BufReader::new(f);
+        let file = File::open("test/data/hello_world.txt").unwrap();
+        let reader = BufReader::new(file);
 
-                let new_gitoid = GitOid::new(HashAlgorithm::SHA1);
+        let result = GitOid::new_from_reader(HashAlgorithm::SHA1, reader, 11).unwrap();
 
-                let result = new_gitoid.generate_git_oid_from_buffer(reader, 11).unwrap();
-
-                assert_eq!("95d09f2b10159347eece71399a7e2e907ea3df4f", result)
-            }
-            Err(_) => {
-                assert!(false)
-            }
-        }
+        assert_eq!(
+            "95d09f2b10159347eece71399a7e2e907ea3df4f",
+            result.hex_hash()
+        )
     }
 
     #[test]
     fn test_generate_sha256_git_oid() {
         let input = "hello world".as_bytes();
 
-        let new_gitoid = GitOid::new(HashAlgorithm::SHA256);
-
-        let result = new_gitoid.generate_git_oid(input);
+        let result = GitOid::new(HashAlgorithm::SHA256, input);
 
         assert_eq!(
             "fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
-            result
+            result.hex_hash()
         );
     }
 
     #[test]
     fn test_generate_sha256_git_oid_buffer() {
-        let file = File::open("test/data/hello_world.txt");
-        match file {
-            Ok(f) => {
-                let reader = BufReader::new(f);
+        let file = File::open("test/data/hello_world.txt").unwrap();
+        let reader = BufReader::new(file);
 
-                let new_gitoid = GitOid::new(HashAlgorithm::SHA256);
+        let result = GitOid::new_from_reader(HashAlgorithm::SHA256, reader, 11).unwrap();
 
-                let result = new_gitoid.generate_git_oid_from_buffer(reader, 11).unwrap();
-
-                assert_eq!(
-                    "fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
-                    result
-                );
-            }
-            Err(_) => {
-                assert!(false)
-            }
-        }
+        assert_eq!(
+            "fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
+            result.hex_hash()
+        );
     }
 
     #[test]
     fn test_add_gitoid_to_gitbom() {
         let input = "hello world".as_bytes();
 
-        let new_gitoid = GitOid {
-            hash_algorithm: HashAlgorithm::SHA256,
-        };
-
-        let generated_gitoid = new_gitoid.generate_git_oid(input);
+        let generated_gitoid = GitOid::new(HashAlgorithm::SHA256, input);
 
         let new_gitbom = GitBom::new();
         let new_gitbom = new_gitbom.add(generated_gitoid);
 
         assert_eq!(
             "fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
-            new_gitbom.get_vector()[0]
+            new_gitbom.get_sorted_oids()[0].hex_hash()
         )
     }
 }
