@@ -2,6 +2,7 @@ use im::{HashSet, Vector};
 use sha2::{digest::DynDigest, Digest, Sha256};
 use std::fmt::{Display, Formatter, Result};
 use std::io::{BufReader, Error, ErrorKind, Read, Result as IOResult};
+use tokio::io::AsyncReadExt;
 
 /// The available algorithms for computing hashes
 #[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
@@ -98,14 +99,104 @@ impl GitOid {
         BufReader<R>: std::io::Read,
     {
         let digest = hash_algo.create_digest();
-        match GitOid::generate_git_oid_from_buffer(digest, content, expected_length) {
-            Ok(v) => Ok(GitOid {
-                hash_algorithm: hash_algo,
-                len: v.0,
-                value: v.1,
-            }),
-            Err(e) => Err(e),
+        let v = GitOid::generate_git_oid_from_buffer(digest, content, expected_length)?;
+        Ok(GitOid {
+            hash_algorithm: hash_algo,
+            len: v.0,
+            value: v.1,
+        })
+    }
+
+    /// generate a bunch of `GitOid`s from a bunch of async
+    /// readers for a given algorithm
+    pub async fn new_from_async_readers<R, I>(
+        hash_algo: HashAlgorithm,
+        content: I,
+    ) -> IOResult<Vector<GitOid>>
+    where
+        R: AsyncReadExt + std::marker::Unpin,
+        I: IntoIterator<Item = (R, usize)>,
+    {
+        let digest = hash_algo.create_digest();
+        let mut futures = Vec::new();
+
+        // go get the futures for each hash operation
+        for (reader, expected_length) in content {
+            futures.push(GitOid::generate_git_oid_from_async_buffer(
+                digest.clone(),
+                reader,
+                expected_length,
+            ));
         }
+
+        // create the return vector
+        let mut ret = Vector::new();
+
+        // go through each future and await the response
+        // the cool thing is that this will block on any given future
+        // but other futures may become satisfied so the look effectively
+        // blocks on the longest-to-satisfy future
+        for v in futures {
+            let (len, bytes) = v.await?;
+
+            ret.push_back(GitOid {
+                hash_algorithm: hash_algo,
+                len: len,
+                value: bytes,
+            });
+        }
+
+        Ok(ret)
+    }
+
+    /// the async version of generating a git_oid from a buffer
+    async fn generate_git_oid_from_async_buffer<R>(
+        mut digest: Box<dyn DynDigest>,
+        mut reader: R,
+        expected_length: usize,
+    ) -> IOResult<(usize, [u8; NUM_HASH_BYTES])>
+    where
+        R: AsyncReadExt + std::marker::Unpin,
+    {
+        let prefix = format!("blob {}\0", expected_length);
+
+        let mut buf = [0u8; 4096]; // Linux default page size is 4096
+        let mut amount_read: usize = 0;
+
+        // set the prefix
+        digest.update(prefix.as_bytes());
+
+        // keep reading the input until there is no more
+        loop {
+            match reader.read(&mut buf).await? {
+                // done
+                0 => break,
+
+                // update the hash and accumulate the count
+                size => {
+                    digest.update(&buf[..size]);
+                    amount_read = amount_read + size;
+                }
+            }
+        }
+
+        // make sure we got the length we expected
+        if amount_read != expected_length {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "Expected length {} actual length {}",
+                    expected_length, amount_read
+                ),
+            ));
+        }
+
+        let hash = digest.finalize();
+        let mut ret = [0u8; NUM_HASH_BYTES];
+
+        let len = std::cmp::min(NUM_HASH_BYTES, hash.len());
+        ret[..len].copy_from_slice(&hash);
+        return Ok((len, ret));
     }
 
     /// Take a `BufReader` and generate a hash based on the `GitOid`'s hashing
@@ -132,21 +223,14 @@ impl GitOid {
 
         // keep reading the input until there is no more
         loop {
-            match reader.read(&mut buf) {
+            match reader.read(&mut buf)? {
                 // done
-                Ok(0) => {
-                    break;
-                }
+                0 => break,
 
                 // update the hash and accumulate the count
-                Ok(size) => {
+                size => {
                     digest.update(&buf[..size]);
                     amount_read = amount_read + size;
-                }
-
-                // got an error? return it.
-                Err(x) => {
-                    return Err(x);
                 }
             }
         }
@@ -187,6 +271,15 @@ impl GitBom {
         Self {
             git_oids: HashSet::new(),
         }
+    }
+
+    /// Create a GitBom from many GitOids
+    pub fn new_from_iterator<I>(gitoids: I) -> Self
+    where
+        I: IntoIterator<Item = GitOid>,
+    {
+        let me = GitBom::new();
+        me.add_many(gitoids)
     }
 
     /// Append a `gitoid` hash and return a new instance of the
@@ -313,5 +406,34 @@ mod tests {
             "fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
             new_gitbom.get_sorted_oids()[0].hex_hash()
         )
+    }
+
+    #[tokio::test]
+    async fn test_async_read() {
+        let mut to_read = Vec::new();
+        for _ in 0..50 {
+            to_read.push((
+                tokio::fs::File::open("test/data/hello_world.txt")
+                    .await
+                    .unwrap(),
+                11,
+            ));
+        }
+
+        let res = GitOid::new_from_async_readers(HashAlgorithm::SHA256, to_read)
+            .await
+            .unwrap();
+
+        assert_eq!(50, res.len());
+        assert_eq!(
+            "SHA256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
+            res[0].to_string()
+        );
+
+        let gitbom = GitBom::new_from_iterator(res);
+
+        // even though we created 50 gitoids, they should all be the same and thus
+        // the gitbom should only have one entry
+        assert_eq!(1, gitbom.git_oids.len());
     }
 }
