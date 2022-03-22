@@ -195,7 +195,7 @@ impl GitOid {
     {
         let prefix = format!("blob {}\0", expected_length);
 
-        let mut buf = [0u8; 4096]; // Linux default page size is 4096
+        let mut buf = [0u8; 8192]; // the size of a buffer for buffered read
         let mut amount_read: usize = 0;
 
         // set the prefix
