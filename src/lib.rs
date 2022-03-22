@@ -1,8 +1,43 @@
 use im::{HashSet, Vector};
+use pin_project::pin_project;
 use sha2::{digest::DynDigest, Digest, Sha256};
 use std::fmt::{Display, Formatter, Result};
+use std::io;
 use std::io::{BufReader, Error, ErrorKind, Read, Result as IOResult};
-use tokio::io::AsyncReadExt;
+use std::pin::Pin;
+use std::task::{Context, Poll};
+use tokio::io::{AsyncRead, AsyncReadExt, ReadBuf};
+
+#[pin_project]
+pub struct Source<R> {
+    #[pin]
+    reader: R,
+    length: usize,
+}
+
+impl<R> Source<R> {
+    // name as `new` maybe?
+    pub fn new(reader: R, length: usize) -> Self {
+        Self { reader, length }
+    }
+
+    pub fn len(&self) -> usize {
+        self.length
+    }
+
+    // maybe also from_file ?
+}
+
+impl<R: AsyncRead> AsyncRead for Source<R> {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
+        let this = self.project();
+        this.reader.poll_read(cx, buf)
+    }
+}
 
 /// The available algorithms for computing hashes
 #[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
@@ -115,14 +150,15 @@ impl GitOid {
     ) -> IOResult<Vector<GitOid>>
     where
         R: AsyncReadExt + std::marker::Unpin,
-        I: IntoIterator<Item = (R, usize)>,
+        I: IntoIterator<Item = Source<R>>,
     {
         let digest = hash_algo.create_digest();
-        let mut futures = Vec::new();
+        let mut future_vec = Vec::new();
 
         // go get the futures for each hash operation
-        for (reader, expected_length) in content {
-            futures.push(GitOid::generate_git_oid_from_async_buffer(
+        for reader in content {
+            let expected_length = reader.len();
+            future_vec.push(GitOid::generate_git_oid_from_async_buffer(
                 digest.clone(),
                 reader,
                 expected_length,
@@ -136,9 +172,8 @@ impl GitOid {
         // the cool thing is that this will block on any given future
         // but other futures may become satisfied so the look effectively
         // blocks on the longest-to-satisfy future
-        for v in futures {
-            let (len, bytes) = v.await?;
-
+        for res in futures::future::join_all(future_vec).await {
+            let (len, bytes) = res?;
             ret.push_back(GitOid {
                 hash_algorithm: hash_algo,
                 len: len,
@@ -194,7 +229,7 @@ impl GitOid {
         let hash = digest.finalize();
         let mut ret = [0u8; NUM_HASH_BYTES];
 
-        let len = std::cmp::min(NUM_HASH_BYTES, hash.len());
+        let len = NUM_HASH_BYTES.min(hash.len());
         ret[..len].copy_from_slice(&hash);
         return Ok((len, ret));
     }
@@ -263,6 +298,17 @@ impl GitOid {
 #[derive(Clone, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub struct GitBom {
     git_oids: HashSet<GitOid>,
+}
+
+impl FromIterator<GitOid> for GitBom {
+    /// Create a GitBom from many GitOids
+    fn from_iter<T>(gitoids: T) -> Self
+    where
+        T: IntoIterator<Item = GitOid>,
+    {
+        let me = GitBom::new();
+        me.add_many(gitoids)
+    }
 }
 
 impl GitBom {
@@ -412,7 +458,7 @@ mod tests {
     async fn test_async_read() {
         let mut to_read = Vec::new();
         for _ in 0..50 {
-            to_read.push((
+            to_read.push(Source::new(
                 tokio::fs::File::open("test/data/hello_world.txt")
                     .await
                     .unwrap(),
@@ -430,10 +476,10 @@ mod tests {
             res[0].to_string()
         );
 
-        let gitbom = GitBom::new_from_iterator(res);
+        let gitbom = res.into_iter().collect::<GitBom>();
 
         // even though we created 50 gitoids, they should all be the same and thus
         // the gitbom should only have one entry
-        assert_eq!(1, gitbom.git_oids.len());
+        assert_eq!(1, gitbom.get_oids().len());
     }
 }
