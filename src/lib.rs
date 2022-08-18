@@ -1,31 +1,35 @@
 use im::{HashSet, Vector};
 use pin_project::pin_project;
+use sha1::Sha1;
 use sha2::{digest::DynDigest, Digest, Sha256};
 use std::fmt::{Display, Formatter, Result};
-use std::io;
 use std::io::{BufReader, Error, ErrorKind, Read, Result as IOResult};
+use std::marker::Unpin;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncReadExt, ReadBuf};
 
+/// Represents a source of data which will be read to produce a `GitOid`.
 #[pin_project]
 pub struct Source<R> {
+    /// The reader itself.
     #[pin]
     reader: R,
+    /// The length of the data being read.
     length: usize,
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl<R> Source<R> {
-    // name as `new` maybe?
+    /// Create a new `Source` based on a `reader` and `length`.
     pub fn new(reader: R, length: usize) -> Self {
         Self { reader, length }
     }
 
+    /// Get the length of the read data.
     pub fn len(&self) -> usize {
         self.length
     }
-
-    // maybe also from_file ?
 }
 
 impl<R: AsyncRead> AsyncRead for Source<R> {
@@ -33,9 +37,8 @@ impl<R: AsyncRead> AsyncRead for Source<R> {
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
-        let this = self.project();
-        this.reader.poll_read(cx, buf)
+    ) -> Poll<IOResult<()>> {
+        self.project().reader.poll_read(cx, buf)
     }
 }
 
@@ -47,16 +50,15 @@ pub enum HashAlgorithm {
     /// [SHA256](https://en.wikipedia.org/wiki/SHA-2)
     SHA256,
 }
+
 impl HashAlgorithm {
     /// Based on the `GitOid`'s hashing algorithm, generate an instance of
     /// a digester
-    pub fn create_digest(&self) -> Box<dyn DynDigest> {
-        let ret: Box<dyn sha2::digest::DynDigest> = match self {
-            HashAlgorithm::SHA1 => Box::new(sha1::Sha1::new()),
+    pub fn create_digester(&self) -> Box<dyn DynDigest> {
+        match self {
+            HashAlgorithm::SHA1 => Box::new(Sha1::new()),
             HashAlgorithm::SHA256 => Box::new(Sha256::new()),
-        };
-
-        return ret;
+        }
     }
 }
 
@@ -77,8 +79,15 @@ impl Display for HashAlgorithm {
 /// based on the selected algorithm
 #[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub struct GitOid {
+    /// The hash algorithm being used.
     hash_algorithm: HashAlgorithm,
+
+    /// The length of the hashed data in number of bytes.
+    ///
+    /// Invariant: this must always be less than `NUM_HASH_BYTES`.
     len: usize,
+
+    /// The buffer storing the actual hashed bytes.
     value: [u8; NUM_HASH_BYTES],
 }
 
@@ -89,94 +98,93 @@ impl Display for GitOid {
 }
 
 impl GitOid {
-    /// return the hex value of the hashcode, without the hash type
+    /// Get the hex value of the hashcode, without the hash type.
     pub fn hex_hash(&self) -> String {
-        hex::encode(&self.value[0..self.len])
+        hex::encode(self.hash_value())
     }
 
-    /// get a slice with the hash value. The lifetime of the slice
-    /// is the same as the lifetime of the GitOid
-    pub fn hash_value<'a>(&'a self) -> &'a [u8] {
+    /// Get the hash data as a slice.
+    pub fn hash_value(&self) -> &[u8] {
         &self.value[0..self.len]
     }
 
-    /// Get the hash algorithm used for this GitOid
+    /// Get the hash algorithm used for this GitOid.
     pub fn hash_algorithm(&self) -> HashAlgorithm {
         self.hash_algorithm
     }
 
-    /// create a new GitOid based on an in-memory array
-    pub fn new(hash_algo: HashAlgorithm, content: &[u8]) -> Self {
-        let v = GitOid::generate_git_oid_from_buffer(
-            hash_algo.create_digest(),
-            BufReader::new(content),
-            content.len(),
-        )
-        .unwrap(); // `unwrap` is usually code smell. In this case, we know there will be no I/O errors and the length will be correct
+    /// Create a new `GitOid` based on an in-memory array.
+    pub fn new(hash_algorithm: HashAlgorithm, content: &[u8]) -> Self {
+        let digest = hash_algorithm.create_digester();
+        let reader = BufReader::new(content);
+        let expected_length = content.len();
+
+        // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
+        let (len, value) = GitOid::generate_from_buffer(digest, reader, expected_length).unwrap();
+
         GitOid {
-            hash_algorithm: hash_algo,
-            value: v.1,
-            len: v.0,
+            hash_algorithm,
+            value,
+            len,
         }
     }
 
-    /// create a GitOid using SHA256 for the string... mostly a helper method
-    pub fn new_from_str(the_string: &str) -> Self {
-        GitOid::new(HashAlgorithm::SHA256, the_string.as_bytes())
+    /// Create a `GitOid` from a `String`.
+    pub fn new_from_str(hash_algorithm: HashAlgorithm, s: &str) -> Self {
+        let content = s.as_bytes();
+        GitOid::new(hash_algorithm, content)
     }
 
+    /// Create a `GitOid` from a reader.
+    ///
+    /// This requires an `expected_length` as part of a correctness check.
     pub fn new_from_reader<R>(
-        hash_algo: HashAlgorithm,
-        content: BufReader<R>,
+        hash_algorithm: HashAlgorithm,
+        reader: BufReader<R>,
         expected_length: usize,
     ) -> IOResult<Self>
     where
         BufReader<R>: std::io::Read,
     {
-        let digest = hash_algo.create_digest();
-        let v = GitOid::generate_git_oid_from_buffer(digest, content, expected_length)?;
+        let digest = hash_algorithm.create_digester();
+        let (len, value) = GitOid::generate_from_buffer(digest, reader, expected_length)?;
+
         Ok(GitOid {
-            hash_algorithm: hash_algo,
-            len: v.0,
-            value: v.1,
+            hash_algorithm,
+            len,
+            value,
         })
     }
 
-    /// generate a bunch of `GitOid`s from a bunch of async
-    /// readers for a given algorithm
+    /// Generate a bunch of `GitOid`s from a bunch of async readers for a given algorithm
     pub async fn new_from_async_readers<R, I>(
-        hash_algo: HashAlgorithm,
+        hash_algorithm: HashAlgorithm,
         content: I,
     ) -> IOResult<Vector<GitOid>>
     where
-        R: AsyncReadExt + std::marker::Unpin,
+        R: AsyncReadExt + Unpin,
         I: IntoIterator<Item = Source<R>>,
     {
-        let digest = hash_algo.create_digest();
-        let mut future_vec = Vec::new();
+        // Construct a new digester.
+        let digester = hash_algorithm.create_digester();
 
-        // go get the futures for each hash operation
-        for reader in content {
+        // Get an iterator of futures which will generate `GitOid`s for each item read.
+        let futs = content.into_iter().map(|reader| {
             let expected_length = reader.len();
-            future_vec.push(GitOid::generate_git_oid_from_async_buffer(
-                digest.clone(),
-                reader,
-                expected_length,
-            ));
-        }
+            let digester = digester.clone();
+            GitOid::generate_from_async_buffer(digester, reader, expected_length)
+        });
 
-        // create the return vector
+        // Go through each future and await the response.
+        //
+        // The cool thing is that this will block on any given future but other futures
+        // may become satisfied so the look effectively blocks on the longest-to-satisfy future!
         let mut ret = Vector::new();
-
-        // go through each future and await the response
-        // the cool thing is that this will block on any given future
-        // but other futures may become satisfied so the look effectively
-        // blocks on the longest-to-satisfy future
-        for res in futures::future::join_all(future_vec).await {
+        for res in futures::future::join_all(futs).await {
             let (len, bytes) = res?;
             ret.push_back(GitOid {
-                hash_algorithm: hash_algo,
-                len: len,
+                hash_algorithm,
+                len,
                 value: bytes,
             });
         }
@@ -184,9 +192,9 @@ impl GitOid {
         Ok(ret)
     }
 
-    /// the async version of generating a git_oid from a buffer
-    async fn generate_git_oid_from_async_buffer<R>(
-        mut digest: Box<dyn DynDigest>,
+    /// The async version of generating a `GitOid` from a buffer
+    async fn generate_from_async_buffer<R>(
+        mut digester: Box<dyn DynDigest>,
         mut reader: R,
         expected_length: usize,
     ) -> IOResult<(usize, [u8; NUM_HASH_BYTES])>
@@ -199,23 +207,23 @@ impl GitOid {
         let mut amount_read: usize = 0;
 
         // set the prefix
-        digest.update(prefix.as_bytes());
+        digester.update(prefix.as_bytes());
 
-        // keep reading the input until there is no more
+        // Keep reading the input until there is no more
         loop {
             match reader.read(&mut buf).await? {
-                // done
+                // Done
                 0 => break,
 
-                // update the hash and accumulate the count
+                // Update the hash and accumulate the count
                 size => {
-                    digest.update(&buf[..size]);
-                    amount_read = amount_read + size;
+                    digester.update(&buf[..size]);
+                    amount_read += size;
                 }
             }
         }
 
-        // make sure we got the length we expected
+        // Make sure we got the length we expected
         if amount_read != expected_length {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -226,51 +234,55 @@ impl GitOid {
             ));
         }
 
-        let hash = digest.finalize();
+        let hash = digester.finalize();
         let mut ret = [0u8; NUM_HASH_BYTES];
 
         let len = NUM_HASH_BYTES.min(hash.len());
         ret[..len].copy_from_slice(&hash);
-        return Ok((len, ret));
+        Ok((len, ret))
     }
 
-    /// Take a `BufReader` and generate a hash based on the `GitOid`'s hashing
-    /// algorithm. Will return an `Err` if the `BufReader` generates an `Err`
-    /// or if the `expected_length` is different from the actual length. Why
-    /// the latter `Err`? The prefix string includes the number of bytes
-    /// being hashed and that's the `expected_length`. If the actual bytes
-    /// hashed differs, then something went wrong and the hash is not valid
-    fn generate_git_oid_from_buffer<R>(
-        mut digest: Box<dyn DynDigest>,
+    /// Take a `BufReader` and generate a hash based on the `GitOid`'s hashing algorithm.
+    ///
+    /// Will return an `Err` if the `BufReader` generates an `Err` or if the
+    /// `expected_length` is different from the actual length.
+    ///
+    /// Why the latter `Err`?
+    ///
+    /// The prefix string includes the number of bytes being hashed and that's the
+    /// `expected_length`. If the actual bytes hashed differs, then something went
+    /// wrong and the hash is not valid.
+    fn generate_from_buffer<R>(
+        mut digester: Box<dyn DynDigest>,
         mut reader: BufReader<R>,
         expected_length: usize,
     ) -> IOResult<(usize, [u8; NUM_HASH_BYTES])>
     where
-        BufReader<R>: std::io::Read,
+        BufReader<R>: Read,
     {
         let prefix = format!("blob {}\0", expected_length);
 
         let mut buf = [0; 4096]; // Linux default page size is 4096
         let mut amount_read: usize = 0;
 
-        // set the prefix
-        digest.update(prefix.as_bytes());
+        // Set the prefix
+        digester.update(prefix.as_bytes());
 
-        // keep reading the input until there is no more
+        // Keep reading the input until there is no more
         loop {
             match reader.read(&mut buf)? {
                 // done
                 0 => break,
 
-                // update the hash and accumulate the count
+                // Update the hash and accumulate the count
                 size => {
-                    digest.update(&buf[..size]);
-                    amount_read = amount_read + size;
+                    digester.update(&buf[..size]);
+                    amount_read += size;
                 }
             }
         }
 
-        // make sure we got the length we expected
+        // Make sure we got the length we expected
         if amount_read != expected_length {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -281,20 +293,23 @@ impl GitOid {
             ));
         }
 
-        let hash = digest.finalize();
+        let hash = digester.finalize();
         let mut ret = [0u8; NUM_HASH_BYTES];
 
         let len = std::cmp::min(NUM_HASH_BYTES, hash.len());
         ret[..len].copy_from_slice(&hash);
-        return Ok((len, ret));
+        Ok((len, ret))
     }
 }
 
-/// A [persistent](https://en.wikipedia.org/wiki/Persistent_data_structure) collection
-/// of [git oids](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects).
+/// A [persistent][wiki] collection of [git oids][git_scm].
+///
 /// Why persistent? While Rust and the borrow checker is great about ownership and
 /// mutation, always knowing that a Ref will not change if passed as a parameter
 /// to a function eliminates a class of errors.
+///
+/// [wiki]: https://en.wikipedia.org/wiki/Persistent_data_structure
+/// [git_scm]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
 #[derive(Clone, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub struct GitBom {
     git_oids: HashSet<GitOid>,
@@ -313,6 +328,7 @@ impl FromIterator<GitOid> for GitBom {
 
 impl GitBom {
     /// Create a new instance
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             git_oids: HashSet::new(),
@@ -328,16 +344,14 @@ impl GitBom {
         me.add_many(gitoids)
     }
 
-    /// Append a `gitoid` hash and return a new instance of the
-    /// `GitBom` that includes the appended item.
+    /// Add a `GitOid` hash to the `GitBom`.
     ///
-    /// Why `ToString` rather than `String` or `&str` or other stuff?
-    /// Mostly convenience. Make it easy to call the function.
+    /// Note that this creates a new persistent data structure under the hood.
     pub fn add(&self, gitoid: GitOid) -> Self {
-        self.add_many(vec![gitoid])
+        self.add_many([gitoid])
     }
 
-    /// Append many git oids and return a new `GitBom`
+    /// Append many `GitOid`s and return a new `GitBom`
     pub fn add_many<I>(&self, gitoids: I) -> Self
     where
         I: IntoIterator<Item = GitOid>,
@@ -349,17 +363,19 @@ impl GitBom {
         Self { git_oids: updated }
     }
 
-    /// Return the `Vector` of git oids
+    /// Return the `Vector` of `GitOid`s.
     pub fn get_oids(&self) -> HashSet<GitOid> {
-        self.git_oids.clone()
+        self.git_oids.clone() // im::HashSet as O(1) cloning.
     }
 
+    /// Get a sorted `Vector` of `GitOid`s.
+    ///
     /// In some cases, getting a sorted `Vector` of oids is desirable.
     /// This function (cost O(n log n)) returns a `Vector` of sorted oids
     pub fn get_sorted_oids(&self) -> Vector<GitOid> {
-        let mut ret: Vector<GitOid> = self.git_oids.clone().into_iter().collect();
+        let mut ret = self.git_oids.clone().into_iter().collect::<Vector<_>>();
         ret.sort();
-        return ret;
+        ret
     }
 }
 
@@ -373,7 +389,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let oid = GitOid::new_from_str("Hello");
+        let oid = GitOid::new_from_str(HashAlgorithm::SHA256, "Hello");
         assert_eq!(GitBom::new().add(oid).get_sorted_oids(), vector![oid])
     }
 
@@ -381,7 +397,7 @@ mod tests {
     fn test_add_many() {
         let mut oids: Vector<GitOid> = vec!["eee", "Hello", "Cat", "Dog"]
             .into_iter()
-            .map(GitOid::new_from_str)
+            .map(|s| GitOid::new_from_str(HashAlgorithm::SHA256, s))
             .collect();
 
         let da_bom = GitBom::new().add_many(oids.clone());
