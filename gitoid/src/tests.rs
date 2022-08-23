@@ -42,20 +42,14 @@ fn generate_sha1_gitoid_from_buffer() -> Result<()> {
 
 #[tokio::test]
 async fn generate_sha1_gitoids_from_async_buffers() -> Result<()> {
-    let mut to_read = Vec::new();
-    for _ in 0..50 {
-        to_read.push(Source::new(
-            tokio::fs::File::open("test/data/hello_world.txt").await?,
-            11,
-        ));
-    }
+    let reader = tokio::fs::File::open("test/data/hello_world.txt").await?;
+    let expected_length = 11;
 
-    let res = GitOid::new_from_async_readers(SHA1, to_read).await?;
+    let res = GitOid::new_from_async_reader(SHA1, reader, expected_length).await?;
 
-    assert_eq!(50, res.len());
     assert_eq!(
         "SHA1:95d09f2b10159347eece71399a7e2e907ea3df4f",
-        res[0].to_string()
+        res.to_string()
     );
 
     Ok(())
@@ -97,20 +91,14 @@ fn generate_sha256_gitoid_from_buffer() -> Result<()> {
 
 #[tokio::test]
 async fn generate_sha256_gitoids_from_async_buffers() -> Result<()> {
-    let mut to_read = Vec::new();
-    for _ in 0..50 {
-        to_read.push(Source::new(
-            tokio::fs::File::open("test/data/hello_world.txt").await?,
-            11,
-        ));
-    }
+    let reader = tokio::fs::File::open("test/data/hello_world.txt").await?;
+    let expected_length = 11;
 
-    let res = GitOid::new_from_async_readers(SHA256, to_read).await?;
+    let res = GitOid::new_from_async_reader(SHA256, reader, expected_length).await?;
 
-    assert_eq!(50, res.len());
     assert_eq!(
         "SHA256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
-        res[0].to_string()
+        res.to_string()
     );
 
     Ok(())

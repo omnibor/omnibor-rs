@@ -1,7 +1,6 @@
 //! A gitoid representing a single artifact.
 
-use crate::{HashAlgorithm, Source, NUM_HASH_BYTES};
-use im::Vector;
+use crate::{HashAlgorithm, NUM_HASH_BYTES};
 use sha2::digest::DynDigest;
 use std::fmt::{Display, Formatter, Result};
 use std::io::{BufReader, Error, ErrorKind, Read, Result as IOResult};
@@ -35,7 +34,7 @@ impl GitOid {
     // Constructors
     //-------------------------------------------------------------------------------------------
 
-    /// Create a new `GitOid` based on an in-memory array.
+    /// Create a new `GitOid` based on a slice of bytes.
     pub fn new_from_bytes(hash_algorithm: HashAlgorithm, content: &[u8]) -> Self {
         let digest = hash_algorithm.create_digester();
         let reader = BufReader::new(content);
@@ -51,7 +50,7 @@ impl GitOid {
         }
     }
 
-    /// Create a `GitOid` from a `String`.
+    /// Create a `GitOid` from a UTF-8 string slice.
     pub fn new_from_str(hash_algorithm: HashAlgorithm, s: &str) -> Self {
         let content = s.as_bytes();
         GitOid::new_from_bytes(hash_algorithm, content)
@@ -66,10 +65,10 @@ impl GitOid {
         expected_length: usize,
     ) -> IOResult<Self>
     where
-        BufReader<R>: std::io::Read,
+        BufReader<R>: Read,
     {
-        let digest = hash_algorithm.create_digester();
-        let (len, value) = bytes_from_buffer(digest, reader, expected_length)?;
+        let digester = hash_algorithm.create_digester();
+        let (len, value) = bytes_from_buffer(digester, reader, expected_length)?;
 
         Ok(GitOid {
             hash_algorithm,
@@ -78,40 +77,26 @@ impl GitOid {
         })
     }
 
-    /// Generate a bunch of `GitOid`s from a bunch of async readers for a given algorithm
-    pub async fn new_from_async_readers<R, I>(
+    /// Create a `GitOid` from an asynchronous reader.
+    ///
+    /// This requires an `expected_length` as part of a correctness check.
+    pub async fn new_from_async_reader<R>(
         hash_algorithm: HashAlgorithm,
-        content: I,
-    ) -> IOResult<Vector<GitOid>>
+        reader: R,
+        expected_length: usize,
+    ) -> IOResult<Self>
     where
         R: AsyncReadExt + Unpin,
-        I: IntoIterator<Item = Source<R>>,
     {
         // Construct a new digester.
         let digester = hash_algorithm.create_digester();
+        let (len, value) = bytes_from_async_buffer(digester, reader, expected_length).await?;
 
-        // Get an iterator of futures which will generate `GitOid`s for each item read.
-        let futs = content.into_iter().map(|reader| {
-            let expected_length = reader.expected_length();
-            let digester = digester.clone();
-            bytes_from_async_buffer(digester, reader, expected_length)
-        });
-
-        // Go through each future and await the response.
-        //
-        // The cool thing is that this will block on any given future but other futures
-        // may become satisfied so the look effectively blocks on the longest-to-satisfy future!
-        let mut ret = Vector::new();
-        for res in futures::future::join_all(futs).await {
-            let (len, bytes) = res?;
-            ret.push_back(GitOid {
-                hash_algorithm,
-                len,
-                value: bytes,
-            });
-        }
-
-        Ok(ret)
+        Ok(GitOid {
+            hash_algorithm,
+            len,
+            value,
+        })
     }
 
     //===========================================================================================
@@ -141,7 +126,7 @@ async fn bytes_from_async_buffer<R>(
     expected_length: usize,
 ) -> IOResult<(usize, [u8; NUM_HASH_BYTES])>
 where
-    R: AsyncReadExt + std::marker::Unpin,
+    R: AsyncReadExt + Unpin,
 {
     let prefix = format!("blob {}\0", expected_length);
 
