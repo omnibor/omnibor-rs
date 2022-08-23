@@ -31,29 +31,18 @@ impl Display for GitOid {
 }
 
 impl GitOid {
-    /// Get the hex value of the hashcode, without the hash type.
-    pub fn hex_hash(&self) -> String {
-        hex::encode(self.hash_value())
-    }
-
-    /// Get the hash data as a slice.
-    pub fn hash_value(&self) -> &[u8] {
-        &self.value[0..self.len]
-    }
-
-    /// Get the hash algorithm used for this GitOid.
-    pub fn hash_algorithm(&self) -> HashAlgorithm {
-        self.hash_algorithm
-    }
+    //===========================================================================================
+    // Constructors
+    //-------------------------------------------------------------------------------------------
 
     /// Create a new `GitOid` based on an in-memory array.
-    pub fn new(hash_algorithm: HashAlgorithm, content: &[u8]) -> Self {
+    pub fn new_from_bytes(hash_algorithm: HashAlgorithm, content: &[u8]) -> Self {
         let digest = hash_algorithm.create_digester();
         let reader = BufReader::new(content);
         let expected_length = content.len();
 
         // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
-        let (len, value) = GitOid::generate_from_buffer(digest, reader, expected_length).unwrap();
+        let (len, value) = bytes_from_buffer(digest, reader, expected_length).unwrap();
 
         GitOid {
             hash_algorithm,
@@ -65,7 +54,7 @@ impl GitOid {
     /// Create a `GitOid` from a `String`.
     pub fn new_from_str(hash_algorithm: HashAlgorithm, s: &str) -> Self {
         let content = s.as_bytes();
-        GitOid::new(hash_algorithm, content)
+        GitOid::new_from_bytes(hash_algorithm, content)
     }
 
     /// Create a `GitOid` from a reader.
@@ -80,7 +69,7 @@ impl GitOid {
         BufReader<R>: std::io::Read,
     {
         let digest = hash_algorithm.create_digester();
-        let (len, value) = GitOid::generate_from_buffer(digest, reader, expected_length)?;
+        let (len, value) = bytes_from_buffer(digest, reader, expected_length)?;
 
         Ok(GitOid {
             hash_algorithm,
@@ -105,7 +94,7 @@ impl GitOid {
         let futs = content.into_iter().map(|reader| {
             let expected_length = reader.expected_length();
             let digester = digester.clone();
-            GitOid::generate_from_async_buffer(digester, reader, expected_length)
+            bytes_from_async_buffer(digester, reader, expected_length)
         });
 
         // Go through each future and await the response.
@@ -125,112 +114,131 @@ impl GitOid {
         Ok(ret)
     }
 
-    /// The async version of generating a `GitOid` from a buffer
-    async fn generate_from_async_buffer<R>(
-        mut digester: Box<dyn DynDigest>,
-        mut reader: R,
-        expected_length: usize,
-    ) -> IOResult<(usize, [u8; NUM_HASH_BYTES])>
-    where
-        R: AsyncReadExt + std::marker::Unpin,
-    {
-        let prefix = format!("blob {}\0", expected_length);
+    //===========================================================================================
+    // Getters
+    //-------------------------------------------------------------------------------------------
 
-        let mut buf = [0u8; 8192]; // the size of a buffer for buffered read
-        let mut amount_read: usize = 0;
-
-        // set the prefix
-        digester.update(prefix.as_bytes());
-
-        // Keep reading the input until there is no more
-        loop {
-            match reader.read(&mut buf).await? {
-                // Done
-                0 => break,
-
-                // Update the hash and accumulate the count
-                size => {
-                    digester.update(&buf[..size]);
-                    amount_read += size;
-                }
-            }
-        }
-
-        // Make sure we got the length we expected
-        if amount_read != expected_length {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                    "Expected length {} actual length {}",
-                    expected_length, amount_read
-                ),
-            ));
-        }
-
-        let hash = digester.finalize();
-        let mut ret = [0u8; NUM_HASH_BYTES];
-
-        let len = NUM_HASH_BYTES.min(hash.len());
-        ret[..len].copy_from_slice(&hash);
-        Ok((len, ret))
+    /// Get the hex value of the hashcode, without the hash type.
+    pub fn hex_hash(&self) -> String {
+        hex::encode(self.hash_value())
     }
 
-    /// Take a `BufReader` and generate a hash based on the `GitOid`'s hashing algorithm.
-    ///
-    /// Will return an `Err` if the `BufReader` generates an `Err` or if the
-    /// `expected_length` is different from the actual length.
-    ///
-    /// Why the latter `Err`?
-    ///
-    /// The prefix string includes the number of bytes being hashed and that's the
-    /// `expected_length`. If the actual bytes hashed differs, then something went
-    /// wrong and the hash is not valid.
-    fn generate_from_buffer<R>(
-        mut digester: Box<dyn DynDigest>,
-        mut reader: BufReader<R>,
-        expected_length: usize,
-    ) -> IOResult<(usize, [u8; NUM_HASH_BYTES])>
-    where
-        BufReader<R>: Read,
-    {
-        let prefix = format!("blob {}\0", expected_length);
+    /// Get the hash data as a slice.
+    pub fn hash_value(&self) -> &[u8] {
+        &self.value[0..self.len]
+    }
 
-        let mut buf = [0; 4096]; // Linux default page size is 4096
-        let mut amount_read: usize = 0;
+    /// Get the hash algorithm used for this GitOid.
+    pub fn hash_algorithm(&self) -> HashAlgorithm {
+        self.hash_algorithm
+    }
+}
 
-        // Set the prefix
-        digester.update(prefix.as_bytes());
+/// The async version of generating a `GitOid` from a buffer
+async fn bytes_from_async_buffer<R>(
+    mut digester: Box<dyn DynDigest>,
+    mut reader: R,
+    expected_length: usize,
+) -> IOResult<(usize, [u8; NUM_HASH_BYTES])>
+where
+    R: AsyncReadExt + std::marker::Unpin,
+{
+    let prefix = format!("blob {}\0", expected_length);
 
-        // Keep reading the input until there is no more
-        loop {
-            match reader.read(&mut buf)? {
-                // done
-                0 => break,
+    let mut buf = [0u8; 8192]; // the size of a buffer for buffered read
+    let mut amount_read: usize = 0;
 
-                // Update the hash and accumulate the count
-                size => {
-                    digester.update(&buf[..size]);
-                    amount_read += size;
-                }
+    // set the prefix
+    digester.update(prefix.as_bytes());
+
+    // Keep reading the input until there is no more
+    loop {
+        match reader.read(&mut buf).await? {
+            // Done
+            0 => break,
+
+            // Update the hash and accumulate the count
+            size => {
+                digester.update(&buf[..size]);
+                amount_read += size;
             }
         }
-
-        // Make sure we got the length we expected
-        if amount_read != expected_length {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                    "Expected length {} actual length {}",
-                    expected_length, amount_read
-                ),
-            ));
-        }
-
-        let hash = digester.finalize();
-        let mut ret = [0u8; NUM_HASH_BYTES];
-
-        let len = std::cmp::min(NUM_HASH_BYTES, hash.len());
-        ret[..len].copy_from_slice(&hash);
-        Ok((len, ret))
     }
+
+    // Make sure we got the length we expected
+    if amount_read != expected_length {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!(
+                "Expected length {} actual length {}",
+                expected_length, amount_read
+            ),
+        ));
+    }
+
+    let hash = digester.finalize();
+    let mut ret = [0u8; NUM_HASH_BYTES];
+
+    let len = NUM_HASH_BYTES.min(hash.len());
+    ret[..len].copy_from_slice(&hash);
+    Ok((len, ret))
+}
+
+/// Take a `BufReader` and generate a hash based on the `GitOid`'s hashing algorithm.
+///
+/// Will return an `Err` if the `BufReader` generates an `Err` or if the
+/// `expected_length` is different from the actual length.
+///
+/// Why the latter `Err`?
+///
+/// The prefix string includes the number of bytes being hashed and that's the
+/// `expected_length`. If the actual bytes hashed differs, then something went
+/// wrong and the hash is not valid.
+fn bytes_from_buffer<R>(
+    mut digester: Box<dyn DynDigest>,
+    mut reader: BufReader<R>,
+    expected_length: usize,
+) -> IOResult<(usize, [u8; NUM_HASH_BYTES])>
+where
+    BufReader<R>: Read,
+{
+    let prefix = format!("blob {}\0", expected_length);
+
+    let mut buf = [0; 4096]; // Linux default page size is 4096
+    let mut amount_read: usize = 0;
+
+    // Set the prefix
+    digester.update(prefix.as_bytes());
+
+    // Keep reading the input until there is no more
+    loop {
+        match reader.read(&mut buf)? {
+            // done
+            0 => break,
+
+            // Update the hash and accumulate the count
+            size => {
+                digester.update(&buf[..size]);
+                amount_read += size;
+            }
+        }
+    }
+
+    // Make sure we got the length we expected
+    if amount_read != expected_length {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!(
+                "Expected length {} actual length {}",
+                expected_length, amount_read
+            ),
+        ));
+    }
+
+    let hash = digester.finalize();
+    let mut ret = [0u8; NUM_HASH_BYTES];
+
+    let len = std::cmp::min(NUM_HASH_BYTES, hash.len());
+    ret[..len].copy_from_slice(&hash);
+    Ok((len, ret))
 }
