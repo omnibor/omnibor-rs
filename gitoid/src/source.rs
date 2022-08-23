@@ -12,20 +12,22 @@ pub struct Source<R> {
     /// The reader itself.
     #[pin]
     reader: R,
-    /// The length of the data being read.
-    length: usize,
+    /// The expected length of the data being read.
+    expected_length: usize,
 }
 
-#[allow(clippy::len_without_is_empty)]
 impl<R> Source<R> {
     /// Create a new `Source` based on a `reader` and `length`.
-    pub fn new(reader: R, length: usize) -> Self {
-        Self { reader, length }
+    pub fn new(reader: R, expected_length: usize) -> Self {
+        Self {
+            reader,
+            expected_length,
+        }
     }
 
     /// Get the length of the read data.
-    pub fn len(&self) -> usize {
-        self.length
+    pub fn expected_length(&self) -> usize {
+        self.expected_length
     }
 }
 

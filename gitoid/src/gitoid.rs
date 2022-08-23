@@ -103,7 +103,7 @@ impl GitOid {
 
         // Get an iterator of futures which will generate `GitOid`s for each item read.
         let futs = content.into_iter().map(|reader| {
-            let expected_length = reader.len();
+            let expected_length = reader.expected_length();
             let digester = digester.clone();
             GitOid::generate_from_async_buffer(digester, reader, expected_length)
         });
