@@ -11,6 +11,7 @@ repository = "https://github.com/git-bom/gitbom-rs"
 version = "0.1.0"
 
 [dependencies]
+gitoid = { path = "../gitoid" }
 futures = "0.3.21"
 hex = "0.4.3"
 im = "15"
