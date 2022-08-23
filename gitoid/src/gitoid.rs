@@ -1,10 +1,10 @@
 //! A gitoid representing a single artifact.
 
 use crate::{HashAlgorithm, NUM_HASH_BYTES};
+use core::fmt::{Display, Formatter, Result};
+use core::marker::Unpin;
 use sha2::digest::DynDigest;
-use std::fmt::{Display, Formatter, Result};
 use std::io::{BufReader, Error, ErrorKind, Read, Result as IOResult};
-use std::marker::Unpin;
 use tokio::io::AsyncReadExt;
 
 /// A struct that computes [git oids](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects)

@@ -1,8 +1,8 @@
 //! A hash algorithm which can be used to make a `GitOid`.
 
+use core::fmt::{Display, Formatter, Result};
 use sha1::Sha1;
 use sha2::{digest::DynDigest, Digest, Sha256};
-use std::fmt::{Display, Formatter, Result};
 
 /// The available algorithms for computing hashes
 #[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
