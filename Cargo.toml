@@ -1,22 +1,4 @@
-[package]
-categories = ["cryptography", "development-tools"]
-description = "An experimental implementation of gitbom in Rust"
-edition = "2021"
-homepage = "https://gitbom.dev"
-keywords = ["gitbom", "sbom"]
-license = "Apache-2.0"
-name = "gitbom"
-readme = "README.md"
-repository = "https://github.com/git-bom/gitbom-rs"
-version = "0.1.0"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+members = ["gitbom", "gitoid"]
 
-[dependencies]
-futures = "0.3.21"
-hex = "0.4.3"
-im = "15"
-pin-project = "1.0.10"
-sha1 = "0.10.1"
-sha2 = "0.10.2"
-tokio = {version = "1.17", features = ["io-util", "fs", "rt", "macros"]}
