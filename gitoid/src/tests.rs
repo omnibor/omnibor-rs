@@ -8,7 +8,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 #[test]
 fn generate_sha1_gitoid_from_bytes() {
-    let input = "hello world".as_bytes();
+    let input = b"hello world";
     let result = GitOid::new(SHA1, input);
 
     assert_eq!(
@@ -64,7 +64,7 @@ async fn generate_sha1_gitoids_from_async_buffers() -> Result<()> {
 
 #[test]
 fn generate_sha256_gitoid_from_bytes() {
-    let input = "hello world".as_bytes();
+    let input = b"hello world";
     let result = GitOid::new(SHA256, input);
 
     assert_eq!(
