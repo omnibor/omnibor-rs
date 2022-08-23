@@ -16,7 +16,7 @@ pub enum HashAlgorithm {
 impl HashAlgorithm {
     /// Based on the `GitOid`'s hashing algorithm, generate an instance of
     /// a digester
-    pub fn create_digester(&self) -> Box<dyn DynDigest> {
+    pub(crate) fn create_digester(&self) -> Box<dyn DynDigest> {
         match self {
             HashAlgorithm::SHA1 => Box::new(Sha1::new()),
             HashAlgorithm::SHA256 => Box::new(Sha256::new()),
@@ -26,7 +26,7 @@ impl HashAlgorithm {
 
 /// The number of bytes required to store the largest hash. Currently 32 for SHA256
 /// If another `HashAlgorithm` is added, update to reflect.
-pub const NUM_HASH_BYTES: usize = 32;
+pub(crate) const NUM_HASH_BYTES: usize = 32;
 
 impl Display for HashAlgorithm {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
