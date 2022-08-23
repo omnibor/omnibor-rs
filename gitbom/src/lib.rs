@@ -80,7 +80,7 @@ impl GitBom {
 
 #[cfg(test)]
 mod tests {
-    use gitoid::{GitOid, HashAlgorithm, Source};
+    use gitoid::{GitOid, HashAlgorithm};
     use im::vector;
 
     use super::*;
@@ -107,7 +107,7 @@ mod tests {
     fn test_add_gitoid_to_gitbom() {
         let input = "hello world".as_bytes();
 
-        let generated_gitoid = GitOid::new(HashAlgorithm::SHA256, input);
+        let generated_gitoid = GitOid::new_from_bytes(HashAlgorithm::SHA256, input);
 
         let new_gitbom = GitBom::new();
         let new_gitbom = new_gitbom.add(generated_gitoid);
@@ -122,7 +122,7 @@ mod tests {
     async fn test_async_read() {
         let mut to_read = Vec::new();
         for _ in 0..50 {
-            to_read.push(Source::new(
+            to_read.push((
                 tokio::fs::File::open("test/data/hello_world.txt")
                     .await
                     .unwrap(),
@@ -130,9 +130,14 @@ mod tests {
             ));
         }
 
-        let res = GitOid::new_from_async_readers(HashAlgorithm::SHA256, to_read)
-            .await
-            .unwrap();
+        let mut res = Vec::new();
+        for (reader, expected_length) in to_read {
+            res.push(
+                GitOid::new_from_async_reader(HashAlgorithm::SHA256, reader, expected_length)
+                    .await
+                    .unwrap(),
+            );
+        }
 
         assert_eq!(50, res.len());
         assert_eq!(
