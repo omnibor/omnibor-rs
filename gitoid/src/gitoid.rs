@@ -1,11 +1,12 @@
 //! A gitoid representing a single artifact.
 
-use crate::{HashAlgorithm, NUM_HASH_BYTES};
-use core::fmt::{Display, Formatter, Result};
+use crate::{Error, HashAlgorithm, ObjectType, Result, NUM_HASH_BYTES};
+use core::fmt::{self, Display, Formatter};
 use core::marker::Unpin;
 use sha2::digest::DynDigest;
-use std::io::{BufReader, Error, ErrorKind, Read, Result as IOResult};
+use std::io::{BufReader, Read};
 use tokio::io::AsyncReadExt;
+use url::Url;
 
 /// A struct that computes [git oids](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects)
 /// based on the selected algorithm
@@ -13,6 +14,9 @@ use tokio::io::AsyncReadExt;
 pub struct GitOid {
     /// The hash algorithm being used.
     hash_algorithm: HashAlgorithm,
+
+    /// The type of object being represented.
+    object_type: ObjectType,
 
     /// The length of the hashed data in number of bytes.
     ///
@@ -24,8 +28,8 @@ pub struct GitOid {
 }
 
 impl Display for GitOid {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "{}:{}", self.hash_algorithm, self.hex_hash())
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.hash_algorithm, self.hash())
     }
 }
 
@@ -35,25 +39,30 @@ impl GitOid {
     //-------------------------------------------------------------------------------------------
 
     /// Create a new `GitOid` based on a slice of bytes.
-    pub fn new_from_bytes(hash_algorithm: HashAlgorithm, content: &[u8]) -> Self {
-        let digest = hash_algorithm.create_digester();
+    pub fn new_from_bytes(
+        hash_algorithm: HashAlgorithm,
+        object_type: ObjectType,
+        content: &[u8],
+    ) -> Self {
+        let digester = hash_algorithm.create_digester();
         let reader = BufReader::new(content);
         let expected_length = content.len();
 
         // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
-        let (len, value) = bytes_from_buffer(digest, reader, expected_length).unwrap();
+        let (len, value) = bytes_from_buffer(digester, reader, expected_length).unwrap();
 
         GitOid {
             hash_algorithm,
+            object_type,
             value,
             len,
         }
     }
 
     /// Create a `GitOid` from a UTF-8 string slice.
-    pub fn new_from_str(hash_algorithm: HashAlgorithm, s: &str) -> Self {
+    pub fn new_from_str(hash_algorithm: HashAlgorithm, object_type: ObjectType, s: &str) -> Self {
         let content = s.as_bytes();
-        GitOid::new_from_bytes(hash_algorithm, content)
+        GitOid::new_from_bytes(hash_algorithm, object_type, content)
     }
 
     /// Create a `GitOid` from a reader.
@@ -61,9 +70,10 @@ impl GitOid {
     /// This requires an `expected_length` as part of a correctness check.
     pub fn new_from_reader<R>(
         hash_algorithm: HashAlgorithm,
+        object_type: ObjectType,
         reader: BufReader<R>,
         expected_length: usize,
-    ) -> IOResult<Self>
+    ) -> Result<Self>
     where
         BufReader<R>: Read,
     {
@@ -72,6 +82,7 @@ impl GitOid {
 
         Ok(GitOid {
             hash_algorithm,
+            object_type,
             len,
             value,
         })
@@ -82,9 +93,10 @@ impl GitOid {
     /// This requires an `expected_length` as part of a correctness check.
     pub async fn new_from_async_reader<R>(
         hash_algorithm: HashAlgorithm,
+        object_type: ObjectType,
         reader: R,
         expected_length: usize,
-    ) -> IOResult<Self>
+    ) -> Result<Self>
     where
         R: AsyncReadExt + Unpin,
     {
@@ -94,6 +106,7 @@ impl GitOid {
 
         Ok(GitOid {
             hash_algorithm,
+            object_type,
             len,
             value,
         })
@@ -103,19 +116,25 @@ impl GitOid {
     // Getters
     //-------------------------------------------------------------------------------------------
 
+    /// Get a URL for the current gitoid.
+    pub fn uri(&self) -> Result<Url> {
+        let s = format!(
+            "gitoid:{}:{}:{}",
+            self.object_type,
+            self.hash_algorithm,
+            self.hash()
+        );
+        Ok(Url::parse(&s)?)
+    }
+
     /// Get the hex value of the hashcode, without the hash type.
-    pub fn hex_hash(&self) -> String {
-        hex::encode(self.hash_value())
+    pub fn hash(&self) -> String {
+        hex::encode(self.bytes())
     }
 
-    /// Get the hash data as a slice.
-    pub fn hash_value(&self) -> &[u8] {
+    /// Get the hash data as a slice of bytes.
+    pub fn bytes(&self) -> &[u8] {
         &self.value[0..self.len]
-    }
-
-    /// Get the hash algorithm used for this GitOid.
-    pub fn hash_algorithm(&self) -> HashAlgorithm {
-        self.hash_algorithm
     }
 }
 
@@ -124,7 +143,7 @@ async fn bytes_from_async_buffer<R>(
     mut digester: Box<dyn DynDigest>,
     mut reader: R,
     expected_length: usize,
-) -> IOResult<(usize, [u8; NUM_HASH_BYTES])>
+) -> Result<(usize, [u8; NUM_HASH_BYTES])>
 where
     R: AsyncReadExt + Unpin,
 {
@@ -152,13 +171,10 @@ where
 
     // Make sure we got the length we expected
     if amount_read != expected_length {
-        return Err(Error::new(
-            ErrorKind::InvalidInput,
-            format!(
-                "Expected length {} actual length {}",
-                expected_length, amount_read
-            ),
-        ));
+        return Err(Error::BadLength {
+            expected: expected_length,
+            actual: amount_read,
+        });
     }
 
     let hash = digester.finalize();
@@ -183,7 +199,7 @@ fn bytes_from_buffer<R>(
     mut digester: Box<dyn DynDigest>,
     mut reader: BufReader<R>,
     expected_length: usize,
-) -> IOResult<(usize, [u8; NUM_HASH_BYTES])>
+) -> Result<(usize, [u8; NUM_HASH_BYTES])>
 where
     BufReader<R>: Read,
 {
@@ -211,13 +227,10 @@ where
 
     // Make sure we got the length we expected
     if amount_read != expected_length {
-        return Err(Error::new(
-            ErrorKind::InvalidInput,
-            format!(
-                "Expected length {} actual length {}",
-                expected_length, amount_read
-            ),
-        ));
+        return Err(Error::BadLength {
+            expected: expected_length,
+            actual: amount_read,
+        });
     }
 
     let hash = digester.finalize();
