@@ -4,12 +4,14 @@ use crate::{Error, HashAlgorithm, ObjectType, Result, NUM_HASH_BYTES};
 use core::fmt::{self, Display, Formatter};
 use core::marker::Unpin;
 use sha2::digest::DynDigest;
+use std::hash::Hash;
 use std::io::{BufReader, Read};
 use tokio::io::AsyncReadExt;
 use url::Url;
 
-/// A struct that computes [git oids](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects)
-/// based on the selected algorithm
+/// A struct that computes [gitoids][g] based on the selected algorithm
+///
+/// [g]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
 #[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub struct GitOid {
     /// The hash algorithm being used.
@@ -116,7 +118,7 @@ impl GitOid {
     // Getters
     //-------------------------------------------------------------------------------------------
 
-    /// Get a URL for the current gitoid.
+    /// Get a URL for the current `GitOid`.
     pub fn uri(&self) -> Result<Url> {
         let s = format!(
             "gitoid:{}:{}:{}",
@@ -127,7 +129,7 @@ impl GitOid {
         Ok(Url::parse(&s)?)
     }
 
-    /// Get the hex value of the hashcode, without the hash type.
+    /// Get the hex value of the hash data, without the hash type.
     pub fn hash(&self) -> String {
         hex::encode(self.bytes())
     }
@@ -136,7 +138,21 @@ impl GitOid {
     pub fn bytes(&self) -> &[u8] {
         &self.value[0..self.len]
     }
+
+    /// Get the hash algorithm used for the `GitOid`.
+    pub fn hash_algorithm(&self) -> HashAlgorithm {
+        self.hash_algorithm
+    }
+
+    /// Get the object type of the `GitOid`.
+    pub fn object_type(&self) -> ObjectType {
+        self.object_type
+    }
 }
+
+//===============================================================================================
+// Helpers
+//-----------------------------------------------------------------------------------------------
 
 /// The async version of generating a `GitOid` from a buffer
 async fn bytes_from_async_buffer<R>(

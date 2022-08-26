@@ -3,12 +3,18 @@ use std::fmt::{self, Display, Formatter};
 use std::io::Error as IoError;
 use url::ParseError as UrlError;
 
-pub type Result<T> = std::result::Result<T, Error>;
+/// A `Result` with `gitoid::Error` as the error type.
+pub(crate) type Result<T> = std::result::Result<T, Error>;
 
+/// An error arising during `GitOid` construction or use.
 #[derive(Debug)]
 pub enum Error {
+    /// The expected and actual length of the data being read didn't
+    /// match, indicating something has likely gone wrong.
     BadLength { expected: usize, actual: usize },
+    /// Could not construct a valid URL based on the `GitOid` data.
     Url(UrlError),
+    /// Could not perform the IO operations necessary to construct the `GitOid`.
     Io(IoError),
 }
 

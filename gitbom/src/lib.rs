@@ -147,7 +147,7 @@ mod tests {
 
         assert_eq!(50, res.len());
         assert_eq!(
-            "SHA256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
+            "sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
             res[0].to_string()
         );
 

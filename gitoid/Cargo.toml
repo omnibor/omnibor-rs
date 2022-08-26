@@ -17,4 +17,3 @@ sha1 = "0.10.1"
 sha2 = "0.10.2"
 tokio = {version = "1.17", features = ["io-util", "fs", "rt", "macros"]}
 url = "2.2.2"
-
