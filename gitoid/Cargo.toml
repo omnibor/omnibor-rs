@@ -11,9 +11,9 @@ repository = "https://github.com/git-bom/gitbom-rs"
 version = "0.1.1"
 
 [dependencies]
-futures = "0.3.21"
+futures = "0.3.24"
 hex = "0.4.3"
-sha1 = "0.10.1"
-sha2 = "0.10.2"
-tokio = {version = "1.17", features = ["io-util", "fs", "rt", "macros"]}
+sha1 = "0.10.4"
+sha2 = "0.10.5"
+tokio = {version = "1.21.0", features = ["io-util", "fs", "rt", "macros"]}
 url = "2.2.2"
