@@ -80,14 +80,14 @@ impl GitBom {
 
 #[cfg(test)]
 mod tests {
-    use gitoid::{GitOid, HashAlgorithm, ObjectType};
+    use gitoid::{GitOid, HashAlgorithm};
     use im::vector;
 
     use super::*;
 
     #[test]
     fn test_add() {
-        let oid = GitOid::new_from_str(HashAlgorithm::Sha256, ObjectType::Blob, "Hello");
+        let oid = GitOid::new_from_str(HashAlgorithm::SHA256, "Hello");
         assert_eq!(GitBom::new().add(oid).get_sorted_oids(), vector![oid])
     }
 
@@ -95,7 +95,7 @@ mod tests {
     fn test_add_many() {
         let mut oids: Vector<GitOid> = vec!["eee", "Hello", "Cat", "Dog"]
             .into_iter()
-            .map(|s| GitOid::new_from_str(HashAlgorithm::Sha256, ObjectType::Blob, s))
+            .map(|s| GitOid::new_from_str(HashAlgorithm::SHA256, s))
             .collect();
 
         let da_bom = GitBom::new().add_many(oids.clone());
@@ -107,15 +107,14 @@ mod tests {
     fn test_add_gitoid_to_gitbom() {
         let input = "hello world".as_bytes();
 
-        let generated_gitoid =
-            GitOid::new_from_bytes(HashAlgorithm::Sha256, ObjectType::Blob, input);
+        let generated_gitoid = GitOid::new_from_bytes(HashAlgorithm::SHA256, input);
 
         let new_gitbom = GitBom::new();
         let new_gitbom = new_gitbom.add(generated_gitoid);
 
         assert_eq!(
             "fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
-            new_gitbom.get_sorted_oids()[0].hash()
+            new_gitbom.get_sorted_oids()[0].hex_hash()
         )
     }
 
@@ -134,20 +133,15 @@ mod tests {
         let mut res = Vec::new();
         for (reader, expected_length) in to_read {
             res.push(
-                GitOid::new_from_async_reader(
-                    HashAlgorithm::Sha256,
-                    ObjectType::Blob,
-                    reader,
-                    expected_length,
-                )
-                .await
-                .unwrap(),
+                GitOid::new_from_async_reader(HashAlgorithm::SHA256, reader, expected_length)
+                    .await
+                    .unwrap(),
             );
         }
 
         assert_eq!(50, res.len());
         assert_eq!(
-            "sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
+            "SHA256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
             res[0].to_string()
         );
 
