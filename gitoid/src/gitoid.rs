@@ -77,7 +77,7 @@ impl GitOid {
         expected_length: usize,
     ) -> Result<Self>
     where
-        BufReader<R>: Read,
+        R: Read,
     {
         let digester = hash_algorithm.create_digester();
         let (len, value) = bytes_from_buffer(digester, reader, expected_length)?;
