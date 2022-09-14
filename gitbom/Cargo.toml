@@ -8,10 +8,10 @@ license = "Apache-2.0"
 name = "gitbom"
 readme = "../README.md"
 repository = "https://github.com/git-bom/gitbom-rs"
-version = "0.1.1"
+version = "0.1.2"
 
 [dependencies]
-gitoid = "0.1.1"
+gitoid = "0.1.2"
 futures = "0.3.24"
 hex = "0.4.3"
 im = "15.1.0"
