@@ -1,5 +1,4 @@
 use gitoid::GitOid;
-use gitoid::ObjectType::Blob;
 use im::{HashSet, Vector};
 
 /// A [persistent][wiki] collection of [git oids][git_scm].
@@ -81,7 +80,7 @@ impl GitBom {
 
 #[cfg(test)]
 mod tests {
-    use gitoid::{GitOid, HashAlgorithm};
+    use gitoid::{GitOid, HashAlgorithm, ObjectType::Blob};
     use im::vector;
 
     use super::*;
