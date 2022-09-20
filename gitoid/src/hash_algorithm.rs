@@ -1,8 +1,10 @@
 //! A hash algorithm which can be used to make a `GitOid`.
 
-use core::fmt::{Display, Formatter, Result};
+use crate::{Error, Result};
+use core::fmt::{self, Display, Formatter};
 use sha1::Sha1;
 use sha2::{digest::DynDigest, Digest, Sha256};
+use std::str::FromStr;
 
 /// The available algorithms for computing hashes
 #[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
@@ -32,10 +34,22 @@ impl HashAlgorithm {
 pub(crate) const NUM_HASH_BYTES: usize = 32;
 
 impl Display for HashAlgorithm {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             HashAlgorithm::Sha1 => write!(f, "sha1"),
             HashAlgorithm::Sha256 => write!(f, "sha256"),
+        }
+    }
+}
+
+impl FromStr for HashAlgorithm {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "sha1" => Ok(HashAlgorithm::Sha1),
+            "sha256" => Ok(HashAlgorithm::Sha256),
+            _ => Err(Error::UnknownHashAlgorithm(s.to_owned())),
         }
     }
 }

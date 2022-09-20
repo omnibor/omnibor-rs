@@ -6,6 +6,8 @@ use core::marker::Unpin;
 use sha2::digest::DynDigest;
 use std::hash::Hash;
 use std::io::{BufReader, Read};
+use std::ops::Not as _;
+use std::str::FromStr;
 use tokio::io::AsyncReadExt;
 use url::Url;
 
@@ -114,12 +116,17 @@ impl GitOid {
         })
     }
 
+    /// Construct a new `GitOid` from a `Url`.
+    pub fn new_from_url(url: Url) -> Result<GitOid> {
+        url.try_into()
+    }
+
     //===========================================================================================
     // Getters
     //-------------------------------------------------------------------------------------------
 
     /// Get a URL for the current `GitOid`.
-    pub fn uri(&self) -> Result<Url> {
+    pub fn url(&self) -> Result<Url> {
         let s = format!(
             "gitoid:{}:{}:{}",
             self.object_type,
@@ -142,6 +149,58 @@ impl GitOid {
     /// Get the object type of the `GitOid`.
     pub fn object_type(&self) -> ObjectType {
         self.object_type
+    }
+}
+
+impl TryFrom<Url> for GitOid {
+    type Error = Error;
+
+    fn try_from(url: Url) -> Result<GitOid> {
+        use Error::*;
+
+        // Validate the scheme used.
+        if url.scheme() != "gitoid" {
+            return Err(InvalidScheme(Box::new(url)));
+        }
+
+        // Get the segments as an iterator over string slices.
+        let mut segments = url.path().split(':');
+
+        // Parse the object type, if present.
+        let object_type = {
+            let part = segments
+                .next()
+                .and_then(|p| p.is_empty().not().then_some(p))
+                .ok_or_else(|| MissingObjectType(Box::new(url.clone())))?;
+
+            ObjectType::from_str(part)?
+        };
+
+        // Parse the hash algorithm, if present.
+        let hash_algorithm = {
+            let part = segments
+                .next()
+                .and_then(|p| p.is_empty().not().then_some(p))
+                .ok_or_else(|| MissingHashAlgorithm(Box::new(url.clone())))?;
+
+            HashAlgorithm::from_str(part)?
+        };
+
+        // Parse the hash, if present.
+        let hex_str = segments
+            .next()
+            .and_then(|p| p.is_empty().not().then_some(p))
+            .ok_or_else(|| MissingHash(Box::new(url.clone())))?;
+        let mut value = [0u8; 32];
+        hex::decode_to_slice(hex_str, &mut value)?;
+
+        // Construct a new `GitOid` from the parts.
+        Ok(GitOid {
+            hash_algorithm,
+            object_type,
+            len: value.len(),
+            value,
+        })
     }
 }
 
