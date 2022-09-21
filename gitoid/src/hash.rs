@@ -4,6 +4,7 @@ use std::fmt::{self, Display, Formatter};
 use std::ops::Deref;
 
 /// The hash produced for a `GitOid`
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Hash<'h>(&'h [u8]);
 
 impl<'h> Hash<'h> {
