@@ -1,6 +1,6 @@
 //! A gitoid representing a single artifact.
 
-use crate::{Error, HashAlgorithm, ObjectType, Result, NUM_HASH_BYTES};
+use crate::{Error, HashAlgorithm, HashRef, ObjectType, Result, NUM_HASH_BYTES};
 use core::fmt::{self, Display, Formatter};
 use core::marker::Unpin;
 use sha2::digest::DynDigest;
@@ -129,14 +129,9 @@ impl GitOid {
         Ok(Url::parse(&s)?)
     }
 
-    /// Get the hex value of the hash data, without the hash type.
-    pub fn hash(&self) -> String {
-        hex::encode(self.bytes())
-    }
-
     /// Get the hash data as a slice of bytes.
-    pub fn bytes(&self) -> &[u8] {
-        &self.value[0..self.len]
+    pub fn hash(&self) -> HashRef<'_> {
+        HashRef::new(&self.value[0..self.len])
     }
 
     /// Get the hash algorithm used for the `GitOid`.
