@@ -5,12 +5,12 @@ use std::ops::Deref;
 
 /// The hash produced for a `GitOid`
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Hash<'h>(&'h [u8]);
+pub struct HashRef<'h>(&'h [u8]);
 
-impl<'h> Hash<'h> {
+impl<'h> HashRef<'h> {
     /// Construct a new `Hash` for the given bytes.
-    pub fn new(bytes: &[u8]) -> Hash<'_> {
-        Hash(bytes)
+    pub fn new(bytes: &[u8]) -> HashRef<'_> {
+        HashRef(bytes)
     }
 
     /// Get the hash as a slice of bytes.
@@ -25,7 +25,7 @@ impl<'h> Hash<'h> {
 }
 
 // Deref to a slice of bytes.
-impl<'h> Deref for Hash<'h> {
+impl<'h> Deref for HashRef<'h> {
     type Target = [u8];
 
     fn deref(&self) -> &[u8] {
@@ -34,7 +34,7 @@ impl<'h> Deref for Hash<'h> {
 }
 
 // Print as the hex encoding.
-impl<'h> Display for Hash<'h> {
+impl<'h> Display for HashRef<'h> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_hex())
     }

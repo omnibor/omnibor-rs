@@ -1,10 +1,10 @@
 //! A gitoid representing a single artifact.
 
-use crate::{Error, Hash, HashAlgorithm, ObjectType, Result, NUM_HASH_BYTES};
+use crate::{Error, HashAlgorithm, HashRef, ObjectType, Result, NUM_HASH_BYTES};
 use core::fmt::{self, Display, Formatter};
 use core::marker::Unpin;
 use sha2::digest::DynDigest;
-use std::hash::Hash as StdHash;
+use std::hash::Hash;
 use std::io::{BufReader, Read};
 use tokio::io::AsyncReadExt;
 use url::Url;
@@ -12,7 +12,7 @@ use url::Url;
 /// A struct that computes [gitoids][g] based on the selected algorithm
 ///
 /// [g]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
-#[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, StdHash, PartialEq)]
+#[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub struct GitOid {
     /// The hash algorithm being used.
     hash_algorithm: HashAlgorithm,
@@ -130,8 +130,8 @@ impl GitOid {
     }
 
     /// Get the hash data as a slice of bytes.
-    pub fn hash(&self) -> Hash<'_> {
-        Hash::new(&self.value[0..self.len])
+    pub fn hash(&self) -> HashRef<'_> {
+        HashRef::new(&self.value[0..self.len])
     }
 
     /// Get the hash algorithm used for the `GitOid`.
