@@ -14,13 +14,13 @@ pub enum Error {
     /// match, indicating something has likely gone wrong.
     BadLength { expected: usize, actual: usize },
     /// Tried to construct a `GitOid` from a `Url` with a scheme besides `gitoid`.
-    InvalidScheme(Box<Url>),
+    InvalidScheme(Url),
     /// Tried to construct a `GitOid` from a `Url` without an `ObjectType` in it.
-    MissingObjectType(Box<Url>),
+    MissingObjectType(Url),
     /// Tried to construct a `GitOid` from a `Url` without a `HashAlgorithm` in it.
-    MissingHashAlgorithm(Box<Url>),
+    MissingHashAlgorithm(Url),
     /// Tried to construct a `GitOid` from a `Url` without a hash in it.
-    MissingHash(Box<Url>),
+    MissingHash(Url),
     /// Tried to parse an unknown object type.
     UnknownObjectType(String),
     /// Tried to parse an unknown hash algorithm.

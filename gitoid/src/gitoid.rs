@@ -160,7 +160,7 @@ impl TryFrom<Url> for GitOid {
 
         // Validate the scheme used.
         if url.scheme() != "gitoid" {
-            return Err(InvalidScheme(Box::new(url)));
+            return Err(InvalidScheme(url));
         }
 
         // Get the segments as an iterator over string slices.
@@ -171,7 +171,7 @@ impl TryFrom<Url> for GitOid {
             let part = segments
                 .next()
                 .and_then(|p| p.is_empty().not().then_some(p))
-                .ok_or_else(|| MissingObjectType(Box::new(url.clone())))?;
+                .ok_or_else(|| MissingObjectType(url.clone()))?;
 
             ObjectType::from_str(part)?
         };
@@ -181,7 +181,7 @@ impl TryFrom<Url> for GitOid {
             let part = segments
                 .next()
                 .and_then(|p| p.is_empty().not().then_some(p))
-                .ok_or_else(|| MissingHashAlgorithm(Box::new(url.clone())))?;
+                .ok_or_else(|| MissingHashAlgorithm(url.clone()))?;
 
             HashAlgorithm::from_str(part)?
         };
@@ -190,7 +190,7 @@ impl TryFrom<Url> for GitOid {
         let hex_str = segments
             .next()
             .and_then(|p| p.is_empty().not().then_some(p))
-            .ok_or_else(|| MissingHash(Box::new(url.clone())))?;
+            .ok_or_else(|| MissingHash(url.clone()))?;
         let mut value = [0u8; 32];
         hex::decode_to_slice(hex_str, &mut value)?;
 
