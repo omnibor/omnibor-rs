@@ -1,4 +1,9 @@
-use std::fmt::{self, Display, Formatter};
+use std::{
+    fmt::{self, Display, Formatter},
+    str::FromStr,
+};
+
+use crate::Error;
 
 /// The types of objects for which a `GitOid` can be made.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -25,5 +30,19 @@ impl Display for ObjectType {
                 ObjectType::Tag => "tag",
             }
         )
+    }
+}
+
+impl FromStr for ObjectType {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "blob" => Ok(ObjectType::Blob),
+            "tree" => Ok(ObjectType::Tree),
+            "commit" => Ok(ObjectType::Commit),
+            "tag" => Ok(ObjectType::Tag),
+            _ => Err(Error::UnknownObjectType(s.to_owned())),
+        }
     }
 }
