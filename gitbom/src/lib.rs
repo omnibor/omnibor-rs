@@ -114,7 +114,7 @@ mod tests {
 
         assert_eq!(
             "fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
-            new_gitbom.get_sorted_oids()[0].hash()
+            new_gitbom.get_sorted_oids()[0].hash().as_hex()
         )
     }
 
