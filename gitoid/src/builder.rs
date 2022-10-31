@@ -2,7 +2,6 @@
 
 use crate::{GitOid, HashAlgorithm, ObjectType, Result};
 use std::io::{BufReader, Read};
-use tokio::io::AsyncReadExt;
 
 /// Builder of GitOids with a specific hash algorithm and object type.
 pub struct GitOidBuilder {
@@ -47,23 +46,5 @@ impl GitOidBuilder {
             reader,
             expected_length,
         )
-    }
-
-    /// Build a `GitOid` from an arbitrary asynchronous reader.
-    pub async fn build_from_async_reader<R>(
-        &self,
-        reader: R,
-        expected_length: usize,
-    ) -> Result<GitOid>
-    where
-        R: AsyncReadExt + Unpin,
-    {
-        GitOid::new_from_async_reader(
-            self.hash_algorithm,
-            self.object_type,
-            reader,
-            expected_length,
-        )
-        .await
     }
 }

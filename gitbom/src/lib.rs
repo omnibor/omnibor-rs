@@ -117,38 +117,4 @@ mod tests {
             new_gitbom.get_sorted_oids()[0].hash().as_hex()
         )
     }
-
-    #[tokio::test]
-    async fn test_async_read() {
-        let mut to_read = Vec::new();
-        for _ in 0..50 {
-            to_read.push((
-                tokio::fs::File::open("test/data/hello_world.txt")
-                    .await
-                    .unwrap(),
-                11,
-            ));
-        }
-
-        let mut res = Vec::new();
-        for (reader, expected_length) in to_read {
-            res.push(
-                GitOid::new_from_async_reader(HashAlgorithm::Sha256, Blob, reader, expected_length)
-                    .await
-                    .unwrap(),
-            );
-        }
-
-        assert_eq!(50, res.len());
-        assert_eq!(
-            "sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
-            res[0].to_string()
-        );
-
-        let gitbom = res.into_iter().collect::<GitBom>();
-
-        // even though we created 50 gitoids, they should all be the same and thus
-        // the gitbom should only have one entry
-        assert_eq!(1, gitbom.get_oids().len());
-    }
 }
