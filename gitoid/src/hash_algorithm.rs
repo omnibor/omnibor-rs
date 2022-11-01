@@ -7,6 +7,7 @@ use sha2::{digest::DynDigest, Digest, Sha256};
 use std::str::FromStr;
 
 /// The available algorithms for computing hashes
+#[repr(C)]
 #[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub enum HashAlgorithm {
     /// [SHA1](https://en.wikipedia.org/wiki/SHA-1)
