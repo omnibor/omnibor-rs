@@ -12,6 +12,7 @@ use url::Url;
 /// A struct that computes [gitoids][g] based on the selected algorithm
 ///
 /// [g]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
+#[repr(C)]
 #[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub struct GitOid {
     /// The hash algorithm being used.

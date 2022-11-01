@@ -2,6 +2,7 @@
 
 mod builder;
 mod error;
+mod ffi;
 mod gitoid;
 mod hash;
 mod hash_algorithm;
