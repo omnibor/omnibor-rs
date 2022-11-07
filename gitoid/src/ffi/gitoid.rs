@@ -2,6 +2,7 @@ use crate::HashAlgorithm;
 use crate::ObjectType;
 use crate::GitOid;
 use std::slice;
+use std::ffi::c_char;
 use std::ffi::CStr;
 
 #[no_mangle]
@@ -22,13 +23,11 @@ pub extern fn new_from_str(
     object_type: ObjectType,
     s: *const c_char,
 ) -> GitOid {
-    // Based off https://stackoverflow.com/a/24148033/2308264
+    let c_str = unsafe {
+        assert!(!s.is_null());
+        CStr::from_ptr(s)
+    };
 
-    // TODO: Also make sure that content_len is less than or equal to isize::MAX.
-    // CStr::from_ptr calls slice::from_raw_parts
-    // Are there other safety checks we should do here?
-    // https://doc.rust-lang.org/std/ffi/struct.CStr.html#method.from_ptr
-    let content_string: &CStr = unsafe { CStr::from_ptr(s) };
-    let content = content_string.as_bytes();
-    GitOid::new_from_str(hash_algorithm, object_type, content)
+    let s = c_str.to_str().unwrap();
+    GitOid::new_from_str(hash_algorithm, object_type, s)
 }
