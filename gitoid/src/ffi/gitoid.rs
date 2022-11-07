@@ -23,6 +23,9 @@ pub extern fn new_from_str(
     object_type: ObjectType,
     s: *const c_char,
 ) -> GitOid {
+    // Based heavily on http://jakegoulding.com/rust-ffi-omnibus/string_arguments/
+    // TODO: Make sure that content_len is less than or equal to isize::MAX.
+    // TODO: Make sure that s is not nul-terminted.
     let c_str = unsafe {
         assert!(!s.is_null());
         CStr::from_ptr(s)
