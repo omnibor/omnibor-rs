@@ -30,7 +30,7 @@ We use [cbindgen](https://github.com/eqrion/cbindgen) to generate the C headers 
 ```
 $ cargo install --force cbindgen
 $ cd gitoid
-$ cbindgen --config cbindgen.toml --crate gitoid --output gitoid.h
+$ cbindgen --config ../cbindgen.toml --crate gitoid --output gitoid.h
 ```
 
 Open up the gitoid.h file (this is the main part that needs to be improved - we shouldn't have to manually edit this file).
