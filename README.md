@@ -18,3 +18,49 @@ For information, see [the website](https://gitbom.dev/) and the [list of GitBOM 
 ## What is gitbom-rs?
 
 gitbom-rs is an experimental implementation of gitBOM in Rust. This is an important learning exercise and will inform future implementations of gitBOM in the future (both in Rust and in other languages)
+
+## C-Bindings
+
+(TODO - improve this flow)
+
+This project contains an experimental C API for certain functions in the gitoid crate. The intent is to allow any language that can use C bindings to be able to use this API to use the functions in this crate.
+
+We use [cbindgen](https://github.com/eqrion/cbindgen) to generate the C headers for the public C API.
+
+```
+$ cargo install --force cbindgen
+$ cd gitoid
+$ cbindgen --config ../cbindgen.toml --crate gitoid --output gitoid.h
+```
+
+Open up the gitoid.h file (this is the main part that needs to be improved - we shouldn't have to manually edit this file).
+
+At the top of the file, you should see these lines
+
+```
+/**
+ * @file
+ * @brief "GitBom"
+ */
+
+
+#ifndef gitbom_h
+#define gitbom_h
+```
+
+Add `#define NUM_HASH_BYTES 32` to these lines (do not edit anything else in the file!)
+
+
+```
+/**
+ * @file
+ * @brief "GitBom"
+ */
+
+
+#ifndef gitbom_h
+#define gitbom_h
+#define NUM_HASH_BYTES 32
+```
+
+Save and close.
