@@ -38,10 +38,10 @@ pub extern fn new_from_str(
 }
 
 #[no_mangle]
-pub extern fn new_from_url(string_url: *const c_char) -> GitOid {
+pub extern fn new_from_url(s: *const c_char) -> GitOid {
     let c_str = unsafe {
-        assert!(!string_url.is_null());
-        CStr::from_ptr(string_url)
+        assert!(!s.is_null());
+        CStr::from_ptr(s)
     };
 
     let s = c_str.to_str().unwrap();
