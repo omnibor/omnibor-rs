@@ -26,7 +26,6 @@ pub extern fn new_from_str(
     s: *const c_char,
 ) -> GitOid {
     // Based heavily on http://jakegoulding.com/rust-ffi-omnibus/string_arguments/
-    // TODO: Make sure that content_len is less than or equal to isize::MAX.
     // TODO: Make sure that s is not nul-terminted.
     let c_str = unsafe {
         assert!(!s.is_null());
@@ -39,6 +38,7 @@ pub extern fn new_from_str(
 
 #[no_mangle]
 pub extern fn new_from_url(s: *const c_char) -> GitOid {
+    // TODO: Make sure that s is not nul-terminted.
     let c_str = unsafe {
         assert!(!s.is_null());
         CStr::from_ptr(s)
@@ -48,4 +48,3 @@ pub extern fn new_from_url(s: *const c_char) -> GitOid {
     let url = Url::parse(s).unwrap();
     GitOid::new_from_url(url.clone()).unwrap()
 }
- 
