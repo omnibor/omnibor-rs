@@ -8,6 +8,7 @@ typedef struct GitOid gitoid;
 
 extern GitOid new_from_str(HashAlgorithm, ObjectType, const char *str);
 extern GitOid new_from_bytes(HashAlgorithm, ObjectType, const uint8_t *content, uintptr_t content_len);
+extern GitOid new_from_url(const char *str);
 
 int main() {
     printf("testing GitOid new_from_str function\n");
@@ -34,4 +35,10 @@ int main() {
 
     printf("new_from_bytes gitoid length %lu\n", new_from_bytes_gitoid.len);
     printf("new_from_bytes gitoid value %" PRIu8 "\n", new_from_bytes_gitoid.value[0]);
+
+    printf("testing GitOid new_from_url function\n");
+    const char *url = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
+    GitOid new_from_url_gitoid = new_from_url(url);
+    printf("new_from_url gitoid length %lu\n", new_from_url_gitoid.len);
+    printf("new_from_url gitoid value %" PRIu8 "\n", new_from_url_gitoid.value[0]);
 }
