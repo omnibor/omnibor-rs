@@ -41,4 +41,8 @@ int main() {
     GitOid new_from_url_gitoid = new_from_url(url);
     printf("new_from_url gitoid length %lu\n", new_from_url_gitoid.len);
     printf("new_from_url gitoid value %" PRIu8 "\n", new_from_url_gitoid.value[0]);
+
+    printf("testing gitoid_url function\n");
+    const char *gitoid_url_string = gitoid_url(&new_from_url_gitoid);
+    printf("gitoid_url %s\n", gitoid_url_string);
 }

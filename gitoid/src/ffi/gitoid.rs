@@ -4,6 +4,7 @@ use crate::GitOid;
 use std::slice;
 use std::ffi::c_char;
 use std::ffi::CStr;
+use std::ffi::CString;
 use url::Url;
 
 #[no_mangle]
@@ -48,3 +49,18 @@ pub extern fn new_from_url(s: *const c_char) -> GitOid {
     let url = Url::parse(s).unwrap();
     GitOid::new_from_url(url.clone()).unwrap()
 }
+
+#[no_mangle]
+pub extern fn gitoid_url(ptr: *mut GitOid) -> *mut c_char {
+    let gitoid = unsafe {
+        assert!(!ptr.is_null());
+        &mut *ptr
+    };
+
+    let gitoid_url = gitoid.url().unwrap();
+    let gitoid_url_string = gitoid_url.as_str();
+
+    let c_string = CString::new(gitoid_url_string).unwrap();
+    c_string.into_raw()
+}
+ 
