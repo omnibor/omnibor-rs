@@ -50,6 +50,8 @@ pub extern fn new_from_url(s: *const c_char) -> GitOid {
     GitOid::new_from_url(url.clone()).unwrap()
 }
 
+// TODO: new_from_reader
+
 #[no_mangle]
 pub extern fn gitoid_url(ptr: *mut GitOid) -> *mut c_char {
     let gitoid = unsafe {
@@ -78,5 +80,19 @@ pub extern fn gitoid_hash_algorithm(ptr: *mut GitOid) -> *mut c_char {
 
     let hash_algorithm_string = format!("{}", gitoid.hash_algorithm());
     let c_string = CString::new(hash_algorithm_string).unwrap();
+    c_string.into_raw()
+}
+
+#[no_mangle]
+pub extern fn gitoid_object_type(ptr: *mut GitOid) -> *mut c_char {
+    // Returns string representation of the object type
+
+    let gitoid = unsafe {
+        assert!(!ptr.is_null());
+        &mut *ptr
+    };
+
+    let object_type_string = format!("{}", gitoid.object_type());
+    let c_string = CString::new(object_type_string).unwrap();
     c_string.into_raw()
 }
