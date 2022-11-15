@@ -45,4 +45,8 @@ int main() {
     printf("testing gitoid_url function\n");
     const char *gitoid_url_string = gitoid_url(&new_from_url_gitoid);
     printf("gitoid_url %s\n", gitoid_url_string);
+
+    printf("testing gitoid_hash_algorithm\n");
+    const char *hash_algorithm = gitoid_hash_algorithm(&new_from_url_gitoid);
+    printf("Hash Algorithm %s\n", hash_algorithm);
 }
