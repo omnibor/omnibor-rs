@@ -64,3 +64,19 @@ pub extern fn gitoid_url(ptr: *mut GitOid) -> *mut c_char {
     c_string.into_raw()
 }
  
+// TO DO gitoid_hash
+
+#[no_mangle]
+pub extern fn gitoid_hash_algorithm(ptr: *mut GitOid) -> *mut c_char {
+    // Returns string representation of the hash algorithm
+
+    let gitoid = unsafe {
+        assert!(!ptr.is_null());
+        &mut *ptr
+    };
+
+
+    let hash_algorithm_string = format!("{}", gitoid.hash_algorithm());
+    let c_string = CString::new(hash_algorithm_string).unwrap();
+    c_string.into_raw()
+}
