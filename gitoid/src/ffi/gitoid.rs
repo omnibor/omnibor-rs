@@ -2,97 +2,120 @@ use crate::HashAlgorithm;
 use crate::ObjectType;
 use crate::GitOid;
 use std::slice;
+use std::ptr::null_mut;
 use std::ffi::c_char;
 use std::ffi::CStr;
 use std::ffi::CString;
 use url::Url;
+use std::error::Error;
+use std::ops::Not as _;
 
+/// Construct a new `GitOid` from a buffer of bytes.
 #[no_mangle]
-pub extern fn new_from_bytes(
+pub extern fn gitoid_new_from_bytes(
     hash_algorithm: HashAlgorithm,
     object_type: ObjectType,
     content: *const u8,
     content_len: usize,
 ) -> GitOid {
-
     // TODO: Make sure that content_len is less than or equal to isize::MAX.
     let content = unsafe { slice::from_raw_parts(content, content_len) };
     GitOid::new_from_bytes(hash_algorithm, object_type, content)
 }
 
+/// Construct a new `GitOid` from a C-string.
 #[no_mangle]
-pub extern fn new_from_str(
+pub extern fn gitoid_new_from_str(
     hash_algorithm: HashAlgorithm,
     object_type: ObjectType,
     s: *const c_char,
 ) -> GitOid {
     // Based heavily on http://jakegoulding.com/rust-ffi-omnibus/string_arguments/
-    // TODO: Make sure that s is not nul-terminted.
-    let c_str = unsafe {
-        assert!(!s.is_null());
-        CStr::from_ptr(s)
-    };
+    assert!(s.is_null().not());
 
-    let s = c_str.to_str().unwrap();
+    // TODO: Make sure that s is not nul-terminated.
+    let s = unsafe { CStr::from_ptr(s) }.to_str().unwrap();
     GitOid::new_from_str(hash_algorithm, object_type, s)
 }
 
+/// Construct a new `GitOid` from a `URL`.
 #[no_mangle]
-pub extern fn new_from_url(s: *const c_char) -> GitOid {
-    // TODO: Make sure that s is not nul-terminted.
-    let c_str = unsafe {
-        assert!(!s.is_null());
-        CStr::from_ptr(s)
-    };
+pub extern fn gitoid_new_from_url(s: *const c_char) -> GitOid {
+    fn inner(s: *const c_char) -> Result<GitOid, Box<dyn Error>> {
+        assert!(s.is_null().not());
 
-    let s = c_str.to_str().unwrap();
-    let url = Url::parse(s).unwrap();
-    GitOid::new_from_url(url.clone()).unwrap()
+        // TODO: Make sure that s is not nul-terminated.
+        let raw_url = unsafe { CStr::from_ptr(s) }.to_str()?;
+        let url = Url::parse(raw_url)?;
+        let gitoid = GitOid::new_from_url(url.clone())?;
+        Ok(gitoid)
+    }
+
+    match inner(s) {
+        Ok(g) => g,
+        Err(e) => panic!("{}", e),
+    }
 }
 
-// TODO: new_from_reader
+// TODO: gitoid_new_from_reader
 
+/// Construct a URL representation of the `GitOid`.
+///
+/// The resulting string _must_ be freed with a call to `gitoid_str_free`.
+///
+/// Returns a `NULL` pointer if the URL construction fails.
 #[no_mangle]
-pub extern fn gitoid_url(ptr: *mut GitOid) -> *mut c_char {
-    let gitoid = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub extern fn gitoid_get_url(ptr: *mut GitOid) -> *mut c_char {
+    fn inner(ptr: *mut GitOid) -> Result<*mut c_char, Box<dyn Error>> {
+        assert!(ptr.is_null().not());
+        let gitoid = unsafe { &mut *ptr };
+        let gitoid_url = gitoid.url()?;
+        let s = CString::new(gitoid_url.as_str())?.into_raw();
+        Ok(s)
+    }
 
-    let gitoid_url = gitoid.url().unwrap();
-    let gitoid_url_string = gitoid_url.as_str();
-
-    let c_string = CString::new(gitoid_url_string).unwrap();
-    c_string.into_raw()
+    match inner(ptr) {
+        Ok(s) => s,
+        Err(_) => null_mut(),
+    }
 }
  
-// TO DO gitoid_hash
+// TODO: gitoid_hash
 
+/// Get the name of a `HashAlgorithm` as a C-string.
+///
+/// The resulting string _must_ be freed with a call to `gitoid_str_free`.
+///
+/// Returns a `NULL` pointer if the C-string can't be constructed.
 #[no_mangle]
-pub extern fn gitoid_hash_algorithm(ptr: *mut GitOid) -> *mut c_char {
-    // Returns string representation of the hash algorithm
-
-    let gitoid = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
-
-
-    let hash_algorithm_string = format!("{}", gitoid.hash_algorithm());
-    let c_string = CString::new(hash_algorithm_string).unwrap();
-    c_string.into_raw()
+pub extern fn gitoid_hash_algorithm_name(hash_algorithm: HashAlgorithm) -> *mut c_char {
+    match CString::new(hash_algorithm.to_string()) {
+        Ok(s) => s.into_raw(),
+        Err(_) => null_mut(),
+    }
 }
 
+/// Get the name of an `ObjectType` as a C-string.
+///
+/// The resulting string _must_ be freed with a call to `gitoid_str_free`.
+///
+/// Returns a `NULL` pointer if the C-string can't be constructed.
 #[no_mangle]
-pub extern fn gitoid_object_type(ptr: *mut GitOid) -> *mut c_char {
-    // Returns string representation of the object type
+pub extern fn gitoid_object_type_name(object_type: ObjectType) -> *mut c_char {
+    match CString::new(object_type.to_string()) {
+        Ok(s) => s.into_raw(),
+        Err(_) => null_mut(),
+    }
+}
 
-    let gitoid = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+/// Free the given string.
+///
+/// Does nothing if the pointer is `NULL`.
+#[no_mangle]
+pub extern fn gitoid_str_free(s: *mut c_char) {
+    if s.is_null() {
+        return;
+    }
 
-    let object_type_string = format!("{}", gitoid.object_type());
-    let c_string = CString::new(object_type_string).unwrap();
-    c_string.into_raw()
+    unsafe { CString::from_raw(s) };
 }

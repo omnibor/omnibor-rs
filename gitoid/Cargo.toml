@@ -11,7 +11,7 @@ repository = "https://github.com/git-bom/gitbom-rs"
 version = "0.1.4"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["rlib", "cdylib"]
 
 [dependencies]
 hex = "0.4.3"

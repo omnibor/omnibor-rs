@@ -32,7 +32,7 @@ impl HashAlgorithm {
 
 /// The number of bytes required to store the largest hash. Currently 32 for SHA256
 /// If another `HashAlgorithm` is added, update to reflect.
-pub(crate) const NUM_HASH_BYTES: usize = 32;
+pub const NUM_HASH_BYTES: usize = 32;
 
 impl Display for HashAlgorithm {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
