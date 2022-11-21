@@ -41,6 +41,19 @@ impl GitOid {
     // Constructors
     //-------------------------------------------------------------------------------------------
 
+    /// Construct an invalid `GitOid` which should not be used for anything.
+    ///
+    /// This construction should _only_ be used for error-handling purposes
+    /// when using the `gitoid` crate over FFI.
+    pub fn new_invalid() -> Self {
+        GitOid {
+            hash_algorithm: HashAlgorithm::Sha1,
+            object_type: ObjectType::Blob,
+            len: 0,
+            value: [0u8; NUM_HASH_BYTES],
+        }
+    }
+
     /// Create a new `GitOid` based on a slice of bytes.
     pub fn new_from_bytes(
         hash_algorithm: HashAlgorithm,
@@ -124,6 +137,11 @@ impl GitOid {
     /// Get the object type of the `GitOid`.
     pub fn object_type(&self) -> ObjectType {
         self.object_type
+    }
+
+    /// Get the length of the hash in bytes.
+    pub fn hash_len(&self) -> usize {
+        self.len
     }
 }
 
