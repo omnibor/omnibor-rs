@@ -1,18 +1,18 @@
+use crate::GitOid;
 use crate::HashAlgorithm;
 use crate::ObjectType;
-use crate::GitOid;
-use std::slice;
-use std::ptr::null_mut;
+use std::error::Error;
 use std::ffi::c_char;
 use std::ffi::CStr;
 use std::ffi::CString;
-use url::Url;
-use std::error::Error;
 use std::ops::Not as _;
+use std::ptr::null_mut;
+use std::slice;
+use url::Url;
 
 /// Construct a new `GitOid` from a buffer of bytes.
 #[no_mangle]
-pub extern fn gitoid_new_from_bytes(
+pub extern "C" fn gitoid_new_from_bytes(
     hash_algorithm: HashAlgorithm,
     object_type: ObjectType,
     content: *const u8,
@@ -25,7 +25,7 @@ pub extern fn gitoid_new_from_bytes(
 
 /// Construct a new `GitOid` from a C-string.
 #[no_mangle]
-pub extern fn gitoid_new_from_str(
+pub extern "C" fn gitoid_new_from_str(
     hash_algorithm: HashAlgorithm,
     object_type: ObjectType,
     s: *const c_char,
@@ -40,14 +40,14 @@ pub extern fn gitoid_new_from_str(
 
 /// Construct a new `GitOid` from a `URL`.
 #[no_mangle]
-pub extern fn gitoid_new_from_url(s: *const c_char) -> GitOid {
+pub extern "C" fn gitoid_new_from_url(s: *const c_char) -> GitOid {
     fn inner(s: *const c_char) -> Result<GitOid, Box<dyn Error>> {
         assert!(s.is_null().not());
 
         // TODO: Make sure that s is not nul-terminated.
         let raw_url = unsafe { CStr::from_ptr(s) }.to_str()?;
         let url = Url::parse(raw_url)?;
-        let gitoid = GitOid::new_from_url(url.clone())?;
+        let gitoid = GitOid::new_from_url(url)?;
         Ok(gitoid)
     }
 
@@ -65,7 +65,7 @@ pub extern fn gitoid_new_from_url(s: *const c_char) -> GitOid {
 ///
 /// Returns a `NULL` pointer if the URL construction fails.
 #[no_mangle]
-pub extern fn gitoid_get_url(ptr: *mut GitOid) -> *mut c_char {
+pub extern "C" fn gitoid_get_url(ptr: *mut GitOid) -> *mut c_char {
     fn inner(ptr: *mut GitOid) -> Result<*mut c_char, Box<dyn Error>> {
         assert!(ptr.is_null().not());
         let gitoid = unsafe { &mut *ptr };
@@ -79,32 +79,46 @@ pub extern fn gitoid_get_url(ptr: *mut GitOid) -> *mut c_char {
         Err(_) => null_mut(),
     }
 }
- 
+
 // TODO: gitoid_hash
 
+macro_rules! embed_cstr {
+    ($name:ident, $arr:expr) => {
+        const $name: *const c_char = $arr.as_ptr();
+    };
+}
+
+embed_cstr!(HASH_ALGORITHM_SHA1, [0x73, 0x68, 0x61, 0x31, 0x00]);
+embed_cstr!(
+    HASH_ALGORITHM_SHA256,
+    [0x73, 0x68, 0x61, 0x32, 0x35, 0x36, 0x00]
+);
+
 /// Get the name of a `HashAlgorithm` as a C-string.
-///
-/// The resulting string _must_ be freed with a call to `gitoid_str_free`.
-///
-/// Returns a `NULL` pointer if the C-string can't be constructed.
 #[no_mangle]
-pub extern fn gitoid_hash_algorithm_name(hash_algorithm: HashAlgorithm) -> *mut c_char {
-    match CString::new(hash_algorithm.to_string()) {
-        Ok(s) => s.into_raw(),
-        Err(_) => null_mut(),
+pub extern "C" fn gitoid_hash_algorithm_name(hash_algorithm: HashAlgorithm) -> *const c_char {
+    match hash_algorithm {
+        HashAlgorithm::Sha1 => HASH_ALGORITHM_SHA1,
+        HashAlgorithm::Sha256 => HASH_ALGORITHM_SHA256,
     }
 }
 
+embed_cstr!(OBJECT_TYPE_BLOB, [0x62, 0x6C, 0x6F, 0x62, 0x00]);
+embed_cstr!(OBJECT_TYPE_TREE, [0x74, 0x72, 0x65, 0x65, 0x00]);
+embed_cstr!(
+    OBJECT_TYPE_COMMIT,
+    [0x63, 0x6F, 0x6D, 0x6D, 0x69, 0x74, 0x00]
+);
+embed_cstr!(OBJECT_TYPE_TAG, [0x74, 0x61, 0x67, 0x00]);
+
 /// Get the name of an `ObjectType` as a C-string.
-///
-/// The resulting string _must_ be freed with a call to `gitoid_str_free`.
-///
-/// Returns a `NULL` pointer if the C-string can't be constructed.
 #[no_mangle]
-pub extern fn gitoid_object_type_name(object_type: ObjectType) -> *mut c_char {
-    match CString::new(object_type.to_string()) {
-        Ok(s) => s.into_raw(),
-        Err(_) => null_mut(),
+pub extern "C" fn gitoid_object_type_name(object_type: ObjectType) -> *const c_char {
+    match object_type {
+        ObjectType::Blob => OBJECT_TYPE_BLOB,
+        ObjectType::Tree => OBJECT_TYPE_TREE,
+        ObjectType::Commit => OBJECT_TYPE_COMMIT,
+        ObjectType::Tag => OBJECT_TYPE_TAG,
     }
 }
 
@@ -112,7 +126,7 @@ pub extern fn gitoid_object_type_name(object_type: ObjectType) -> *mut c_char {
 ///
 /// Does nothing if the pointer is `NULL`.
 #[no_mangle]
-pub extern fn gitoid_str_free(s: *mut c_char) {
+pub extern "C" fn gitoid_str_free(s: *mut c_char) {
     if s.is_null() {
         return;
     }
