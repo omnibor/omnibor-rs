@@ -32,8 +32,7 @@ c_test:
 	@echo "--------------------------------------------------"
 	@echo "RUNNING C TEST FILE"
 	@PATH="${LIB_DIR}:${PATH}" LD_LIBRARY_PATH="${LIB_DIR}" "${TEST_EXE_FILE}"
-	
+
 	@echo "--------------------------------------------------"
 	@echo "DELETING C TEST FILE"
 	@rm "${TEST_EXE_FILE}"
-
