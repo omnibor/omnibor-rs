@@ -48,14 +48,12 @@ int main() {
     printf("\n");
 
     printf("-- TESTING gitoid_hash_algorithm_name\n");
-    char *hash_algorithm = gitoid_hash_algorithm_name(new_from_url_gitoid.hash_algorithm);
+    const char *hash_algorithm = gitoid_hash_algorithm_name(new_from_url_gitoid.hash_algorithm);
     printf("gitoid_hash_algorithm_name: %s\n", hash_algorithm);
-    gitoid_str_free(hash_algorithm);
     printf("\n");
 
     printf("-- TESTING gitoid_object_type_name\n");
-    char *object_type = gitoid_object_type_name(new_from_url_gitoid.object_type);
+    const char *object_type = gitoid_object_type_name(new_from_url_gitoid.object_type);
     printf("gitoid_object_type_name: %s\n", object_type);
-    gitoid_str_free(object_type);
     printf("\n");
 }
