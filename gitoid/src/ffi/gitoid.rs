@@ -36,10 +36,14 @@ pub extern "C" fn gitoid_get_error_message(buffer: *mut c_char, length: c_int) -
 /// If it is invalid, it shouldn't be used, and no fields of it should be
 /// taken to have any meaning.
 #[no_mangle]
-pub extern "C" fn gitoid_invalid(gitoid: *const GitOid) -> c_uint {
-    let gitoid = unsafe { &*gitoid };
-    let result = gitoid.hash_len() == 0;
-    result as c_uint
+pub extern "C" fn gitoid_invalid(gitoid: *const GitOid) -> c_int {
+    let output = catch_panic(|| {
+        let gitoid = unsafe { &*gitoid };
+        let result = gitoid.hash_len() == 0;
+        Ok(result as c_int)
+    });
+
+    output.unwrap_or(-1)
 }
 
 /// Construct a new `GitOid` from a buffer of bytes.
