@@ -1,13 +1,35 @@
+use crate::ffi::error::catch_panic;
+use crate::ffi::error::get_error_msg;
+use crate::ffi::error::Error;
 use crate::GitOid;
 use crate::HashAlgorithm;
 use crate::ObjectType;
 use std::ffi::c_char;
+use std::ffi::c_int;
 use std::ffi::c_uint;
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::io::Write as _;
 use std::ptr::null_mut;
 use std::slice;
 use url::Url;
+
+#[no_mangle]
+pub extern "C" fn gitoid_get_error_message(buffer: *mut c_char, length: c_int) -> c_int {
+    // Make sure the buffer isn't null.
+    if buffer.is_null() {
+        return -1;
+    }
+
+    // Convert the buffer raw pointer into a byte slice.
+    let buffer = unsafe { slice::from_raw_parts_mut(buffer as *mut u8, length as usize) };
+
+    // Get the last error, possibly empty if there isn't one.
+    let last_err = get_error_msg().unwrap_or_default();
+
+    // Try to write the error to the buffer.
+    write_to_c_buf(&last_err, buffer)
+}
 
 /// Check if the given `GitOid` is invalid.
 ///
@@ -35,12 +57,16 @@ pub extern "C" fn gitoid_new_from_bytes(
     content: *const u8,
     content_len: usize,
 ) -> GitOid {
-    if content.is_null() {
-        return GitOid::new_invalid();
-    }
+    let output = catch_panic(|| {
+        if content.is_null() {
+            return Err(Error::ContentPtrIsNull);
+        }
 
-    let content = unsafe { slice::from_raw_parts(content, content_len) };
-    GitOid::new_from_bytes(hash_algorithm, object_type, content)
+        let content = unsafe { slice::from_raw_parts(content, content_len) };
+        Ok(GitOid::new_from_bytes(hash_algorithm, object_type, content))
+    });
+
+    output.unwrap_or_else(GitOid::new_invalid)
 }
 
 /// Construct a new `GitOid` from a C-string.
@@ -54,41 +80,49 @@ pub extern "C" fn gitoid_new_from_str(
     object_type: ObjectType,
     s: *const c_char,
 ) -> GitOid {
-    if s.is_null() {
-        return GitOid::new_invalid();
-    }
+    let output = catch_panic(|| {
+        if s.is_null() {
+            return Err(Error::StringPtrIsNull);
+        }
 
-    let s = match unsafe { CStr::from_ptr(s) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return GitOid::new_invalid(),
-    };
+        let s = match unsafe { CStr::from_ptr(s) }.to_str() {
+            Ok(s) => s,
+            Err(_) => return Err(Error::NotValidUtf8),
+        };
 
-    GitOid::new_from_str(hash_algorithm, object_type, s)
+        Ok(GitOid::new_from_str(hash_algorithm, object_type, s))
+    });
+
+    output.unwrap_or_else(GitOid::new_invalid)
 }
 
 /// Construct a new `GitOid` from a `URL`.
 #[no_mangle]
 pub extern "C" fn gitoid_new_from_url(s: *const c_char) -> GitOid {
-    if s.is_null() {
-        return GitOid::new_invalid();
-    }
+    let output = catch_panic(|| {
+        if s.is_null() {
+            return Err(Error::StringPtrIsNull);
+        }
 
-    let raw_url = match unsafe { CStr::from_ptr(s) }.to_str() {
-        Ok(u) => u,
-        Err(_) => return GitOid::new_invalid(),
-    };
+        let raw_url = match unsafe { CStr::from_ptr(s) }.to_str() {
+            Ok(u) => u,
+            Err(_) => return Err(Error::NotValidUtf8),
+        };
 
-    let url = match Url::parse(raw_url) {
-        Ok(u) => u,
-        Err(_) => return GitOid::new_invalid(),
-    };
+        let url = match Url::parse(raw_url) {
+            Ok(u) => u,
+            Err(_) => return Err(Error::NotValidUrl),
+        };
 
-    let gitoid = match GitOid::new_from_url(url) {
-        Ok(g) => g,
-        Err(_) => return GitOid::new_invalid(),
-    };
+        let gitoid = match GitOid::new_from_url(url) {
+            Ok(g) => g,
+            Err(_) => return Err(Error::NotGitOidUrl),
+        };
 
-    gitoid
+        Ok(gitoid)
+    });
+
+    output.unwrap_or_else(GitOid::new_invalid)
 }
 
 // TODO: gitoid_new_from_reader
@@ -100,23 +134,27 @@ pub extern "C" fn gitoid_new_from_url(s: *const c_char) -> GitOid {
 /// Returns a `NULL` pointer if the URL construction fails.
 #[no_mangle]
 pub extern "C" fn gitoid_get_url(ptr: *mut GitOid) -> *mut c_char {
-    if ptr.is_null() {
-        return null_mut();
-    }
+    let output = catch_panic(|| {
+        if ptr.is_null() {
+            return Err(Error::GitOidPtrIsNull);
+        }
 
-    let gitoid = unsafe { &mut *ptr };
+        let gitoid = unsafe { &mut *ptr };
 
-    let url = match gitoid.url() {
-        Ok(u) => u,
-        Err(_) => return null_mut(),
-    };
+        let url = match gitoid.url() {
+            Ok(u) => u,
+            Err(_) => return Err(Error::CouldNotConstructUrl),
+        };
 
-    let c_url = match CString::new(url.as_str()) {
-        Ok(s) => s,
-        Err(_) => return null_mut(),
-    };
+        let c_url = match CString::new(url.as_str()) {
+            Ok(s) => s,
+            Err(_) => return Err(Error::StringHadInteriorNul),
+        };
 
-    c_url.into_raw()
+        Ok(c_url.into_raw())
+    });
+
+    output.unwrap_or_else(null_mut)
 }
 
 // TODO: gitoid_hash
@@ -171,4 +209,28 @@ pub extern "C" fn gitoid_str_free(s: *mut c_char) {
     }
 
     unsafe { CString::from_raw(s) };
+}
+
+/// Write a string slice to a C buffer safely.
+///
+/// This performs a write, including the null terminator and performing zeroization of any
+/// excess in the destination buffer.
+pub(crate) fn write_to_c_buf(src: &str, mut dst: &mut [u8]) -> c_int {
+    // Ensure the string has the null terminator.
+    let src = match CString::new(src.as_bytes()) {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let src = src.as_bytes_with_nul();
+
+    // Make sure the destination buffer is big enough.
+    if dst.len() < src.len() {
+        return -2;
+    }
+
+    // Write the buffer.
+    match dst.write_all(src) {
+        Ok(()) => 0,
+        Err(_) => -3,
+    }
 }

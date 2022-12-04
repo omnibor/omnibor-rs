@@ -68,6 +68,12 @@ void test_gitoid_validity() {
     char *validity_url = "gitoid:blob:sha000:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
     GitOid gitoid = gitoid_new_from_url(validity_url);
     assert(gitoid_invalid(&gitoid));
+
+    // Also test the error message reporting.
+    char *expected_msg = "string is not a valid GitOID URL";
+    char error_msg[256];
+    gitoid_get_error_message(error_msg, 256);
+    assert(strncmp(error_msg, expected_msg, 32) == 0);
 }
 
 typedef void (*test_fn)();
