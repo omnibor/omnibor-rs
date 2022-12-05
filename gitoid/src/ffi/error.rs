@@ -1,15 +1,22 @@
+//! Errors arising from FFI code.
+
+use crate::error::Error as GitOidError;
 use std::any::Any;
 use std::cell::RefCell;
 use std::error::Error as StdError;
+use std::ffi::NulError;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
 use std::panic::catch_unwind;
 use std::panic::UnwindSafe;
+use std::str::Utf8Error;
+use url::ParseError as UrlError;
 
 thread_local! {
     // The last error to have been reported by the FFI code.
     /// cbindgen:ignore
+    #[doc(hidden)]
     static LAST_ERROR: RefCell<Option<String>> = RefCell::new(None);
 }
 
@@ -43,7 +50,12 @@ where
         Ok(Ok(value)) => Some(value),
         Ok(Err(err)) => {
             // We have our `Error` type.
-            set_error_msg(err.to_string());
+            set_error_msg(match err.source() {
+                None => err.to_string(),
+                Some(source_err) => {
+                    format!("{}: {}", err, source_err)
+                }
+            });
             None
         }
         Err(err) => {
@@ -54,16 +66,17 @@ where
     }
 }
 
+/// An Error arising from FFI code.
 #[derive(Debug)]
 pub(crate) enum Error {
     ContentPtrIsNull,
     StringPtrIsNull,
     GitOidPtrIsNull,
-    NotValidUtf8,
-    NotValidUrl,
-    NotGitOidUrl,
-    CouldNotConstructUrl,
-    StringHadInteriorNul,
+    Utf8UnexpectedEnd,
+    Utf8InvalidByte(usize, usize),
+    NotValidUrl(UrlError),
+    NotGitOidUrl(GitOidError),
+    StringHadInteriorNul(usize),
 }
 
 impl Display for Error {
@@ -72,22 +85,59 @@ impl Display for Error {
             Error::ContentPtrIsNull => write!(f, "data pointer is null"),
             Error::StringPtrIsNull => write!(f, "string pointer is null"),
             Error::GitOidPtrIsNull => write!(f, "GitOID pointer is null"),
-            Error::NotValidUtf8 => write!(f, "string is not valid UTF-8"),
-            Error::NotValidUrl => write!(f, "string is not a valid URL"),
-            Error::NotGitOidUrl => write!(f, "string is not a valid GitOID URL"),
-            Error::CouldNotConstructUrl => write!(f, "could not construct URL"),
-            Error::StringHadInteriorNul => write!(f, "string had interior NUL byte"),
+            Error::Utf8UnexpectedEnd => write!(f, "UTF-8 byte sequence ended unexpectedly"),
+            Error::Utf8InvalidByte(start, len) => write!(
+                f,
+                "invalid {}-byte UTF-8 sequence, starting at byte {}",
+                len, start
+            ),
+            Error::NotValidUrl(_) => write!(f, "string is not a valid URL"),
+            Error::NotGitOidUrl(_) => write!(f, "string is not a valid GitOID URL"),
+            Error::StringHadInteriorNul(loc) => {
+                write!(f, "string had interior NUL at byte {}", loc)
+            }
         }
     }
 }
 
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        None
+        match self {
+            Error::NotValidUrl(e) => Some(e),
+            Error::NotGitOidUrl(e) => Some(e),
+            _ => None,
+        }
     }
 }
 
-/// An error message extracted from an `AnyError`.
+impl From<Utf8Error> for Error {
+    fn from(utf8_error: Utf8Error) -> Error {
+        match utf8_error.error_len() {
+            None => Error::Utf8UnexpectedEnd,
+            Some(len) => Error::Utf8InvalidByte(utf8_error.valid_up_to(), len),
+        }
+    }
+}
+
+impl From<UrlError> for Error {
+    fn from(url_error: UrlError) -> Error {
+        Error::NotValidUrl(url_error)
+    }
+}
+
+impl From<GitOidError> for Error {
+    fn from(gitoid_error: GitOidError) -> Error {
+        Error::NotGitOidUrl(gitoid_error)
+    }
+}
+
+impl From<NulError> for Error {
+    fn from(nul_error: NulError) -> Error {
+        Error::StringHadInteriorNul(nul_error.nul_position())
+    }
+}
+
+/// An error message arising from a panic.
 ///
 /// This is part of the implement of the LAST_ERROR mechanism, which takes any `AnyError`,
 /// attempts to extract an `ErrorMsg` out of it, and then stores the resulting string

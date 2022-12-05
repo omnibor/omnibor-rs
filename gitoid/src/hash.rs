@@ -1,6 +1,8 @@
 //! Provides a type for representing the hash contained inside a `GitOid`.
 
-use std::fmt::{self, Display, Formatter};
+use core::fmt;
+use core::fmt::Display;
+use core::fmt::Formatter;
 use std::ops::Deref;
 
 /// The hash produced for a `GitOid`

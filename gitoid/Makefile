@@ -1,3 +1,7 @@
+# Makefile for testing the C FFI interface for the `gitoid` crate.
+#
+# This purposefully uses few features of Make and is written in a linear style.
+# It is intended to be easy for newcomers to the project to understand.
 
 # Variables for cbindgen.
 CBINDGEN_CONFIG="../cbindgen.toml"
@@ -27,7 +31,7 @@ c_test:
 	
 	@echo "--------------------------------------------------"
 	@echo "BUILDING C TEST FILE"
-	@gcc --std=c11 -I"${INCLUDE_DIR}" -L"${LIB_DIR}" -l"${LIB_NAME}" -o"${TEST_EXE_FILE}" "${TEST_SRC_FILE}"
+	@gcc --std=c99 -I"${INCLUDE_DIR}" -L"${LIB_DIR}" -l"${LIB_NAME}" -o"${TEST_EXE_FILE}" "${TEST_SRC_FILE}"
 
 	@echo "--------------------------------------------------"
 	@echo "RUNNING C TEST FILE"
