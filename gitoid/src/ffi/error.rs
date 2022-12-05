@@ -1,4 +1,16 @@
 //! Errors arising from FFI code.
+//!
+//! This module contains four related parts:
+//!
+//! - A thread-local-storage-allocated value containing any error messages
+//!   set by errors in FFI code, along with a getter and setter function.
+//! - A mechanism for catching panics and recording error messages into that
+//!   thread-local storage.
+//! - An error type (plus trait impls) specific to FFI code.
+//! - An "error message" type to assist capturing messages from panics.
+//!
+//! Together, these provide a consistent mechanism for collecting and reporting
+//! errors to users of the `gitoid` FFI.
 
 use crate::error::Error as GitOidError;
 use std::any::Any;
