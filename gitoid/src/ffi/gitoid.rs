@@ -14,6 +14,7 @@ use std::ffi::c_int;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::ptr::null_mut;
+use std::ptr::null;
 use std::slice;
 use url::Url;
 
@@ -127,7 +128,34 @@ pub extern "C" fn gitoid_get_url(ptr: *mut GitOid) -> *mut c_char {
     output.unwrap_or_else(null_mut)
 }
 
-// TODO: gitoid_hash
+/// Get the hash from a `GitOid` as an array of bytes.
+#[no_mangle]
+pub extern "C" fn gitoid_get_hash_bytes(ptr: *mut GitOid) -> *const u8 {
+    let output = catch_panic(|| {
+        let gitoid = unsafe { &* ptr };
+        let hash = gitoid.hash();
+        Ok(hash.as_ptr())
+    });
+
+    output.unwrap_or_else(null)
+}
+
+/// Get the hash from a `GitOid` as a C-string.
+///
+/// Note that the returned string must be freed with a call to
+/// `gitoid_str_free`.
+#[no_mangle]
+pub extern "C" fn gitoid_get_hash_string(ptr: *mut GitOid) -> *mut c_char {
+    let output = catch_panic(|| {
+        let gitoid = unsafe { &* ptr };
+        let hash = gitoid.hash();
+        let hash_str = hash.as_hex();
+        let hash_c_str = CString::new(hash_str)?;
+        Ok(hash_c_str.into_raw())
+    });
+
+    output.unwrap_or_else(null_mut)
+}
 
 /// Embed a C string into the binary.
 macro_rules! embed_cstr {
