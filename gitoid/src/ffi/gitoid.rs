@@ -143,7 +143,6 @@ pub extern "C" fn gitoid_new_from_reader(
     output.unwrap_or_else(GitOid::new_invalid)
 }
 
-// TODO: Tell cbindgen to only generate bindings for this on Windows.
 /// Create a new `GitOid` by reading data from a file.
 ///
 /// The provided file handle must be valid and open for reading.
