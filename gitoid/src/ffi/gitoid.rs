@@ -113,6 +113,11 @@ pub extern "C" fn gitoid_new_from_url(s: *const c_char) -> GitOid {
     output.unwrap_or_else(GitOid::new_invalid)
 }
 
+/// Create a new `GitOid` by reading data from a file.
+///
+/// The provided file descriptor must be valid and open for reading.
+///
+/// Returns an invalid `GitOid` if construction fails.
 #[cfg(target_family = "unix")]
 #[no_mangle]
 pub extern "C" fn gitoid_new_from_reader(
@@ -132,6 +137,11 @@ pub extern "C" fn gitoid_new_from_reader(
 }
 
 // TODO: Tell cbindgen to only generate bindings for this on Windows.
+/// Create a new `GitOid` by reading data from a file.
+///
+/// The provided file handle must be valid and open for reading.
+///
+/// Returns an invalid `GitOid` if construction fails.
 #[cfg(target_family = "windows")]
 #[no_mangle]
 /// cbindgen:ignore
@@ -205,6 +215,8 @@ macro_rules! embed_cstr {
 }
 
 /// Get the name of a `HashAlgorithm` as a C-string.
+///
+/// Returns a null pointer if the string cannot be returned.
 #[no_mangle]
 pub extern "C" fn gitoid_hash_algorithm_name(hash_algorithm: HashAlgorithm) -> *const c_char {
     embed_cstr!(HASH_ALGORITHM_SHA1, [0x73, 0x68, 0x61, 0x31, 0x00]);
@@ -213,13 +225,19 @@ pub extern "C" fn gitoid_hash_algorithm_name(hash_algorithm: HashAlgorithm) -> *
         [0x73, 0x68, 0x61, 0x32, 0x35, 0x36, 0x00]
     );
 
-    match hash_algorithm {
-        HashAlgorithm::Sha1 => HASH_ALGORITHM_SHA1,
-        HashAlgorithm::Sha256 => HASH_ALGORITHM_SHA256,
-    }
+    let output = catch_panic(|| {
+        Ok(match hash_algorithm {
+            HashAlgorithm::Sha1 => HASH_ALGORITHM_SHA1,
+            HashAlgorithm::Sha256 => HASH_ALGORITHM_SHA256,
+        })
+    });
+
+    output.unwrap_or_else(null)
 }
 
 /// Get the name of an `ObjectType` as a C-string.
+///
+/// Returns a null pointer if the string cannot be returned.
 #[no_mangle]
 pub extern "C" fn gitoid_object_type_name(object_type: ObjectType) -> *const c_char {
     embed_cstr!(OBJECT_TYPE_BLOB, [0x62, 0x6C, 0x6F, 0x62, 0x00]);
@@ -230,17 +248,25 @@ pub extern "C" fn gitoid_object_type_name(object_type: ObjectType) -> *const c_c
     );
     embed_cstr!(OBJECT_TYPE_TAG, [0x74, 0x61, 0x67, 0x00]);
 
-    match object_type {
-        ObjectType::Blob => OBJECT_TYPE_BLOB,
-        ObjectType::Tree => OBJECT_TYPE_TREE,
-        ObjectType::Commit => OBJECT_TYPE_COMMIT,
-        ObjectType::Tag => OBJECT_TYPE_TAG,
-    }
+    let output = catch_panic(|| {
+        Ok(match object_type {
+            ObjectType::Blob => OBJECT_TYPE_BLOB,
+            ObjectType::Tree => OBJECT_TYPE_TREE,
+            ObjectType::Commit => OBJECT_TYPE_COMMIT,
+            ObjectType::Tag => OBJECT_TYPE_TAG,
+        })
+    });
+
+    output.unwrap_or_else(null)
 }
 
 /// Free the given string.
 ///
 /// Does nothing if the pointer is `NULL`.
+///
+/// This function must only ever be called with strings obtained from another
+/// `gitoid` FFI function and where the function documentation indicates that
+/// the string needs to be freed.
 #[no_mangle]
 pub extern "C" fn gitoid_str_free(s: *mut c_char) {
     if s.is_null() {
