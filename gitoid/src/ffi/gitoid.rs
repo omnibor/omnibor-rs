@@ -22,7 +22,14 @@ use std::ptr::null_mut;
 use std::slice;
 use url::Url;
 
-/// Get the last-written error message.
+/// Get the last-written error message written to a buffer.
+///
+/// The length passed must match the length of the buffer provided.
+///
+/// If the buffer pointer is null, the function will fail and return an
+/// error code.
+///
+/// If successful, it returns the number of bytes written to the buffer.
 #[no_mangle]
 pub extern "C" fn gitoid_get_error_message(buffer: *mut c_char, length: c_int) -> c_int {
     // Make sure the buffer isn't null.
