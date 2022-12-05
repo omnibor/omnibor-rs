@@ -13,8 +13,12 @@ use std::ffi::c_char;
 use std::ffi::c_int;
 use std::ffi::CStr;
 use std::ffi::CString;
-use std::ptr::null_mut;
+use std::fs::File;
+use std::io::BufReader;
+use std::os::unix::prelude::FromRawFd;
+use std::os::unix::prelude::RawFd;
 use std::ptr::null;
+use std::ptr::null_mut;
 use std::slice;
 use url::Url;
 
@@ -109,7 +113,43 @@ pub extern "C" fn gitoid_new_from_url(s: *const c_char) -> GitOid {
     output.unwrap_or_else(GitOid::new_invalid)
 }
 
-// TODO: gitoid_new_from_reader
+#[cfg(target_family = "unix")]
+#[no_mangle]
+pub extern "C" fn gitoid_new_from_reader(
+    hash_algorithm: HashAlgorithm,
+    object_type: ObjectType,
+    fd: RawFd,
+    expected_length: usize,
+) -> GitOid {
+    let output = catch_panic(|| {
+        let file = unsafe { File::from_raw_fd(fd) };
+        let reader = BufReader::new(file);
+        let gitoid = GitOid::new_from_reader(hash_algorithm, object_type, reader, expected_length)?;
+        Ok(gitoid)
+    });
+
+    output.unwrap_or_else(GitOid::new_invalid)
+}
+
+// TODO: Tell cbindgen to only generate bindings for this on Windows.
+#[cfg(target_family = "windows")]
+#[no_mangle]
+/// cbindgen:ignore
+pub extern "C" fn gitoid_new_from_reader(
+    hash_algorithm: HashAlgorithm,
+    object_type: ObjectType,
+    handle: RawHandle,
+    expected_length: usize,
+) -> GitOid {
+    let output = catch_panic(|| {
+        let file = unsafe { File::from_raw_handle(handle) };
+        let reader = BufReader::new(file);
+        let gitoid = GitOid::new_from_reader(hash_algorithm, object_type, reader, expected_length)?;
+        Ok(gitoid)
+    });
+
+    output.unwrap_or_else(GitOid::new_invalid)
+}
 
 /// Construct a URL representation of a `GitOid`.
 ///
@@ -132,7 +172,7 @@ pub extern "C" fn gitoid_get_url(ptr: *mut GitOid) -> *mut c_char {
 #[no_mangle]
 pub extern "C" fn gitoid_get_hash_bytes(ptr: *mut GitOid) -> *const u8 {
     let output = catch_panic(|| {
-        let gitoid = unsafe { &* ptr };
+        let gitoid = unsafe { &*ptr };
         let hash = gitoid.hash();
         Ok(hash.as_ptr())
     });
@@ -147,7 +187,7 @@ pub extern "C" fn gitoid_get_hash_bytes(ptr: *mut GitOid) -> *const u8 {
 #[no_mangle]
 pub extern "C" fn gitoid_get_hash_string(ptr: *mut GitOid) -> *mut c_char {
     let output = catch_panic(|| {
-        let gitoid = unsafe { &* ptr };
+        let gitoid = unsafe { &*ptr };
         let hash = gitoid.hash();
         let hash_str = hash.as_hex();
         let hash_c_str = CString::new(hash_str)?;
