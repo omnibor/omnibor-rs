@@ -1,3 +1,5 @@
+//! Status codes returned for functions which signal errors with `c_int`.
+
 /// Status codes for functions returning `c_int` to signal errors.
 pub(crate) enum Status {
     /// Unknown error that shouldn't happen.

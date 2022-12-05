@@ -1,7 +1,11 @@
 //! Easily construct `GitOid`s.
 
-use crate::{GitOid, HashAlgorithm, ObjectType, Result};
-use std::io::{BufReader, Read};
+use crate::GitOid;
+use crate::HashAlgorithm;
+use crate::ObjectType;
+use crate::Result;
+use std::io::BufReader;
+use std::io::Read;
 
 /// Builder of GitOids with a specific hash algorithm and object type.
 pub struct GitOidBuilder {

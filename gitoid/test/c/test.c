@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
-#include <inttypes.h>
 #include "gitoid.h"
 
 #define LEN(arr) (sizeof(arr) / sizeof(arr[0]));
@@ -31,7 +30,13 @@ void test_gitoid_new_from_bytes() {
     }
     uint8_t byte_array_length = sizeof byte_array;
 
-    GitOid gitoid = gitoid_new_from_bytes(HashAlgorithm_Sha1, ObjectType_Blob, &byte_array_length, *byte_array);
+    GitOid gitoid = gitoid_new_from_bytes(
+        HashAlgorithm_Sha1,
+        ObjectType_Blob,
+        &byte_array_length,
+        *byte_array
+    );
+
     assert(gitoid.len == 20);
     assert(gitoid.value[0] == 130);
 }

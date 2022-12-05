@@ -79,7 +79,7 @@ fn validate_uri() -> Result<()> {
     let gitoid = GitOid::new_from_bytes(Sha256, Blob, content);
 
     assert_eq!(
-        gitoid.url()?.to_string(),
+        gitoid.url().to_string(),
         "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03"
     );
 
@@ -159,7 +159,7 @@ fn try_url_roundtrip() {
     )
     .unwrap();
     let gitoid = GitOid::new_from_url(url.clone()).unwrap();
-    let output = gitoid.url().unwrap();
+    let output = gitoid.url();
 
     eprintln!("{}", url);
     eprintln!("{}", output);
