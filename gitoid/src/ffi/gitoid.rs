@@ -1,12 +1,12 @@
 use crate::ffi::error::catch_panic;
 use crate::ffi::error::get_error_msg;
 use crate::ffi::error::Error;
+use crate::ffi::status::Status;
 use crate::GitOid;
 use crate::HashAlgorithm;
 use crate::ObjectType;
 use std::ffi::c_char;
 use std::ffi::c_int;
-use std::ffi::c_uint;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::io::Write as _;
@@ -18,7 +18,7 @@ use url::Url;
 pub extern "C" fn gitoid_get_error_message(buffer: *mut c_char, length: c_int) -> c_int {
     // Make sure the buffer isn't null.
     if buffer.is_null() {
-        return -1;
+        return Status::BufferIsNull as c_int;
     }
 
     // Convert the buffer raw pointer into a byte slice.
@@ -43,7 +43,7 @@ pub extern "C" fn gitoid_invalid(gitoid: *const GitOid) -> c_int {
         Ok(result as c_int)
     });
 
-    output.unwrap_or(-1)
+    output.unwrap_or(Status::UnexpectedError as c_int)
 }
 
 /// Construct a new `GitOid` from a buffer of bytes.
@@ -223,18 +223,18 @@ pub(crate) fn write_to_c_buf(src: &str, mut dst: &mut [u8]) -> c_int {
     // Ensure the string has the null terminator.
     let src = match CString::new(src.as_bytes()) {
         Ok(s) => s,
-        Err(_) => return -1,
+        Err(_) => return Status::UnexpectedError as c_int,
     };
     let src = src.as_bytes_with_nul();
 
     // Make sure the destination buffer is big enough.
     if dst.len() < src.len() {
-        return -2;
+        return Status::BufferTooSmall as c_int;
     }
 
     // Write the buffer.
     match dst.write_all(src) {
         Ok(()) => 0,
-        Err(_) => -3,
+        Err(_) => Status::BufferWriteFailed as c_int,
     }
 }
