@@ -1,16 +1,18 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <inttypes.h>
+#include <assert.h>
 #include "gitoid.h"
 
-int main() {
-    printf("-- TESTING gitoid_new_from_str function\n");
-    GitOid new_from_str_gitoid = gitoid_new_from_str(HashAlgorithm_Sha1, ObjectType_Blob, "hello world"); 
-    printf("new_from_str gitoid length %lu\n", new_from_str_gitoid.len);
-    printf("new_from_str gitoid value %" PRIu8 "\n", new_from_str_gitoid.value[0]);
-    printf("\n");
+#define LEN(arr) (sizeof(arr) / sizeof(arr[0]));
 
+void test_gitoid_new_from_str() {
+    GitOid gitoid = gitoid_new_from_str(HashAlgorithm_Sha1, ObjectType_Blob, "hello world"); 
+    assert(gitoid.len == 20);
+    assert(gitoid.value[0] == 149);
+}
+
+void test_gitoid_new_from_bytes() {
     // Section that creates the byte array was heavily inspired by [1].
     //
     // Does not do error checking, and is intended solely for test purposes.
@@ -21,39 +23,90 @@ int main() {
     const char *string = "hello_world";
     const char *position = string;
     unsigned char byte_array[12];
-    size_t size = (sizeof byte_array / sizeof *byte_array);
+    size_t size = LEN(byte_array);
     for (size_t count = 0; count < size; ++count) {
         sscanf(position, "%2hhx", &byte_array[count]);
         position += 2;
     }
     uint8_t byte_array_length = sizeof byte_array;
 
-    printf("-- TESTING gitoid_new_from_bytes funtion\n");
-    GitOid new_from_bytes_gitoid = gitoid_new_from_bytes(HashAlgorithm_Sha1, ObjectType_Blob, &byte_array_length, *byte_array);
-    printf("new_from_bytes gitoid length %lu\n", new_from_bytes_gitoid.len);
-    printf("new_from_bytes gitoid value %" PRIu8 "\n", new_from_bytes_gitoid.value[0]);
-    printf("\n");
+    GitOid gitoid = gitoid_new_from_bytes(
+        HashAlgorithm_Sha1,
+        ObjectType_Blob,
+        &byte_array_length,
+        *byte_array
+    );
 
-    printf("-- TESTING gitoid_new_from_url function\n");
+    assert(gitoid.len == 20);
+    assert(gitoid.value[0] == 130);
+}
+
+void test_gitoid_new_from_url() {
     char *url = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
-    GitOid new_from_url_gitoid = gitoid_new_from_url(url);
-    printf("gitoid_new_from_url gitoid length: %lu\n", new_from_url_gitoid.len);
-    printf("gitoid_new_from_url gitoid value: %" PRIu8 "\n", new_from_url_gitoid.value[0]);
-    printf("\n");
+    GitOid gitoid = gitoid_new_from_url(url);
+    assert(gitoid.len == 32);
+    assert(gitoid.value[0] == 254);
+}
 
-    printf("-- TESTING gitoid_get_url function\n");
-    char *gitoid_url_string = gitoid_get_url(&new_from_url_gitoid);
-    printf("gitoid_get_url: %s\n", gitoid_url_string);
-    gitoid_str_free(gitoid_url_string);
-    printf("\n");
+void test_gitoid_get_url() {
+    char *url_in = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
+    GitOid gitoid = gitoid_new_from_url(url_in);
+    char *url_out = gitoid_get_url(&gitoid);
+    assert(strncmp(url_in, url_out, 83) == 0);
+    gitoid_str_free(url_out);
+}
 
-    printf("-- TESTING gitoid_hash_algorithm_name\n");
-    const char *hash_algorithm = gitoid_hash_algorithm_name(new_from_url_gitoid.hash_algorithm);
-    printf("gitoid_hash_algorithm_name: %s\n", hash_algorithm);
-    printf("\n");
+void test_gitoid_hash_algorithm_name() {
+    GitOid gitoid = gitoid_new_from_str(HashAlgorithm_Sha1, ObjectType_Blob, "hello world");
+    const char *hash_algorithm = gitoid_hash_algorithm_name(gitoid.hash_algorithm);
+    assert(strncmp(hash_algorithm, "sha1", 4) == 0);
+}
 
-    printf("-- TESTING gitoid_object_type_name\n");
-    const char *object_type = gitoid_object_type_name(new_from_url_gitoid.object_type);
-    printf("gitoid_object_type_name: %s\n", object_type);
-    printf("\n");
+void test_gitoid_object_type_name() {
+    GitOid gitoid = gitoid_new_from_str(HashAlgorithm_Sha1, ObjectType_Blob, "hello world");
+    const char *object_type = gitoid_object_type_name(gitoid.object_type);
+    assert(strncmp(object_type, "blob", 4) == 0);
+}
+
+void test_gitoid_validity() {
+    // Notice the SHA type is invalid.
+    char *validity_url = "gitoid:blob:sha000:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
+    GitOid gitoid = gitoid_new_from_url(validity_url);
+    assert(gitoid_invalid(&gitoid));
+
+    // Also test the error message reporting.
+    char *expected_msg = "string is not a valid GitOID URL";
+    char error_msg[256];
+    gitoid_get_error_message(error_msg, 256);
+    assert(strncmp(error_msg, expected_msg, 32) == 0);
+}
+
+typedef void (*test_fn)();
+
+typedef struct test {
+    const char *name;
+    test_fn fn;
+} test_t;
+
+int main() {
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    test_t tests[7] = {
+        {.name = "gitoid_new_from_str", .fn = test_gitoid_new_from_str},
+        {.name = "gitoid_new_from_bytes", .fn = test_gitoid_new_from_bytes},
+        {.name = "gitoid_new_from_url", .fn = test_gitoid_new_from_url},
+        {.name = "gitoid_get_url", .fn = test_gitoid_get_url},
+        {.name = "gitoid_hash_algorithm_name", .fn = test_gitoid_hash_algorithm_name},
+        {.name = "gitoid_object_type_name", .fn = test_gitoid_object_type_name},
+        {.name = "gitoid_validity", .fn = test_gitoid_validity},
+    };
+
+    size_t n_tests = LEN(tests);
+
+    for (size_t i = 0; i < n_tests; ++i) {
+        test_t test = tests[i];
+        printf("[%zu/%zu] TESTING: test_%s... ", i + 1, n_tests, test.name);
+        test.fn();
+        printf("PASSED\n");
+    }
 }
