@@ -6,6 +6,7 @@ use crate::ObjectType;
 use crate::Result;
 use std::io::BufReader;
 use std::io::Read;
+use std::io::Seek;
 
 /// Builder of GitOids with a specific hash algorithm and object type.
 pub struct GitOidBuilder {
@@ -36,19 +37,10 @@ impl GitOidBuilder {
     }
 
     /// Build a `GitOid` from an arbitrary buffered reader.
-    pub fn build_from_reader<R>(
-        &self,
-        reader: BufReader<R>,
-        expected_length: usize,
-    ) -> Result<GitOid>
+    pub fn build_from_reader<R>(&self, reader: BufReader<R>) -> Result<GitOid>
     where
-        R: Read,
+        R: Read + Seek,
     {
-        GitOid::new_from_reader(
-            self.hash_algorithm,
-            self.object_type,
-            reader,
-            expected_length,
-        )
+        GitOid::new_from_reader(self.hash_algorithm, self.object_type, reader)
     }
 }

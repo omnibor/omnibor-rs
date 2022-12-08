@@ -13,6 +13,8 @@ use sha2::digest::DynDigest;
 use std::hash::Hash;
 use std::io::BufReader;
 use std::io::Read;
+use std::io::Seek;
+use std::io::SeekFrom;
 use std::ops::Not as _;
 use std::str::FromStr;
 use url::Url;
@@ -91,18 +93,16 @@ impl GitOid {
     }
 
     /// Create a `GitOid` from a reader.
-    ///
-    /// This requires an `expected_length` as part of a correctness check.
     pub fn new_from_reader<R>(
         hash_algorithm: HashAlgorithm,
         object_type: ObjectType,
-        reader: BufReader<R>,
-        expected_length: usize,
+        mut reader: BufReader<R>,
     ) -> Result<Self>
     where
-        R: Read,
+        R: Read + Seek,
     {
         let digester = hash_algorithm.create_digester();
+        let expected_length = stream_len(&mut reader)? as usize;
         let (len, value) = bytes_from_buffer(digester, reader, expected_length, object_type)?;
 
         Ok(GitOid {
@@ -262,4 +262,50 @@ where
     let len = std::cmp::min(NUM_HASH_BYTES, hash.len());
     ret[..len].copy_from_slice(&hash);
     Ok((len, ret))
+}
+
+// Adapted from the Rust standard library's unstable implementation
+// of `Seek::stream_len`.
+//
+// TODO(abrinker): Remove this when `Seek::stream_len` is stabilized.
+//
+// License reproduction:
+//
+// Permission is hereby granted, free of charge, to any
+// person obtaining a copy of this software and associated
+// documentation files (the "Software"), to deal in the
+// Software without restriction, including without
+// limitation the rights to use, copy, modify, merge,
+// publish, distribute, sublicense, and/or sell copies of
+// the Software, and to permit persons to whom the Software
+// is furnished to do so, subject to the following
+// conditions:
+//
+// The above copyright notice and this permission notice
+// shall be included in all copies or substantial portions
+// of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+// ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+// TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+// SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+// IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+fn stream_len<R>(mut stream: R) -> Result<u64>
+where
+    R: Seek,
+{
+    let old_pos = stream.stream_position()?;
+    let len = stream.seek(SeekFrom::End(0))?;
+
+    // Avoid seeking a third time when we were already at the end of the
+    // stream. The branch is usually way cheaper than a seek operation.
+    if old_pos != len {
+        stream.seek(SeekFrom::Start(old_pos))?;
+    }
+
+    Ok(len)
 }

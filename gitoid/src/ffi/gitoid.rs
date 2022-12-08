@@ -131,12 +131,11 @@ pub extern "C" fn gitoid_new_from_reader(
     hash_algorithm: HashAlgorithm,
     object_type: ObjectType,
     fd: RawFd,
-    expected_length: usize,
 ) -> GitOid {
     let output = catch_panic(|| {
         let file = unsafe { File::from_raw_fd(fd) };
         let reader = BufReader::new(file);
-        let gitoid = GitOid::new_from_reader(hash_algorithm, object_type, reader, expected_length)?;
+        let gitoid = GitOid::new_from_reader(hash_algorithm, object_type, reader)?;
         Ok(gitoid)
     });
 
@@ -155,12 +154,11 @@ pub extern "C" fn gitoid_new_from_reader(
     hash_algorithm: HashAlgorithm,
     object_type: ObjectType,
     handle: RawHandle,
-    expected_length: usize,
 ) -> GitOid {
     let output = catch_panic(|| {
         let file = unsafe { File::from_raw_handle(handle) };
         let reader = BufReader::new(file);
-        let gitoid = GitOid::new_from_reader(hash_algorithm, object_type, reader, expected_length)?;
+        let gitoid = GitOid::new_from_reader(hash_algorithm, object_type, reader)?;
         Ok(gitoid)
     });
 

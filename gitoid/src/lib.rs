@@ -40,6 +40,7 @@
 mod builder;
 mod error;
 mod ffi;
+mod finder;
 mod gitoid;
 mod hash_algorithm;
 mod hash_ref;
@@ -49,6 +50,7 @@ mod tests;
 
 pub use crate::builder::*;
 pub use crate::error::*;
+pub use crate::finder::*;
 pub use crate::gitoid::*;
 pub use crate::hash_algorithm::*;
 pub use crate::hash_ref::*;
