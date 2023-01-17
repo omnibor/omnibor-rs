@@ -1,6 +1,8 @@
 # gitbom-rs
 "An experimental implementation of GitBOM in Rust"
 
+* GitBOM is now [OmniBOR](https://omnibor.io/)
+
 **NOTICE: This project is still a work in progress and is not ready for any use beyond experimental**
 
 ## What is GitBOM?
