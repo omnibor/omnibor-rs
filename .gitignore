@@ -2,3 +2,5 @@
 .vscode/
 Cargo.lock
 gitoid.h
+c-test
+c-test.exe
