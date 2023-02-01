@@ -1,11 +1,13 @@
-use std::{
-    fmt::{self, Display, Formatter},
-    str::FromStr,
-};
+//! The types of objects for which a `GitOid` can be made.
 
 use crate::Error;
+use core::fmt;
+use core::fmt::Display;
+use core::fmt::Formatter;
+use std::str::FromStr;
 
 /// The types of objects for which a `GitOid` can be made.
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ObjectType {
     /// An opaque git blob.

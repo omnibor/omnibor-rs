@@ -1,10 +1,18 @@
 //! A gitoid representing a single artifact.
 
-use crate::{Error, HashAlgorithm, HashRef, ObjectType, Result, NUM_HASH_BYTES};
-use core::fmt::{self, Display, Formatter};
+use crate::Error;
+use crate::HashAlgorithm;
+use crate::HashRef;
+use crate::ObjectType;
+use crate::Result;
+use crate::NUM_HASH_BYTES;
+use core::fmt;
+use core::fmt::Display;
+use core::fmt::Formatter;
 use sha2::digest::DynDigest;
 use std::hash::Hash;
-use std::io::{BufReader, Read};
+use std::io::BufReader;
+use std::io::Read;
 use std::ops::Not as _;
 use std::str::FromStr;
 use url::Url;
@@ -12,6 +20,7 @@ use url::Url;
 /// A struct that computes [gitoids][g] based on the selected algorithm
 ///
 /// [g]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
+#[repr(C)]
 #[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub struct GitOid {
     /// The hash algorithm being used.
@@ -40,6 +49,19 @@ impl GitOid {
     // Constructors
     //-------------------------------------------------------------------------------------------
 
+    /// Construct an invalid `GitOid` which should not be used for anything.
+    ///
+    /// This construction should _only_ be used for error-handling purposes
+    /// when using the `gitoid` crate over FFI.
+    pub fn new_invalid() -> Self {
+        GitOid {
+            hash_algorithm: HashAlgorithm::Sha1,
+            object_type: ObjectType::Blob,
+            len: 0,
+            value: [0u8; NUM_HASH_BYTES],
+        }
+    }
+
     /// Create a new `GitOid` based on a slice of bytes.
     pub fn new_from_bytes(
         hash_algorithm: HashAlgorithm,
@@ -51,7 +73,8 @@ impl GitOid {
         let expected_length = content.len();
 
         // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
-        let (len, value) = bytes_from_buffer(digester, reader, expected_length).unwrap();
+        let (len, value) =
+            bytes_from_buffer(digester, reader, expected_length, object_type).unwrap();
 
         GitOid {
             hash_algorithm,
@@ -80,7 +103,7 @@ impl GitOid {
         R: Read,
     {
         let digester = hash_algorithm.create_digester();
-        let (len, value) = bytes_from_buffer(digester, reader, expected_length)?;
+        let (len, value) = bytes_from_buffer(digester, reader, expected_length, object_type)?;
 
         Ok(GitOid {
             hash_algorithm,
@@ -100,14 +123,15 @@ impl GitOid {
     //-------------------------------------------------------------------------------------------
 
     /// Get a URL for the current `GitOid`.
-    pub fn url(&self) -> Result<Url> {
+    pub fn url(&self) -> Url {
         let s = format!(
             "gitoid:{}:{}:{}",
             self.object_type,
             self.hash_algorithm,
             self.hash()
         );
-        Ok(Url::parse(&s)?)
+        // PANIC SAFETY: We know that this is a valid URL.
+        Url::parse(&s).unwrap()
     }
 
     /// Get the hash data as a slice of bytes.
@@ -123,6 +147,11 @@ impl GitOid {
     /// Get the object type of the `GitOid`.
     pub fn object_type(&self) -> ObjectType {
         self.object_type
+    }
+
+    /// Get the length of the hash in bytes.
+    pub fn hash_len(&self) -> usize {
+        self.len
     }
 }
 
@@ -192,11 +221,12 @@ fn bytes_from_buffer<R>(
     mut digester: Box<dyn DynDigest>,
     mut reader: BufReader<R>,
     expected_length: usize,
+    object_type: ObjectType,
 ) -> Result<(usize, [u8; NUM_HASH_BYTES])>
 where
     BufReader<R>: Read,
 {
-    let prefix = format!("blob {}\0", expected_length);
+    let prefix = format!("{} {}\0", object_type, expected_length);
 
     let mut buf = [0; 4096]; // Linux default page size is 4096
     let mut amount_read: usize = 0;

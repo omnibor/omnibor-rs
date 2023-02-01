@@ -1,8 +1,13 @@
+//! Error arising from `GitOid` construction or use.
+
 use hex::FromHexError as HexError;
 use std::error::Error as StdError;
-use std::fmt::{self, Display, Formatter};
+use std::fmt;
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::io::Error as IoError;
-use url::{ParseError as UrlError, Url};
+use url::ParseError as UrlError;
+use url::Url;
 
 /// A `Result` with `gitoid::Error` as the error type.
 pub(crate) type Result<T> = std::result::Result<T, Error>;
