@@ -24,7 +24,7 @@ fn generate_sha1_gitoid_from_bytes() {
 #[test]
 fn generate_sha1_gitoid_from_buffer() -> Result<()> {
     let reader = BufReader::new(File::open("test/data/hello_world.txt")?);
-    let result = GitOid::new_from_reader(Sha1, Blob, reader, 11)?;
+    let result = GitOid::new_from_reader(Sha1, Blob, reader)?;
 
     assert_eq!(
         result.hash().as_hex(),
@@ -58,7 +58,7 @@ fn generate_sha256_gitoid_from_bytes() {
 #[test]
 fn generate_sha256_gitoid_from_buffer() -> Result<()> {
     let reader = BufReader::new(File::open("test/data/hello_world.txt")?);
-    let result = GitOid::new_from_reader(Sha256, Blob, reader, 11)?;
+    let result = GitOid::new_from_reader(Sha256, Blob, reader)?;
 
     assert_eq!(
         result.hash().as_hex(),
@@ -165,4 +165,62 @@ fn try_url_roundtrip() {
     eprintln!("{}", output);
 
     assert_eq!(url, output);
+}
+
+#[test]
+fn try_finder() {
+    let hash_algorithm = HashAlgorithm::Sha256;
+    let object_type = ObjectType::Blob;
+    let gitoids = vec![
+        GitOid::new_from_str(hash_algorithm, object_type, "a"),
+        GitOid::new_from_str(hash_algorithm, object_type, "b"),
+        GitOid::new_from_str(hash_algorithm, object_type, "c"),
+        GitOid::new_from_str(hash_algorithm, object_type, "d"),
+        GitOid::new_from_str(hash_algorithm, object_type, "e"),
+        GitOid::new_from_str(hash_algorithm, object_type, "f"),
+        GitOid::new_from_str(hash_algorithm, object_type, "g"),
+        GitOid::new_from_str(hash_algorithm, object_type, "h"),
+        GitOid::new_from_str(hash_algorithm, object_type, "i"),
+        GitOid::new_from_str(hash_algorithm, object_type, "j"),
+        GitOid::new_from_str(hash_algorithm, object_type, "k"),
+        GitOid::new_from_str(hash_algorithm, object_type, "l"),
+        GitOid::new_from_str(hash_algorithm, object_type, "m"),
+        GitOid::new_from_str(hash_algorithm, object_type, "n"),
+        GitOid::new_from_str(hash_algorithm, object_type, "o"),
+        GitOid::new_from_str(hash_algorithm, object_type, "p"),
+        GitOid::new_from_str(hash_algorithm, object_type, "q"),
+        GitOid::new_from_str(hash_algorithm, object_type, "r"),
+        GitOid::new_from_str(hash_algorithm, object_type, "s"),
+        GitOid::new_from_str(hash_algorithm, object_type, "t"),
+        GitOid::new_from_str(hash_algorithm, object_type, "u"),
+        GitOid::new_from_str(hash_algorithm, object_type, "v"),
+        GitOid::new_from_str(hash_algorithm, object_type, "w"),
+        GitOid::new_from_str(hash_algorithm, object_type, "x"),
+        GitOid::new_from_str(hash_algorithm, object_type, "y"),
+        GitOid::new_from_str(hash_algorithm, object_type, "z"),
+    ];
+
+    let finder = Finder::for_gitoids(hash_algorithm, object_type, &gitoids);
+
+    let to_find = vec![
+        ("a", GitOid::new_from_str(hash_algorithm, object_type, "a")),
+        ("c", GitOid::new_from_str(hash_algorithm, object_type, "c")),
+        ("e", GitOid::new_from_str(hash_algorithm, object_type, "e")),
+        ("g", GitOid::new_from_str(hash_algorithm, object_type, "g")),
+        ("i", GitOid::new_from_str(hash_algorithm, object_type, "i")),
+        ("k", GitOid::new_from_str(hash_algorithm, object_type, "k")),
+        ("m", GitOid::new_from_str(hash_algorithm, object_type, "m")),
+        ("o", GitOid::new_from_str(hash_algorithm, object_type, "o")),
+        ("q", GitOid::new_from_str(hash_algorithm, object_type, "q")),
+        ("s", GitOid::new_from_str(hash_algorithm, object_type, "s")),
+        ("u", GitOid::new_from_str(hash_algorithm, object_type, "u")),
+        ("w", GitOid::new_from_str(hash_algorithm, object_type, "w")),
+        ("y", GitOid::new_from_str(hash_algorithm, object_type, "y")),
+    ];
+
+    let found: Vec<_> = finder.find_all(to_find).map(|(id, _gitoid)| id).collect();
+    let expected = vec![
+        "a", "c", "e", "g", "i", "k", "m", "o", "q", "s", "u", "w", "y",
+    ];
+    assert_eq!(found, expected);
 }
