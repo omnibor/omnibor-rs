@@ -10,22 +10,22 @@ use im::{HashSet, Vector};
 /// [wiki]: https://en.wikipedia.org/wiki/Persistent_data_structure
 /// [git_scm]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
 #[derive(Clone, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
-pub struct GitBom {
+pub struct OmniBor {
     git_oids: HashSet<GitOid>,
 }
 
-impl FromIterator<GitOid> for GitBom {
-    /// Create a GitBom from many GitOids
+impl FromIterator<GitOid> for OmniBor {
+    /// Create an OmniBor from many GitOids
     fn from_iter<T>(gitoids: T) -> Self
     where
         T: IntoIterator<Item = GitOid>,
     {
-        let me = GitBom::new();
+        let me = OmniBor::new();
         me.add_many(gitoids)
     }
 }
 
-impl GitBom {
+impl OmniBor {
     /// Create a new instance
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
@@ -34,23 +34,23 @@ impl GitBom {
         }
     }
 
-    /// Create a GitBom from many GitOids
+    /// Create a OmniBor from many GitOids
     pub fn new_from_iterator<I>(gitoids: I) -> Self
     where
         I: IntoIterator<Item = GitOid>,
     {
-        let me = GitBom::new();
+        let me = OmniBor::new();
         me.add_many(gitoids)
     }
 
-    /// Add a `GitOid` hash to the `GitBom`.
+    /// Add a `GitOid` hash to the `OmniBor`.
     ///
     /// Note that this creates a new persistent data structure under the hood.
     pub fn add(&self, gitoid: GitOid) -> Self {
         self.add_many([gitoid])
     }
 
-    /// Append many `GitOid`s and return a new `GitBom`
+    /// Append many `GitOid`s and return a new `OmniBor`
     pub fn add_many<I>(&self, gitoids: I) -> Self
     where
         I: IntoIterator<Item = GitOid>,
@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn test_add() {
         let oid = GitOid::new_from_str(HashAlgorithm::Sha256, Blob, "Hello");
-        assert_eq!(GitBom::new().add(oid).get_sorted_oids(), vector![oid])
+        assert_eq!(OmniBor::new().add(oid).get_sorted_oids(), vector![oid])
     }
 
     #[test]
@@ -98,7 +98,7 @@ mod tests {
             .map(|s| GitOid::new_from_str(HashAlgorithm::Sha256, Blob, s))
             .collect();
 
-        let da_bom = GitBom::new().add_many(oids.clone());
+        let da_bom = OmniBor::new().add_many(oids.clone());
         oids.sort();
         assert_eq!(da_bom.get_sorted_oids(), oids);
     }
@@ -109,7 +109,7 @@ mod tests {
 
         let generated_gitoid = GitOid::new_from_bytes(HashAlgorithm::Sha256, Blob, input);
 
-        let new_gitbom = GitBom::new();
+        let new_gitbom = OmniBor::new();
         let new_gitbom = new_gitbom.add(generated_gitoid);
 
         assert_eq!(
