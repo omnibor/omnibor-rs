@@ -71,6 +71,6 @@ There are tests for the C bindings in `gitoid/src/ffi/test.c` To exercise them:
 
 ```
 $ cargo build
-$ gcc --std=c11 -o c-test gitoid/src/ffi/test.c -L target/debug/ -lgitoid
+$ gcc --std=c11 -o c-test gitoid/test/c/test.c -L target/debug/ -lgitoid
 $ LD_LIBRARY_PATH=target/debug/ ./c-test
 ```

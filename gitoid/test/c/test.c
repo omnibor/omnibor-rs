@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
-#include "gitoid.h"
+#include "../../gitoid.h"
 
 #define LEN(arr) (sizeof(arr) / sizeof(arr[0]));
 
