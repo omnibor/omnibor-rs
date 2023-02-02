@@ -67,10 +67,10 @@ Add `#define NUM_HASH_BYTES 32` to these lines (do not edit anything else in the
 
 Save and close.
 
-There are tests for the C bindings in `gitoid/src/ffi/test.c` To exercise them:
+There are tests for the C bindings in `gitoid/test/c/test.c` To exercise them:
 
 ```
 $ cargo build
-$ gcc --std=c11 -o c-test gitoid/src/ffi/test.c -L target/debug/ -lgitoid
-$ LD_LIBRARY_PATH=target/debug/ ./c-test
+$ cd gitoid
+$ make
 ```

@@ -31,7 +31,7 @@ c_test:
 	
 	@echo "--------------------------------------------------"
 	@echo "BUILDING C TEST FILE"
-	@gcc --std=c99 -I"${INCLUDE_DIR}" -L"${LIB_DIR}" -l"${LIB_NAME}" -o"${TEST_EXE_FILE}" "${TEST_SRC_FILE}"
+	@gcc --std=c99 -I"${INCLUDE_DIR}" -L"${LIB_DIR}" -o"${TEST_EXE_FILE}" "${TEST_SRC_FILE}" -l"${LIB_NAME}" 
 
 	@echo "--------------------------------------------------"
 	@echo "RUNNING C TEST FILE"
