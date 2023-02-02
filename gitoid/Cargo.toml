@@ -8,7 +8,7 @@ license = "Apache-2.0"
 name = "gitoid"
 readme = "../README.md"
 repository = "https://github.com/git-bom/gitbom-rs"
-version = "0.1.4"
+version = "0.1.5"
 
 [lib]
 crate-type = ["rlib", "cdylib"]
