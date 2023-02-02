@@ -11,7 +11,7 @@ repository = "https://github.com/git-bom/gitbom-rs"
 version = "0.1.6"
 
 [dependencies]
-gitoid = "0.1.4"
+gitoid = "0.1.5"
 hex = "0.4.3"
 im = "15.1.0"
 sha1 = "0.10.4"
