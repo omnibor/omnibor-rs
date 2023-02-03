@@ -1,76 +1,49 @@
-# omnibor-rs
-"An experimental implementation of OmniBOR in Rust"
+# `omnibor-rs`
 
-* GitBOM is now [OmniBOR](https://omnibor.io/)
+__This project is a work in progress and is not ready for any use beyond experimental.__
 
-**NOTICE: This project is still a work in progress and is not ready for any use beyond experimental**
+[OmniBOR][omnibor] is a draft standard for creating (and optionally embedding
+in a binary) a record of cryptographic hashes for all build inputs for a software
+artifact. It is intended to serve as a complement to Software Bills of Material
+(SBOMs) like SPDX or CycloneDX, by saying not just what dependencies a project has,
+but _what exact inputs_ went into an artifact's production.
 
-## What is OmniBOR?
+This repository contains two Rust crates:
 
-To quote [the OmniBOR website](https://omnibor.io/):
+- `omnibor`: an implementation of the OmniBOR specification.
+- `gitoid`: an implement of Git Object Identifiers (GitOids), the mechanism
+  OmniBOR uses for hashing inputs.
 
-```
-OmniBOR is a minimalistic scheme for build tools to:
-1. Build a compact artifact tree, tracking every source code file incorporated into each build artifact
-2. Embed a unique, content addressable reference for that artifact tree, the gitoid identifier, into the artifact at build time
-```
+## Using from Other Languages
 
-For information, see [the website](https://omnibor.io/) and the [list of OmniBOR resources](https://omnibor.io/resources/)
+The `gitoid` crate exposes a Foreign Function Interface (FFI), and can be used as the
+basis for implementing GitOID generation and matching in other languages.
 
-## What is omnibor-rs?
+This interface uses [`cbindgen`][cbindgen] to generate the header file, and the
+`gitoid` crate is configured to generate a library file suitable for linking from
+other languages.
 
-omnibor-rs is an experimental implementation of OmniBOR in Rust. This is an important learning exercise and will inform future implementations of OmniBOR in the future (both in Rust and in other languages)
+An example of how to build and link with `gitoid` from other languages is given
+in `gitoid/Makefile`.
 
-## C-Bindings
+## Contributing
 
-(TODO - improve this flow)
+We're happy to accept contributions!
 
-This project contains an experimental C API for certain functions in the gitoid crate. The intent is to allow any language that can use C bindings to be able to use this API to use the functions in this crate.
+For bug fixes and minor changes to the implementation, feel free to open an issue
+in the issue tracker explaining what you'd like to fix, and then open a Pull
+Request with the change.
 
-We use [cbindgen](https://github.com/eqrion/cbindgen) to generate the C headers for the public C API.
+For larger design changes, you may also want to discuss the changes either in the
+issue tracker or on the `#omnibor` channel on the [Open Source Security Foundation
+(OpenSSF) Slack workspace][ossf_slack].
 
-```
-$ cargo install --force cbindgen
-$ cd gitoid
-$ cbindgen --config ../cbindgen.toml --crate gitoid --output gitoid.h
-```
+## License
 
-Open up the gitoid.h file (this is the main part that needs to be improved - we shouldn't have to manually edit this file).
+The `omnibor` and `gitoid` crates are both Apache 2.0 licensed. You can read the
+full license text in the `LICENSE` file.
 
-At the top of the file, you should see these lines
+[omnibor]: https://omnibor.io
+[cbindgen]: https://github.com/eqrion/cbindgen
+[ossf_slack]: https://slack.openssf.org/
 
-```
-/**
- * @file
- * @brief "GitBom"
- */
-
-
-#ifndef gitbom_h
-#define gitbom_h
-```
-
-Add `#define NUM_HASH_BYTES 32` to these lines (do not edit anything else in the file!)
-
-
-```
-/**
- * @file
- * @brief "GitBom"
- */
-
-
-#ifndef gitbom_h
-#define gitbom_h
-#define NUM_HASH_BYTES 32
-```
-
-Save and close.
-
-There are tests for the C bindings in `gitoid/test/c/test.c` To exercise them:
-
-```
-$ cargo build
-$ cd gitoid
-$ make
-```
