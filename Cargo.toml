@@ -1,4 +1,4 @@
 [workspace]
 
-members = ["gitbom", "gitoid"]
+members = ["omnibor", "gitoid"]
 
