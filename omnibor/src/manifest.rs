@@ -1,8 +1,6 @@
-use crate::Result;
 use gitoid::GitOid;
 use gitoid::HashAlgorithm;
 use std::collections::BTreeSet;
-use std::path::Path;
 
 /// An Artifact Input Manifest (AIM) for a software artifact.
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
