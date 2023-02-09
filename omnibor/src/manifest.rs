@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 /// An Artifact Input Manifest (AIM) for a software artifact.
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub struct Manifest {
-    /// The hash algorithm associated with all records in the manifest.
+    /// The hash algorithm associated with all entries in the manifest.
     hash_algorithm: HashAlgorithm,
     /// The individual entries in the manifest.
     entries: BTreeSet<ManifestEntry>,
@@ -22,7 +22,7 @@ pub struct ManifestEntry {
 }
 
 impl ManifestEntry {
-    // Get the ID of the artifact in question.
+    // Get the ID of the artifact.
     pub fn artifact_id(&self) -> GitOid {
         self.artifact_id
     }
