@@ -26,7 +26,7 @@ impl ManifestEntry {
         self.artifact_id
     }
 
-    /// Get the ID of the manifest describing the inputs to the artifact, in a manifest exists.
+    /// Get the ID of the manifest describing the artifact's inputs.
     pub fn manifest_id(&self) -> Option<GitOid> {
         self.manifest_id
     }
