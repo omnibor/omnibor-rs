@@ -1,9 +1,11 @@
 use crate::Result;
-use gitoid::{GitOid, HashAlgorithm};
-use std::{collections::BTreeSet, io::Write, path::Path};
+use gitoid::GitOid;
+use gitoid::HashAlgorithm;
+use std::collections::BTreeSet;
+use std::path::Path;
 
 /// An Artifact Input Manifest (AIM) from a binary or file.
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub struct Manifest {
     /// The hash algorithm associated with all records in the manifest.
     hash_algorithm: HashAlgorithm,
@@ -12,21 +14,30 @@ pub struct Manifest {
 }
 
 /// An individual entry in the `Manifest`.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum ManifestEntry {
-    /// A terminal object.
-    Input(GitOid),
-    /// Another manifest.
-    Manifest(ManifestRef),
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
+pub struct ManifestEntry {
+    /// The identifier for the input.
+    artifact_id: GitOid,
+    /// The identifier for the manifest of inputs to the input.
+    manifest_id: Option<GitOid>,
 }
 
-/// An identifier for a `Manifest` referenced inside a `Manifest`.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct ManifestRef {
-    /// The `GitOid` for the artifact whose inputs are in the manifest.
-    target_id: GitOid,
-    /// The `GitOid` for the manifest itself.
-    manifest_id: GitOid,
+impl ManifestEntry {
+    // Get the ID of the artifact in question.
+    pub fn artifact_id(&self) -> GitOid {
+        self.artifact_id
+    }
+
+    /// Get the ID of the manifest describing the inputs to the artifact, in a manifest exists.
+    pub fn manifest_id(&self) -> Option<GitOid> {
+        self.manifest_id
+    }
+}
+
+impl PartialOrd for ManifestEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.artifact_id().partial_cmp(&other.artifact_id())
+    }
 }
 
 /// An ELF section containing a byte representation of a manifest.
