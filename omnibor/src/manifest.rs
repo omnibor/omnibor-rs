@@ -4,7 +4,7 @@ use gitoid::HashAlgorithm;
 use std::collections::BTreeSet;
 use std::path::Path;
 
-/// An Artifact Input Manifest (AIM) from a binary or file.
+/// An Artifact Input Manifest (AIM) for a software artifact.
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub struct Manifest {
     /// The hash algorithm associated with all records in the manifest.
@@ -37,47 +37,5 @@ impl ManifestEntry {
 impl PartialOrd for ManifestEntry {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.artifact_id().partial_cmp(&other.artifact_id())
-    }
-}
-
-/// An ELF section containing a byte representation of a manifest.
-pub struct ElfSection(Vec<u8>);
-
-/// A handle to produce the plaintext representation of a manifest.
-pub struct ManifestText<'m>(&'m Manifest);
-
-impl Manifest {
-    /// Load a manifest embedded in an ELF file.
-    pub fn from_elf_binary<P>(path: P) -> Result<Manifest>
-    where
-        P: AsRef<Path>,
-    {
-        fn inner(_path: &Path) -> Result<Manifest> {
-            todo!()
-        }
-
-        inner(path.as_ref())
-    }
-
-    /// Load a manifest from a plaintext file.
-    pub fn from_text_file<P>(path: P) -> Result<Manifest>
-    where
-        P: AsRef<Path>,
-    {
-        fn inner(_path: &Path) -> Result<Manifest> {
-            todo!()
-        }
-
-        inner(path.as_ref())
-    }
-
-    /// Get the bytes to embed the manifest in an ELF binary.
-    pub fn as_elf_section(&self) -> ElfSection {
-        todo!()
-    }
-
-    /// Get a handle to the plaintext representation of the manifest.
-    pub fn as_text(&self) -> ManifestText {
-        todo!()
     }
 }
