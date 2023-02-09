@@ -1,5 +1,6 @@
 use gitoid::GitOid;
 use gitoid::HashAlgorithm;
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
 
 /// An Artifact Input Manifest (AIM) for a software artifact.
@@ -32,8 +33,9 @@ impl ManifestEntry {
     }
 }
 
+// Ensure `ManifestEntry` ordering only depends on the artifact ID.
 impl PartialOrd for ManifestEntry {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.artifact_id().partial_cmp(&other.artifact_id())
     }
 }
