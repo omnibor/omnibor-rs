@@ -55,7 +55,7 @@ impl GitOid {
     ///
     /// This construction should _only_ be used for error-handling purposes
     /// when using the `gitoid` crate over FFI.
-    pub fn new_invalid() -> Self {
+    pub(crate) fn new_invalid() -> Self {
         GitOid {
             hash_algorithm: HashAlgorithm::Sha1,
             object_type: ObjectType::Blob,
