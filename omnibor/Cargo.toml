@@ -12,7 +12,3 @@ version = "0.1.7"
 
 [dependencies]
 gitoid = "0.1.5"
-hex = "0.4.3"
-im = "15.1.0"
-sha1 = "0.10.4"
-sha2 = "0.10.5"
