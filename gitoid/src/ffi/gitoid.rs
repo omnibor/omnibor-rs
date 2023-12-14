@@ -15,8 +15,14 @@ use std::ffi::CStr;
 use std::ffi::CString;
 use std::fs::File;
 use std::io::BufReader;
+#[cfg(target_family = "unix")]
 use std::os::unix::prelude::FromRawFd;
+#[cfg(target_family = "unix")]
 use std::os::unix::prelude::RawFd;
+#[cfg(target_family = "windows")]
+use std::os::windows::io::FromRawHandle;
+#[cfg(target_family = "windows")]
+use std::os::windows::prelude::RawHandle;
 use std::ptr::null;
 use std::ptr::null_mut;
 use std::slice;
@@ -64,6 +70,8 @@ pub extern "C" fn gitoid_invalid(gitoid: *const GitOid) -> c_int {
 
 /// Construct a new `GitOid` from a buffer of bytes.
 ///
+/// `content_len` is the number of elements, not the number of bytes.
+///
 /// `content_len` times 8 (byte size) must be less than or equal to the
 /// maximum size representable with an unsigned integer at the size used by
 /// the ISA (32-bit or 64-bit usually).
@@ -74,7 +82,7 @@ pub extern "C" fn gitoid_invalid(gitoid: *const GitOid) -> c_int {
 pub extern "C" fn gitoid_new_from_bytes(
     hash_algorithm: HashAlgorithm,
     object_type: ObjectType,
-    content: *const u8,
+    content: *mut u8,
     content_len: usize,
 ) -> GitOid {
     let output = catch_panic(|| {
@@ -277,5 +285,5 @@ pub extern "C" fn gitoid_str_free(s: *mut c_char) {
         return;
     }
 
-    unsafe { CString::from_raw(s) };
+    let _ = unsafe { CString::from_raw(s) };
 }
