@@ -4,7 +4,7 @@
 # It is intended to be easy for newcomers to the project to understand.
 
 # Variables for cbindgen.
-CBINDGEN_CONFIG="../cbindgen.toml"
+CBINDGEN_CONFIG="./cbindgen.toml"
 
 # Variables for the header file.
 INCLUDE_DIR="./include"
