@@ -4,7 +4,7 @@ use crate::Error;
 use core::fmt;
 use core::fmt::Display;
 use core::fmt::Formatter;
-use std::str::FromStr;
+use core::str::FromStr;
 
 /// The types of objects for which a `GitOid` can be made.
 #[repr(C)]

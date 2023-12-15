@@ -3,7 +3,7 @@
 use core::fmt;
 use core::fmt::Display;
 use core::fmt::Formatter;
-use std::ops::Deref;
+use core::ops::Deref;
 
 /// The hash produced for a `GitOid`
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

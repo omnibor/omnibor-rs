@@ -2,7 +2,7 @@
 
 use crate::ffi::error::Error;
 use crate::ffi::status::Status;
-use std::ffi::c_int;
+use core::ffi::c_int;
 use std::ffi::CString;
 use std::io::Write as _;
 

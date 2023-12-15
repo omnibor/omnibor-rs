@@ -5,11 +5,11 @@ use crate::Result;
 use core::fmt;
 use core::fmt::Display;
 use core::fmt::Formatter;
+use core::str::FromStr;
 use sha1::Sha1;
 use sha2::digest::DynDigest;
 use sha2::Digest;
 use sha2::Sha256;
-use std::str::FromStr;
 
 /// The available algorithms for computing hashes
 #[repr(C)]

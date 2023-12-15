@@ -9,9 +9,13 @@ use crate::ffi::util::write_to_c_buf;
 use crate::GitOid;
 use crate::HashAlgorithm;
 use crate::ObjectType;
-use std::ffi::c_char;
-use std::ffi::c_int;
-use std::ffi::CStr;
+use core::ffi::c_char;
+use core::ffi::c_int;
+use core::ffi::CStr;
+use core::ptr::null;
+use core::ptr::null_mut;
+use core::slice::from_raw_parts;
+use core::slice::from_raw_parts_mut;
 use std::ffi::CString;
 use std::fs::File;
 use std::io::BufReader;
@@ -23,9 +27,6 @@ use std::os::unix::prelude::RawFd;
 use std::os::windows::io::FromRawHandle;
 #[cfg(target_family = "windows")]
 use std::os::windows::prelude::RawHandle;
-use std::ptr::null;
-use std::ptr::null_mut;
-use std::slice;
 use url::Url;
 
 /// Get the last-written error message written to a buffer.
@@ -44,7 +45,7 @@ pub extern "C" fn gitoid_get_error_message(buffer: *mut c_char, length: c_int) -
     }
 
     // Convert the buffer raw pointer into a byte slice.
-    let buffer = unsafe { slice::from_raw_parts_mut(buffer as *mut u8, length as usize) };
+    let buffer = unsafe { from_raw_parts_mut(buffer as *mut u8, length as usize) };
 
     // Get the last error, possibly empty if there isn't one.
     let last_err = get_error_msg().unwrap_or_default();
@@ -87,7 +88,7 @@ pub extern "C" fn gitoid_new_from_bytes(
 ) -> GitOid {
     let output = catch_panic(|| {
         check_null(content, Error::ContentPtrIsNull)?;
-        let content = unsafe { slice::from_raw_parts(content, content_len) };
+        let content = unsafe { from_raw_parts(content, content_len) };
         Ok(GitOid::new_from_bytes(hash_algorithm, object_type, content))
     });
 
