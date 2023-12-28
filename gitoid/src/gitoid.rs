@@ -6,17 +6,18 @@ use crate::HashRef;
 use crate::ObjectType;
 use crate::Result;
 use crate::NUM_HASH_BYTES;
+use core::cmp::min;
 use core::fmt;
 use core::fmt::Display;
 use core::fmt::Formatter;
+use core::hash::Hash;
+use core::ops::Not as _;
+use core::str::FromStr;
 use sha2::digest::DynDigest;
-use std::hash::Hash;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
-use std::ops::Not as _;
-use std::str::FromStr;
 use url::Url;
 
 /// A struct that computes [gitoids][g] based on the selected algorithm
@@ -259,7 +260,7 @@ where
     let hash = digester.finalize();
     let mut ret = [0u8; NUM_HASH_BYTES];
 
-    let len = std::cmp::min(NUM_HASH_BYTES, hash.len());
+    let len = min(NUM_HASH_BYTES, hash.len());
     ret[..len].copy_from_slice(&hash);
     Ok((len, ret))
 }

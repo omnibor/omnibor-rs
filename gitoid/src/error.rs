@@ -1,16 +1,17 @@
 //! Error arising from `GitOid` construction or use.
 
+use core::fmt::Display;
+use core::fmt::Formatter;
+use core::fmt::Result as FmtResult;
+use core::result::Result as StdResult;
 use hex::FromHexError as HexError;
 use std::error::Error as StdError;
-use std::fmt;
-use std::fmt::Display;
-use std::fmt::Formatter;
 use std::io::Error as IoError;
 use url::ParseError as UrlError;
 use url::Url;
 
 /// A `Result` with `gitoid::Error` as the error type.
-pub(crate) type Result<T> = std::result::Result<T, Error>;
+pub(crate) type Result<T> = StdResult<T, Error>;
 
 /// An error arising during `GitOid` construction or use.
 #[derive(Debug)]
@@ -39,7 +40,7 @@ pub enum Error {
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Error::BadLength { expected, actual } => {
                 write!(f, "expected length {}, actual length {}", expected, actual)

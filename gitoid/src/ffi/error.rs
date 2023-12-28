@@ -13,16 +13,16 @@
 //! errors to users of the `gitoid` FFI.
 
 use crate::error::Error as GitOidError;
-use std::any::Any;
-use std::cell::RefCell;
+use core::any::Any;
+use core::cell::RefCell;
+use core::fmt::Display;
+use core::fmt::Formatter;
+use core::fmt::Result as FmtResult;
+use core::panic::UnwindSafe;
+use core::str::Utf8Error;
 use std::error::Error as StdError;
 use std::ffi::NulError;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::fmt::Result as FmtResult;
 use std::panic::catch_unwind;
-use std::panic::UnwindSafe;
-use std::str::Utf8Error;
 use url::ParseError as UrlError;
 
 thread_local! {
