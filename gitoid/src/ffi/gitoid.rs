@@ -140,11 +140,18 @@ pub extern "C" fn gitoid_new_from_reader(
     hash_algorithm: HashAlgorithm,
     object_type: ObjectType,
     fd: RawFd,
+    should_buffer: bool,
 ) -> GitOid {
     let output = catch_panic(|| {
         let file = unsafe { File::from_raw_fd(fd) };
-        let reader = BufReader::new(file);
-        let gitoid = GitOid::new_from_reader(hash_algorithm, object_type, reader)?;
+
+        let gitoid = if should_buffer {
+            let reader = BufReader::new(file);
+            GitOid::new_from_reader(hash_algorithm, object_type, reader)?
+        } else {
+            GitOid::new_from_reader(hash_algorithm, object_type, file)?
+        };
+
         Ok(gitoid)
     });
 

@@ -97,7 +97,7 @@ impl GitOid {
     pub fn new_from_reader<R>(
         hash_algorithm: HashAlgorithm,
         object_type: ObjectType,
-        mut reader: BufReader<R>,
+        mut reader: R,
     ) -> Result<Self>
     where
         R: Read + Seek,
@@ -220,12 +220,12 @@ impl TryFrom<Url> for GitOid {
 /// wrong and the hash is not valid.
 fn bytes_from_buffer<R>(
     mut digester: Box<dyn DynDigest>,
-    mut reader: BufReader<R>,
+    mut reader: R,
     expected_length: usize,
     object_type: ObjectType,
 ) -> Result<(usize, [u8; NUM_HASH_BYTES])>
 where
-    BufReader<R>: Read,
+    R: Read,
 {
     let prefix = format!("{} {}\0", object_type, expected_length);
 
