@@ -7,7 +7,7 @@ use core::fmt::Formatter;
 use core::str::FromStr;
 
 /// The types of objects for which a `GitOid` can be made.
-#[repr(C)]
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ObjectType {
     /// An opaque git blob.
@@ -18,6 +18,8 @@ pub enum ObjectType {
     Commit,
     /// A Git tag.
     Tag,
+    /// An invalid object
+    Invalid,
 }
 
 impl Display for ObjectType {
@@ -30,6 +32,7 @@ impl Display for ObjectType {
                 ObjectType::Tree => "tree",
                 ObjectType::Commit => "commit",
                 ObjectType::Tag => "tag",
+                ObjectType::Invalid => "invalid",
             }
         )
     }
@@ -44,6 +47,7 @@ impl FromStr for ObjectType {
             "tree" => Ok(ObjectType::Tree),
             "commit" => Ok(ObjectType::Commit),
             "tag" => Ok(ObjectType::Tag),
+            // Invalid objects can't be constructed from a string.
             _ => Err(Error::UnknownObjectType(s.to_owned())),
         }
     }

@@ -29,8 +29,10 @@ pub enum Error {
     MissingHash(Url),
     /// Tried to parse an unknown object type.
     UnknownObjectType(String),
-    /// Tried to parse an unknown hash algorithm.
-    UnknownHashAlgorithm(String),
+    /// The expected hash algorithm didn't match the provided algorithm.
+    MismatchedHashAlgorithm(String, String),
+    /// The expected size of a hash for an algorithm didn't match the provided size.
+    UnexpectedHashLength(usize, usize),
     /// Tried to parse an invalid hex string.
     InvalidHex(HexError),
     /// Could not construct a valid URL based on the `GitOid` data.
@@ -52,7 +54,14 @@ impl Display for Error {
             }
             Error::MissingHash(url) => write!(f, "missing hash in URL '{}'", url),
             Error::UnknownObjectType(s) => write!(f, "unknown object type '{}'", s),
-            Error::UnknownHashAlgorithm(s) => write!(f, "unknown hash algorithm '{}'", s),
+            Error::MismatchedHashAlgorithm(s1, s2) => write!(
+                f,
+                "mismatched hash algorithm; expected '{}', got '{}'",
+                s1, s2
+            ),
+            Error::UnexpectedHashLength(s1, s2) => {
+                write!(f, "unexpected hash length; expected '{}', got '{}'", s1, s2)
+            }
             Error::InvalidHex(_) => write!(f, "invalid hex string"),
             Error::Url(e) => write!(f, "{}", e),
             Error::Io(e) => write!(f, "{}", e),
@@ -69,7 +78,8 @@ impl StdError for Error {
             | Error::MissingHashAlgorithm(_)
             | Error::MissingHash(_)
             | Error::UnknownObjectType(_)
-            | Error::UnknownHashAlgorithm(_) => None,
+            | Error::MismatchedHashAlgorithm(_, _)
+            | Error::UnexpectedHashLength(_, _) => None,
             Error::InvalidHex(e) => Some(e),
             Error::Url(e) => Some(e),
             Error::Io(e) => Some(e),

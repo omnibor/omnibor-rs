@@ -7,7 +7,6 @@ use crate::ffi::status::Status;
 use crate::ffi::util::check_null;
 use crate::ffi::util::write_to_c_buf;
 use crate::GitOid;
-use crate::HashAlgorithm;
 use crate::ObjectType;
 use core::ffi::c_char;
 use core::ffi::c_int;

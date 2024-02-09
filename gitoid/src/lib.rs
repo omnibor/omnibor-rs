@@ -12,7 +12,7 @@
 //! `gitoid` is also an IANA-registered URL scheme, meaning that GitOIDs
 //! are represented and shared as URLs. A `gitoid` URL looks like:
 //!
-//! ```ignore
+//! ```text
 //! gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03
 //! ```
 //!
@@ -39,19 +39,18 @@
 
 mod builder;
 mod error;
-mod ffi;
-mod finder;
+// TODO(abrinker): Return the FFI code when it's been updated to the new GitOid type.
+// mod ffi;
 mod gitoid;
-mod hash_algorithm;
 mod hash_ref;
+mod named_digest;
 mod object_type;
 #[cfg(test)]
 mod tests;
 
 pub use crate::builder::*;
 pub use crate::error::*;
-pub use crate::finder::*;
 pub use crate::gitoid::*;
-pub use crate::hash_algorithm::*;
 pub use crate::hash_ref::*;
+pub use crate::named_digest::*;
 pub use crate::object_type::*;
