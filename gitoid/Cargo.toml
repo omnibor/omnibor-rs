@@ -20,5 +20,6 @@ digest = "0.10.7"
 generic-array = "0.14.7"
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 sha1 = { version = "0.10.6", default-features = false, features = ["std"] }
+sha1collisiondetection = "0.3.3"
 sha2 = { version = "0.10.8", default-features = false }
 url = "2.4.1"

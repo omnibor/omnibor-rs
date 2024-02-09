@@ -54,3 +54,6 @@ pub use crate::gitoid::*;
 pub use crate::hash_ref::*;
 pub use crate::named_digest::*;
 pub use crate::object_type::*;
+pub use sha1::Sha1;
+pub use sha1collisiondetection::Sha1CD as Sha1Cd;
+pub use sha2::Sha256;

@@ -30,9 +30,9 @@ pub enum Error {
     /// Tried to parse an unknown object type.
     UnknownObjectType(String),
     /// The expected hash algorithm didn't match the provided algorithm.
-    MismatchedHashAlgorithm(String, String),
+    MismatchedHashAlgorithm { expected: String, observed: String },
     /// The expected size of a hash for an algorithm didn't match the provided size.
-    UnexpectedHashLength(usize, usize),
+    UnexpectedHashLength { expected: usize, observed: usize },
     /// Tried to parse an invalid hex string.
     InvalidHex(HexError),
     /// Could not construct a valid URL based on the `GitOid` data.
@@ -54,13 +54,17 @@ impl Display for Error {
             }
             Error::MissingHash(url) => write!(f, "missing hash in URL '{}'", url),
             Error::UnknownObjectType(s) => write!(f, "unknown object type '{}'", s),
-            Error::MismatchedHashAlgorithm(s1, s2) => write!(
+            Error::MismatchedHashAlgorithm { expected, observed } => write!(
                 f,
                 "mismatched hash algorithm; expected '{}', got '{}'",
-                s1, s2
+                expected, observed
             ),
-            Error::UnexpectedHashLength(s1, s2) => {
-                write!(f, "unexpected hash length; expected '{}', got '{}'", s1, s2)
+            Error::UnexpectedHashLength { expected, observed } => {
+                write!(
+                    f,
+                    "unexpected hash length; expected '{}', got '{}'",
+                    expected, observed
+                )
             }
             Error::InvalidHex(_) => write!(f, "invalid hex string"),
             Error::Url(e) => write!(f, "{}", e),
@@ -78,8 +82,8 @@ impl StdError for Error {
             | Error::MissingHashAlgorithm(_)
             | Error::MissingHash(_)
             | Error::UnknownObjectType(_)
-            | Error::MismatchedHashAlgorithm(_, _)
-            | Error::UnexpectedHashLength(_, _) => None,
+            | Error::MismatchedHashAlgorithm { .. }
+            | Error::UnexpectedHashLength { .. } => None,
             Error::InvalidHex(e) => Some(e),
             Error::Url(e) => Some(e),
             Error::Io(e) => Some(e),

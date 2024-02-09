@@ -5,6 +5,7 @@ use crate::named_digest::private::Sealed;
 use crate::GitOid;
 use digest::Digest;
 use sha1::Sha1;
+use sha1collisiondetection::Sha1CD as Sha1Cd;
 use sha2::Sha256;
 
 mod private {
@@ -17,19 +18,26 @@ mod private {
 /// algorithms which are actually supported by Git. No other
 /// types, even if they implement [`Digest`] can implement
 /// this trait.
+///
+/// For more information on sealed traits, read Predrag
+/// Gruevski's ["A Definitive Guide to Sealed Traits in Rust"][1].
+///
+/// [1]: https://predr.ag/blog/definitive-guide-to-sealed-traits-in-rust/
 pub trait NamedDigest: Digest + Sealed {
     /// The name of the hash algorithm in lowercase ASCII.
     const NAME: &'static str;
 }
 
-impl Sealed for Sha1 {}
+macro_rules! impl_named_digest {
+    ( $type:ty, $name:literal ) => {
+        impl Sealed for $type {}
 
-impl NamedDigest for Sha1 {
-    const NAME: &'static str = "sha1";
+        impl NamedDigest for $type {
+            const NAME: &'static str = $name;
+        }
+    };
 }
 
-impl Sealed for Sha256 {}
-
-impl NamedDigest for Sha256 {
-    const NAME: &'static str = "sha256";
-}
+impl_named_digest!(Sha1, "sha1");
+impl_named_digest!(Sha256, "sha256");
+impl_named_digest!(Sha1Cd, "sha1cd");

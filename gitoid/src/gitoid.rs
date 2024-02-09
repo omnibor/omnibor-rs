@@ -181,10 +181,10 @@ where
             .ok_or_else(|| MissingHashAlgorithm(url.clone()))?;
 
         if hash_algorithm != D::NAME {
-            return Err(Error::MismatchedHashAlgorithm(
-                D::NAME.to_string(),
-                hash_algorithm.to_string(),
-            ));
+            return Err(Error::MismatchedHashAlgorithm {
+                expected: D::NAME.to_string(),
+                observed: hash_algorithm.to_string(),
+            });
         }
 
         // Parse the hash, if present.
@@ -193,6 +193,7 @@ where
             .and_then(|p| p.is_empty().not().then_some(p))
             .ok_or_else(|| MissingHash(url.clone()))?;
 
+        // TODO(abrinker): When `sha1` et al. move to generic-array 1.0, update this to use the `arr!` macro.
         let mut value = GenericArray::generate(|_| 0);
 
         hex::decode_to_slice(hex_str, &mut value)?;
@@ -200,7 +201,10 @@ where
         let expected_size = <D as OutputSizeUser>::output_size();
 
         if value.len() != expected_size {
-            return Err(Error::UnexpectedHashLength(expected_size, value.len()));
+            return Err(Error::UnexpectedHashLength {
+                expected: expected_size,
+                observed: value.len(),
+            });
         }
 
         // Construct a new `GitOid` from the parts.
@@ -265,7 +269,10 @@ where
     let expected_size = <D as OutputSizeUser>::output_size();
 
     if hash.len() != expected_size {
-        return Err(Error::UnexpectedHashLength(expected_size, hash.len()));
+        return Err(Error::UnexpectedHashLength {
+            expected: expected_size,
+            observed: hash.len(),
+        });
     }
 
     Ok(hash)
