@@ -8,10 +8,11 @@
 #define TEST(NAME) {.name = #NAME, .fn = NAME}
 
 void test_gitoid_new_from_str() {
-    GitOid gitoid = gitoid_new_from_str(HashAlgorithm_Sha1, ObjectType_Blob, "hello world"); 
-    assert(!gitoid_invalid(&gitoid));
-    assert(gitoid.len == 20);
-    assert(gitoid.value[0] == 149);
+    const GitOidSha1* gitoid = gitoid_sha1_new_from_str(ObjectType_Blob, "hello world");
+    assert(gitoid != NULL);
+    assert(gitoid_sha1_hash_len() == 20);
+    assert(gitoid_sha1_get_hash_bytes(gitoid)[0] == 149);
+    gitoid_sha1_free(gitoid);
 }
 
 void test_gitoid_new_from_bytes() {
@@ -21,53 +22,58 @@ void test_gitoid_new_from_bytes() {
                              0x0C, 0x0D, 0x0E, 0x0F};
     uint8_t bytes_len = LEN(bytes);
 
-    GitOid gitoid = gitoid_new_from_bytes(
-        HashAlgorithm_Sha1,
+    const GitOidSha1* gitoid = gitoid_sha1_new_from_bytes(
         ObjectType_Blob,
         bytes,
         bytes_len
     );
 
-    assert(!gitoid_invalid(&gitoid));
-    assert(gitoid.len == 20);
-    assert(gitoid.value[0] == 182);
+    assert(gitoid != NULL);
+    assert(gitoid_sha1_hash_len() == 20);
+    assert(gitoid_sha1_get_hash_bytes(gitoid)[0] == 182);
+    gitoid_sha1_free(gitoid);
 }
 
 void test_gitoid_new_from_url() {
     char *url = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
-    GitOid gitoid = gitoid_new_from_url(url);
-    assert(!gitoid_invalid(&gitoid));
-    assert(gitoid.len == 32);
-    assert(gitoid.value[0] == 254);
+    const GitOidSha256* gitoid = gitoid_sha256_new_from_url(url);
+    assert(gitoid != NULL);
+    assert(gitoid_sha256_hash_len() == 32);
+    assert(gitoid_sha256_get_hash_bytes(gitoid)[0] == 254);
+    gitoid_sha256_free(gitoid);
 }
 
 void test_gitoid_get_url() {
     char *url_in = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
-    GitOid gitoid = gitoid_new_from_url(url_in);
-    assert(!gitoid_invalid(&gitoid));
-    char *url_out = gitoid_get_url(&gitoid);
+    const GitOidSha256* gitoid = gitoid_sha256_new_from_url(url_in);
+    assert(gitoid != NULL);
+    const char *url_out = gitoid_sha256_get_url(gitoid);
     assert(strncmp(url_in, url_out, 83) == 0);
     gitoid_str_free(url_out);
+    gitoid_sha256_free(gitoid);
 }
 
 void test_gitoid_hash_algorithm_name() {
-    GitOid gitoid = gitoid_new_from_str(HashAlgorithm_Sha1, ObjectType_Blob, "hello world");
-    assert(!gitoid_invalid(&gitoid));
-    const char *hash_algorithm = gitoid_hash_algorithm_name(gitoid.hash_algorithm);
+    const GitOidSha1* gitoid = gitoid_sha1_new_from_str(ObjectType_Blob, "hello world");
+    assert(gitoid != NULL);
+    const char *hash_algorithm = gitoid_sha1_hash_algorithm_name(gitoid);
     assert(strncmp(hash_algorithm, "sha1", 4) == 0);
+    gitoid_str_free(hash_algorithm);
+    gitoid_sha1_free(gitoid);
 }
 
 void test_gitoid_object_type_name() {
-    GitOid gitoid = gitoid_new_from_str(HashAlgorithm_Sha1, ObjectType_Blob, "hello world");
-    assert(!gitoid_invalid(&gitoid));
-    const char *object_type = gitoid_object_type_name(gitoid.object_type);
+    const GitOidSha1* gitoid = gitoid_sha1_new_from_str(ObjectType_Blob, "hello world");
+    assert(gitoid != NULL);
+    const char *object_type = gitoid_sha1_object_type_name(gitoid);
     assert(strncmp(object_type, "blob", 4) == 0);
+    gitoid_sha1_free(gitoid);
 }
 
 void test_gitoid_validity() {
     char *validity_url = "gitoid:blob:sha000:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
-    GitOid gitoid = gitoid_new_from_url(validity_url);
-    assert(gitoid_invalid(&gitoid));
+    const GitOidSha1* gitoid = gitoid_sha1_new_from_url(validity_url);
+    assert(gitoid == NULL);
 
     char *expected_msg = "string is not a valid GitOID URL";
     char error_msg[256];

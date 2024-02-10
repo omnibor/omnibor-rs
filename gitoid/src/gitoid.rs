@@ -60,21 +60,6 @@ where
     // Constructors
     //-------------------------------------------------------------------------------------------
 
-    /*
-    // TODO(abrinker): Put this back in when the FFI questions are resolved.
-
-    /// Construct an invalid `GitOid` which should not be used for anything.
-    ///
-    /// This construction should _only_ be used for error-handling purposes
-    /// when using the `gitoid` crate over FFI.
-    pub(crate) fn new_invalid() -> GitOid<Sha256> {
-        GitOid {
-            object_type: ObjectType::Invalid,
-            value: arr![0; <Sha256 as OutputSizeUser>::OutputSize],
-        }
-    }
-    */
-
     /// Create a new `GitOid` based on a slice of bytes.
     pub fn new_from_bytes(object_type: ObjectType, content: &[u8]) -> GitOid<D> {
         GitOid {

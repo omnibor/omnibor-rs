@@ -18,8 +18,6 @@ pub enum ObjectType {
     Commit,
     /// A Git tag.
     Tag,
-    /// An invalid object
-    Invalid,
 }
 
 impl Display for ObjectType {
@@ -32,7 +30,6 @@ impl Display for ObjectType {
                 ObjectType::Tree => "tree",
                 ObjectType::Commit => "commit",
                 ObjectType::Tag => "tag",
-                ObjectType::Invalid => "invalid",
             }
         )
     }
@@ -47,7 +44,6 @@ impl FromStr for ObjectType {
             "tree" => Ok(ObjectType::Tree),
             "commit" => Ok(ObjectType::Commit),
             "tag" => Ok(ObjectType::Tag),
-            // Invalid objects can't be constructed from a string.
             _ => Err(Error::UnknownObjectType(s.to_owned())),
         }
     }

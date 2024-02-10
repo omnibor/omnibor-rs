@@ -39,8 +39,7 @@
 
 mod builder;
 mod error;
-// TODO(abrinker): Return the FFI code when it's been updated to the new GitOid type.
-// mod ffi;
+pub mod ffi;
 mod gitoid;
 mod hash_ref;
 mod named_digest;
