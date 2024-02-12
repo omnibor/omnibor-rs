@@ -127,7 +127,7 @@ macro_rules! generate_gitoid_ffi_for_hash {
                 let output = catch_panic(|| {
                     check_null(content, Error::ContentPtrIsNull)?;
                     let content = unsafe { from_raw_parts(content, content_len) };
-                    let gitoid = GitOid::<$hash_ty, $object_ty>::new_from_bytes(content);
+                    let gitoid = GitOid::<$hash_ty, $object_ty>::from_bytes(content);
                     let boxed = Box::new(gitoid);
                     Ok(Box::into_raw(boxed) as *const _)
                 });
@@ -149,7 +149,7 @@ macro_rules! generate_gitoid_ffi_for_hash {
                 let output = catch_panic(|| {
                     check_null(s, Error::StringPtrIsNull)?;
                     let s = unsafe { CStr::from_ptr(s) }.to_str()?;
-                    let gitoid = GitOid::<$hash_ty, $object_ty>::new_from_str(s);
+                    let gitoid = GitOid::<$hash_ty, $object_ty>::from_str(s);
                     let boxed = Box::new(gitoid);
                     Ok(Box::into_raw(boxed) as *const _)
                 });
@@ -172,7 +172,7 @@ macro_rules! generate_gitoid_ffi_for_hash {
                     check_null(s, Error::StringPtrIsNull)?;
                     let raw_url = unsafe { CStr::from_ptr(s) }.to_str()?;
                     let url = Url::parse(raw_url)?;
-                    let gitoid = GitOid::<$hash_ty, $object_ty>::new_from_url(url)?;
+                    let gitoid = GitOid::<$hash_ty, $object_ty>::from_url(url)?;
                     let boxed = Box::new(gitoid);
                     Ok(Box::into_raw(boxed) as *const _)
                 });
@@ -198,9 +198,9 @@ macro_rules! generate_gitoid_ffi_for_hash {
 
                     let gitoid = if should_buffer {
                         let reader = BufReader::new(file);
-                        GitOid::<$hash_ty, $object_ty>::new_from_reader(reader)?
+                        GitOid::<$hash_ty, $object_ty>::from_reader(reader)?
                     } else {
-                        GitOid::<$hash_ty, $object_ty>::new_from_reader(file)?
+                        GitOid::<$hash_ty, $object_ty>::from_reader(file)?
                     };
 
                     let boxed = Box::new(gitoid);
