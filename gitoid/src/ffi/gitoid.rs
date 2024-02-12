@@ -6,11 +6,11 @@ use crate::ffi::error::Error;
 use crate::ffi::status::Status;
 use crate::ffi::util::check_null;
 use crate::ffi::util::write_to_c_buf;
-use crate::Blob;
-use crate::Commit;
+use crate::object::Blob;
+use crate::object::Commit;
+use crate::object::Tag;
+use crate::object::Tree;
 use crate::GitOid;
-use crate::Tag;
-use crate::Tree;
 use core::ffi::c_char;
 use core::ffi::c_int;
 use core::ffi::CStr;
@@ -299,7 +299,7 @@ macro_rules! generate_gitoid_ffi_for_hash {
                 let output = catch_panic(|| {
                     check_null(ptr, Error::GitOidPtrIsNull)?;
                     let gitoid = unsafe { &*ptr };
-                    let hash = gitoid.0.hash();
+                    let hash = gitoid.0.as_bytes();
                     Ok(hash.as_ptr())
                 });
 
@@ -319,8 +319,7 @@ macro_rules! generate_gitoid_ffi_for_hash {
                 let output = catch_panic(|| {
                     check_null(ptr, Error::GitOidPtrIsNull)?;
                     let gitoid = unsafe { &*ptr };
-                    let hash = gitoid.0.hash();
-                    let hash_str = hash.as_hex();
+                    let hash_str = gitoid.0.as_hex();
                     let hash_c_str = CString::new(hash_str)?;
                     Ok(hash_c_str.into_raw())
                 });

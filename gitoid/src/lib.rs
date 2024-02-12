@@ -37,22 +37,40 @@
 //! validate artifact integrity (this artifact hasn't been modified) and
 //! agreement (I have the same artifact you have).
 
-mod builder;
 mod error;
+#[doc(hidden)]
 pub mod ffi;
 mod gitoid;
-mod hash_ref;
-mod named_digest;
+mod hash_algorithm;
 mod object_type;
+pub(crate) mod sealed;
 #[cfg(test)]
 mod tests;
 
-pub use crate::builder::*;
-pub use crate::error::*;
-pub use crate::gitoid::*;
-pub use crate::hash_ref::*;
-pub use crate::named_digest::*;
-pub use crate::object_type::*;
-pub use sha1::Sha1;
-pub use sha1collisiondetection::Sha1CD as Sha1Cd;
-pub use sha2::Sha256;
+pub use crate::error::Error;
+pub(crate) use crate::error::Result;
+pub use crate::gitoid::GitOid;
+pub use crate::hash_algorithm::HashAlgorithm;
+pub use crate::object_type::ObjectType;
+
+pub mod object {
+    //! Object types supported for [`GitOid`] construction.
+
+    #[cfg(doc)]
+    use crate::GitOid;
+
+    pub use crate::object_type::{Blob, Commit, Tag, Tree};
+}
+
+pub mod hash {
+    //! Hash algorithms supported for [`GitOid`] construction.
+
+    #[cfg(doc)]
+    use crate::GitOid;
+
+    pub use sha1::Sha1;
+    pub use sha2::Sha256;
+
+    /// Sha-1CD hasher.
+    pub type Sha1Cd = sha1collisiondetection::Sha1CD;
+}
