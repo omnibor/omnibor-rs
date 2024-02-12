@@ -29,7 +29,7 @@ thread_local! {
     // The last error to have been reported by the FFI code.
     /// cbindgen:ignore
     #[doc(hidden)]
-    static LAST_ERROR: RefCell<Option<String>> = RefCell::new(None);
+    static LAST_ERROR: RefCell<Option<String>> = const { RefCell::new(None) };
 }
 
 /// Update the last error with a new error message.
