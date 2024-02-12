@@ -29,6 +29,8 @@ pub enum Error {
     MissingHash(Url),
     /// Tried to parse an unknown object type.
     UnknownObjectType(String),
+    /// The expected object type didn't match the provided type.
+    MismatchedObjectType { expected: String, observed: String },
     /// The expected hash algorithm didn't match the provided algorithm.
     MismatchedHashAlgorithm { expected: String, observed: String },
     /// The expected size of a hash for an algorithm didn't match the provided size.
@@ -54,6 +56,11 @@ impl Display for Error {
             }
             Error::MissingHash(url) => write!(f, "missing hash in URL '{}'", url),
             Error::UnknownObjectType(s) => write!(f, "unknown object type '{}'", s),
+            Error::MismatchedObjectType { expected, observed } => write!(
+                f,
+                "mismatched object type; expected '{}', got '{}'",
+                expected, observed
+            ),
             Error::MismatchedHashAlgorithm { expected, observed } => write!(
                 f,
                 "mismatched hash algorithm; expected '{}', got '{}'",
@@ -82,6 +89,7 @@ impl StdError for Error {
             | Error::MissingHashAlgorithm(_)
             | Error::MissingHash(_)
             | Error::UnknownObjectType(_)
+            | Error::MismatchedObjectType { .. }
             | Error::MismatchedHashAlgorithm { .. }
             | Error::UnexpectedHashLength { .. } => None,
             Error::InvalidHex(e) => Some(e),

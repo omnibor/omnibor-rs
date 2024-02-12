@@ -1,7 +1,9 @@
 //! Easily construct `GitOid`s.
 
+#![allow(clippy::new_without_default)]
+
 use crate::GitOid;
-use crate::NamedDigest;
+use crate::HashAlgorithm;
 use crate::ObjectType;
 use crate::Result;
 use digest::OutputSizeUser;
@@ -13,48 +15,50 @@ use std::io::Seek;
 use std::marker::PhantomData;
 
 /// Builder of GitOids with a specific hash algorithm and object type.
-pub struct GitOidBuilder<D>
+pub struct GitOidBuilder<H, O>
 where
-    D: NamedDigest,
-    <D as OutputSizeUser>::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, D::OutputSize>: Copy,
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
 {
-    /// The object type to use.
-    object_type: ObjectType,
+    #[doc(hidden)]
+    _hash_algorithm: PhantomData<H>,
 
     #[doc(hidden)]
-    _phantom: PhantomData<D>,
+    _object_type: PhantomData<O>,
 }
 
-impl<D> GitOidBuilder<D>
+impl<H, O> GitOidBuilder<H, O>
 where
-    D: NamedDigest,
-    <D as OutputSizeUser>::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, D::OutputSize>: Copy,
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
 {
     /// Get a new builder with a specific hash algorithm and object type.
-    pub fn new(object_type: ObjectType) -> GitOidBuilder<D> {
+    pub fn new() -> GitOidBuilder<H, O> {
         GitOidBuilder {
-            object_type,
-            _phantom: PhantomData,
+            _hash_algorithm: PhantomData,
+            _object_type: PhantomData,
         }
     }
 
     /// Build a `GitOid` from bytes.
-    pub fn build_from_bytes(&self, content: &[u8]) -> GitOid<D> {
-        GitOid::new_from_bytes(self.object_type, content)
+    pub fn build_from_bytes(&self, content: &[u8]) -> GitOid<H, O> {
+        GitOid::new_from_bytes(content)
     }
 
     /// Build a `GitOid` from a string slice.
-    pub fn build_from_str(&self, s: &str) -> GitOid<D> {
-        GitOid::new_from_str(self.object_type, s)
+    pub fn build_from_str(&self, s: &str) -> GitOid<H, O> {
+        GitOid::new_from_str(s)
     }
 
     /// Build a `GitOid` from an arbitrary buffered reader.
-    pub fn build_from_reader<R>(&self, reader: BufReader<R>) -> Result<GitOid<D>>
+    pub fn build_from_reader<R>(&self, reader: BufReader<R>) -> Result<GitOid<H, O>>
     where
         R: Read + Seek,
     {
-        GitOid::new_from_reader(self.object_type, reader)
+        GitOid::new_from_reader(reader)
     }
 }

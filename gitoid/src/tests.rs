@@ -1,5 +1,4 @@
 use super::*;
-use object_type::ObjectType::*;
 use sha1::Sha1;
 use sha2::Sha256;
 use std::fs::File;
@@ -9,7 +8,7 @@ use url::Url;
 #[test]
 fn generate_sha1_gitoid_from_bytes() {
     let input = b"hello world";
-    let result = GitOid::<Sha1>::new_from_bytes(Blob, input);
+    let result = GitOid::<Sha1, Blob>::new_from_bytes(input);
 
     assert_eq!(
         result.hash().as_hex(),
@@ -25,7 +24,7 @@ fn generate_sha1_gitoid_from_bytes() {
 #[test]
 fn generate_sha1_gitoid_from_buffer() -> Result<()> {
     let reader = BufReader::new(File::open("test/data/hello_world.txt")?);
-    let result = GitOid::<Sha1>::new_from_reader(Blob, reader)?;
+    let result = GitOid::<Sha1, Blob>::new_from_reader(reader)?;
 
     assert_eq!(
         result.hash().as_hex(),
@@ -43,7 +42,7 @@ fn generate_sha1_gitoid_from_buffer() -> Result<()> {
 #[test]
 fn generate_sha256_gitoid_from_bytes() {
     let input = b"hello world";
-    let result = GitOid::<Sha256>::new_from_bytes(Blob, input);
+    let result = GitOid::<Sha256, Blob>::new_from_bytes(input);
 
     assert_eq!(
         result.hash().as_hex(),
@@ -59,7 +58,7 @@ fn generate_sha256_gitoid_from_bytes() {
 #[test]
 fn generate_sha256_gitoid_from_buffer() -> Result<()> {
     let reader = BufReader::new(File::open("test/data/hello_world.txt")?);
-    let result = GitOid::<Sha256>::new_from_reader(Blob, reader)?;
+    let result = GitOid::<Sha256, Blob>::new_from_reader(reader)?;
 
     assert_eq!(
         result.hash().as_hex(),
@@ -77,7 +76,7 @@ fn generate_sha256_gitoid_from_buffer() -> Result<()> {
 #[test]
 fn validate_uri() -> Result<()> {
     let content = b"hello world";
-    let gitoid = GitOid::<Sha256>::new_from_bytes(Blob, content);
+    let gitoid = GitOid::<Sha256, Blob>::new_from_bytes(content);
 
     assert_eq!(
         gitoid.url().to_string(),
@@ -94,7 +93,7 @@ fn try_from_url_bad_scheme() {
     )
     .unwrap();
 
-    match GitOid::<Sha256>::new_from_url(url) {
+    match GitOid::<Sha256, Blob>::new_from_url(url) {
         Ok(_) => panic!("gitoid parsing should fail"),
         Err(e) => assert_eq!(e.to_string(), "invalid scheme in URL 'whatever'"),
     }
@@ -104,7 +103,7 @@ fn try_from_url_bad_scheme() {
 fn try_from_url_missing_object_type() {
     let url = Url::parse("gitoid:").unwrap();
 
-    match GitOid::<Sha1>::new_from_url(url) {
+    match GitOid::<Sha1, Blob>::new_from_url(url) {
         Ok(_) => panic!("gitoid parsing should fail"),
         Err(e) => assert_eq!(e.to_string(), "missing object type in URL 'gitoid:'"),
     }
@@ -114,9 +113,12 @@ fn try_from_url_missing_object_type() {
 fn try_from_url_bad_object_type() {
     let url = Url::parse("gitoid:whatever").unwrap();
 
-    match GitOid::<Sha1>::new_from_url(url) {
+    match GitOid::<Sha1, Blob>::new_from_url(url) {
         Ok(_) => panic!("gitoid parsing should fail"),
-        Err(e) => assert_eq!(e.to_string(), "unknown object type 'whatever'"),
+        Err(e) => assert_eq!(
+            e.to_string(),
+            "mismatched object type; expected 'blob', got 'whatever'"
+        ),
     }
 }
 
@@ -124,7 +126,7 @@ fn try_from_url_bad_object_type() {
 fn try_from_url_missing_hash_algorithm() {
     let url = Url::parse("gitoid:blob:").unwrap();
 
-    match GitOid::<Sha256>::new_from_url(url) {
+    match GitOid::<Sha256, Blob>::new_from_url(url) {
         Ok(_) => panic!("gitoid parsing should fail"),
         Err(e) => assert_eq!(
             e.to_string(),
@@ -137,7 +139,7 @@ fn try_from_url_missing_hash_algorithm() {
 fn try_from_url_bad_hash_algorithm() {
     let url = Url::parse("gitoid:blob:sha10000").unwrap();
 
-    match GitOid::<Sha1>::new_from_url(url) {
+    match GitOid::<Sha1, Blob>::new_from_url(url) {
         Ok(_) => panic!("gitoid parsing should fail"),
         Err(e) => assert_eq!(
             e.to_string(),
@@ -150,7 +152,7 @@ fn try_from_url_bad_hash_algorithm() {
 fn try_from_url_missing_hash() {
     let url = Url::parse("gitoid:blob:sha256:").unwrap();
 
-    match GitOid::<Sha256>::new_from_url(url) {
+    match GitOid::<Sha256, Blob>::new_from_url(url) {
         Ok(_) => panic!("gitoid parsing should fail"),
         Err(e) => assert_eq!(e.to_string(), "missing hash in URL 'gitoid:blob:sha256:'"),
     }
@@ -162,7 +164,7 @@ fn try_url_roundtrip() {
         "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
     )
     .unwrap();
-    let gitoid = GitOid::<Sha256>::new_from_url(url.clone()).unwrap();
+    let gitoid = GitOid::<Sha256, Blob>::new_from_url(url.clone()).unwrap();
     let output = gitoid.url();
 
     eprintln!("{}", url);

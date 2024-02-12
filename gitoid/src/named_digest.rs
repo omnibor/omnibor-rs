@@ -23,21 +23,21 @@ mod private {
 /// Gruevski's ["A Definitive Guide to Sealed Traits in Rust"][1].
 ///
 /// [1]: https://predr.ag/blog/definitive-guide-to-sealed-traits-in-rust/
-pub trait NamedDigest: Digest + Sealed {
+pub trait HashAlgorithm: Digest + Sealed {
     /// The name of the hash algorithm in lowercase ASCII.
     const NAME: &'static str;
 }
 
-macro_rules! impl_named_digest {
+macro_rules! impl_hash_algorithm {
     ( $type:ty, $name:literal ) => {
         impl Sealed for $type {}
 
-        impl NamedDigest for $type {
+        impl HashAlgorithm for $type {
             const NAME: &'static str = $name;
         }
     };
 }
 
-impl_named_digest!(Sha1, "sha1");
-impl_named_digest!(Sha256, "sha256");
-impl_named_digest!(Sha1Cd, "sha1cd");
+impl_hash_algorithm!(Sha1, "sha1");
+impl_hash_algorithm!(Sha256, "sha256");
+impl_hash_algorithm!(Sha1Cd, "sha1cd");

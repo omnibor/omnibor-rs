@@ -1,50 +1,53 @@
 //! The types of objects for which a `GitOid` can be made.
 
 use crate::Error;
-use core::fmt;
-use core::fmt::Display;
-use core::fmt::Formatter;
 use core::str::FromStr;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::Result as FmtResult;
 
-/// The types of objects for which a `GitOid` can be made.
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ObjectType {
-    /// An opaque git blob.
-    Blob,
-    /// A Git tree.
-    Tree,
-    /// A Git commit.
-    Commit,
-    /// A Git tag.
-    Tag,
+pub trait ObjectType: Display + FromStr {
+    const NAME: &'static str;
 }
 
-impl Display for ObjectType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                ObjectType::Blob => "blob",
-                ObjectType::Tree => "tree",
-                ObjectType::Commit => "commit",
-                ObjectType::Tag => "tag",
+macro_rules! impl_from_str {
+    ( $name:tt, $s:literal ) => {
+        impl FromStr for $name {
+            type Err = Error;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                match s {
+                    $s => Ok($name),
+                    _ => Err(Error::UnknownObjectType(s.to_owned())),
+                }
             }
-        )
-    }
-}
-
-impl FromStr for ObjectType {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "blob" => Ok(ObjectType::Blob),
-            "tree" => Ok(ObjectType::Tree),
-            "commit" => Ok(ObjectType::Commit),
-            "tag" => Ok(ObjectType::Tag),
-            _ => Err(Error::UnknownObjectType(s.to_owned())),
         }
-    }
+    };
 }
+
+macro_rules! impl_display {
+    ( $name:tt, $s:literal ) => {
+        impl Display for $name {
+            fn fmt(&self, f: &mut Formatter) -> FmtResult {
+                write!(f, "{}", $s)
+            }
+        }
+    };
+}
+
+macro_rules! define_object_type {
+    ( $name:tt, $s:literal ) => {
+        pub struct $name;
+
+        impl_from_str!($name, $s);
+        impl_display!($name, $s);
+        impl ObjectType for $name {
+            const NAME: &'static str = $s;
+        }
+    };
+}
+
+define_object_type!(Blob, "blob");
+define_object_type!(Tree, "tree");
+define_object_type!(Tag, "tag");
+define_object_type!(Commit, "commit");
