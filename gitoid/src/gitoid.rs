@@ -19,6 +19,7 @@ use std::fmt::Result as FmtResult;
 use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
+use std::str::FromStr;
 use std::str::Split;
 use std::{hash::Hasher, io::BufReader};
 use url::Url;
@@ -53,7 +54,7 @@ where
     //-------------------------------------------------------------------------------------------
 
     /// Helper constructor for building a [`GitOid`] from a parsed hash.
-    fn new_from_hash(value: GenericArray<u8, H::OutputSize>) -> GitOid<H, O> {
+    fn from_hash(value: GenericArray<u8, H::OutputSize>) -> GitOid<H, O> {
         GitOid {
             _phantom: PhantomData,
             value,
@@ -61,7 +62,7 @@ where
     }
 
     /// Create a new `GitOid` based on a slice of bytes.
-    pub fn new_from_bytes<B: AsRef<[u8]>>(content: B) -> GitOid<H, O> {
+    pub fn from_bytes<B: AsRef<[u8]>>(content: B) -> GitOid<H, O> {
         fn inner<H, O>(content: &[u8]) -> GitOid<H, O>
         where
             H: HashAlgorithm,
@@ -81,7 +82,8 @@ where
     }
 
     /// Create a `GitOid` from a UTF-8 string slice.
-    pub fn new_from_str<S: AsRef<str>>(s: S) -> GitOid<H, O> {
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str<S: AsRef<str>>(s: S) -> GitOid<H, O> {
         fn inner<H, O>(s: &str) -> GitOid<H, O>
         where
             H: HashAlgorithm,
@@ -89,14 +91,14 @@ where
             <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
             GenericArray<u8, H::OutputSize>: Copy,
         {
-            GitOid::new_from_bytes(s.as_bytes())
+            GitOid::from_bytes(s.as_bytes())
         }
 
         inner(s.as_ref())
     }
 
     /// Create a `GitOid` from a reader.
-    pub fn new_from_reader<R>(mut reader: R) -> Result<GitOid<H, O>>
+    pub fn from_reader<R>(mut reader: R) -> Result<GitOid<H, O>>
     where
         R: Read + Seek,
     {
@@ -106,7 +108,7 @@ where
     }
 
     /// Construct a new `GitOid` from a `Url`.
-    pub fn new_from_url(url: Url) -> Result<GitOid<H, O>> {
+    pub fn from_url(url: Url) -> Result<GitOid<H, O>> {
         url.try_into()
     }
 
@@ -144,6 +146,20 @@ where
     /// Get the length of the hash in bytes.
     pub fn hash_len(&self) -> usize {
         <H as OutputSizeUser>::output_size()
+    }
+}
+
+impl<H, O> FromStr for GitOid<H, O>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
+{
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<GitOid<H, O>> {
+        Ok(GitOid::from_str(s))
     }
 }
 
@@ -297,7 +313,7 @@ where
             .and_then(|_| self.validate_object_type())
             .and_then(|_| self.validate_hash_algorithm())
             .and_then(|_| self.parse_hash())
-            .map(GitOid::new_from_hash)
+            .map(GitOid::from_hash)
     }
 
     fn validate_url_scheme(&self) -> Result<()> {
@@ -437,7 +453,7 @@ where
         });
     }
 
-    Ok(GitOid::new_from_hash(hash))
+    Ok(GitOid::from_hash(hash))
 }
 
 // Adapted from the Rust standard library's unstable implementation
