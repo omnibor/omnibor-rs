@@ -2,11 +2,8 @@
 
 use crate::Error;
 use crate::HashAlgorithm;
-use crate::HashRef;
 use crate::ObjectType;
 use crate::Result;
-use core::fmt;
-use core::fmt::Display;
 use core::fmt::Formatter;
 use core::hash::Hash;
 use core::marker::PhantomData;
@@ -15,18 +12,21 @@ use digest::OutputSizeUser;
 use generic_array::sequence::GenericSequence;
 use generic_array::ArrayLength;
 use generic_array::GenericArray;
-use std::io::BufReader;
+use std::cmp::Ordering;
+use std::fmt::Debug;
+use std::fmt::Display;
+use std::fmt::Result as FmtResult;
 use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
 use std::str::Split;
+use std::{hash::Hasher, io::BufReader};
 use url::Url;
 
 /// A struct that computes [gitoids][g] based on the selected algorithm
 ///
 /// [g]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
 #[repr(C)]
-#[derive(Clone, Copy, PartialOrd, Eq, Ord, Debug, Hash, PartialEq)]
 pub struct GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -39,18 +39,6 @@ where
 
     #[doc(hidden)]
     value: GenericArray<u8, H::OutputSize>,
-}
-
-impl<H, O> Display for GitOid<H, O>
-where
-    H: HashAlgorithm,
-    O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", H::NAME, self.hash())
-    }
 }
 
 impl<H, O> GitOid<H, O>
@@ -73,18 +61,38 @@ where
     }
 
     /// Create a new `GitOid` based on a slice of bytes.
-    pub fn new_from_bytes(content: &[u8]) -> GitOid<H, O> {
-        let digester = H::new();
-        let reader = BufReader::new(content);
-        let expected_length = content.len();
+    pub fn new_from_bytes<B: AsRef<[u8]>>(content: B) -> GitOid<H, O> {
+        fn inner<H, O>(content: &[u8]) -> GitOid<H, O>
+        where
+            H: HashAlgorithm,
+            O: ObjectType,
+            <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+            GenericArray<u8, H::OutputSize>: Copy,
+        {
+            let digester = H::new();
+            let reader = BufReader::new(content);
+            let expected_length = content.len();
 
-        // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
-        gitoid_from_buffer(digester, reader, expected_length).unwrap()
+            // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
+            gitoid_from_buffer(digester, reader, expected_length).unwrap()
+        }
+
+        inner(content.as_ref())
     }
 
     /// Create a `GitOid` from a UTF-8 string slice.
-    pub fn new_from_str(s: &str) -> GitOid<H, O> {
-        GitOid::new_from_bytes(s.as_bytes())
+    pub fn new_from_str<S: AsRef<str>>(s: S) -> GitOid<H, O> {
+        fn inner<H, O>(s: &str) -> GitOid<H, O>
+        where
+            H: HashAlgorithm,
+            O: ObjectType,
+            <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+            GenericArray<u8, H::OutputSize>: Copy,
+        {
+            GitOid::new_from_bytes(s.as_bytes())
+        }
+
+        inner(s.as_ref())
     }
 
     /// Create a `GitOid` from a reader.
@@ -108,29 +116,141 @@ where
 
     /// Get a URL for the current `GitOid`.
     pub fn url(&self) -> Url {
-        let s = format!("gitoid:{}:{}:{}", O::NAME, H::NAME, self.hash());
+        let s = format!("gitoid:{}:{}:{}", O::NAME, H::NAME, self.as_hex());
         // PANIC SAFETY: We know that this is a valid URL.
         Url::parse(&s).unwrap()
     }
 
-    /// Get the hash data as a slice of bytes.
-    pub fn hash(&self) -> HashRef<'_> {
-        HashRef::new(&self.value[..])
+    /// Get the underlying bytes of the hash.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.value[..]
+    }
+
+    /// Convert the hash to a hexadecimal string.
+    pub fn as_hex(&self) -> String {
+        hex::encode(self.as_bytes())
     }
 
     /// Get the hash algorithm used for the `GitOid`.
-    pub fn hash_algorithm(&self) -> &'static str {
+    pub const fn hash_algorithm(&self) -> &'static str {
         H::NAME
     }
 
     /// Get the object type of the `GitOid`.
-    pub fn object_type(&self) -> &'static str {
+    pub const fn object_type(&self) -> &'static str {
         O::NAME
     }
 
     /// Get the length of the hash in bytes.
     pub fn hash_len(&self) -> usize {
         <H as OutputSizeUser>::output_size()
+    }
+}
+
+impl<H, O> Clone for GitOid<H, O>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<H, O> Copy for GitOid<H, O>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
+{
+}
+
+impl<H, O> PartialEq<GitOid<H, O>> for GitOid<H, O>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
+{
+    fn eq(&self, other: &GitOid<H, O>) -> bool {
+        self.value == other.value
+    }
+}
+
+impl<H, O> Eq for GitOid<H, O>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
+{
+}
+
+impl<H, O> PartialOrd<GitOid<H, O>> for GitOid<H, O>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<H, O> Ord for GitOid<H, O>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.value.cmp(&other.value)
+    }
+}
+
+impl<H, O> Hash for GitOid<H, O>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
+{
+    fn hash<H2>(&self, state: &mut H2)
+    where
+        H2: Hasher,
+    {
+        self.value.hash(state);
+    }
+}
+
+impl<H, O> Debug for GitOid<H, O>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        f.debug_struct("GitOid")
+            .field("value", &self.value)
+            .finish()
+    }
+}
+
+impl<H, O> Display for GitOid<H, O>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "{}:{}", H::NAME, self.as_hex())
     }
 }
 

@@ -1,6 +1,6 @@
 //! Trait specifying valid [`GitOid`] hash algorithms.
 
-use crate::named_digest::private::Sealed;
+use crate::sealed::Sealed;
 #[cfg(doc)]
 use crate::GitOid;
 use digest::Digest;
