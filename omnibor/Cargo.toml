@@ -11,4 +11,4 @@ repository = "https://github.com/omnibor/omnibor-rs"
 version = "0.1.7"
 
 [dependencies]
-gitoid = "0.1.5"
+gitoid = "0.3.0"
