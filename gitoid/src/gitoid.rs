@@ -39,7 +39,7 @@ pub struct GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     #[doc(hidden)]
@@ -55,7 +55,7 @@ impl<H, O> GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     //===========================================================================================
@@ -78,7 +78,7 @@ where
         where
             H: HashAlgorithm,
             O: ObjectType,
-            <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+            H::OutputSize: ArrayLength<u8>,
             GenericArray<u8, H::OutputSize>: Copy,
         {
             // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
@@ -95,7 +95,7 @@ where
         where
             H: HashAlgorithm,
             O: ObjectType,
-            <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+            H::OutputSize: ArrayLength<u8>,
             GenericArray<u8, H::OutputSize>: Copy,
         {
             GitOid::from_bytes(s.as_bytes())
@@ -170,7 +170,7 @@ impl<H, O> FromStr for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     type Err = Error;
@@ -184,7 +184,7 @@ impl<H, O> Clone for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     fn clone(&self) -> Self {
@@ -196,7 +196,7 @@ impl<H, O> Copy for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
 }
@@ -205,7 +205,7 @@ impl<H, O> PartialEq<GitOid<H, O>> for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     fn eq(&self, other: &GitOid<H, O>) -> bool {
@@ -217,7 +217,7 @@ impl<H, O> Eq for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
 }
@@ -226,7 +226,7 @@ impl<H, O> PartialOrd<GitOid<H, O>> for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -238,7 +238,7 @@ impl<H, O> Ord for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     fn cmp(&self, other: &Self) -> Ordering {
@@ -250,7 +250,7 @@ impl<H, O> Hash for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     fn hash<H2>(&self, state: &mut H2)
@@ -265,7 +265,7 @@ impl<H, O> Debug for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
@@ -279,7 +279,7 @@ impl<H, O> Display for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
@@ -291,7 +291,7 @@ struct GitOidUrlParser<'u, H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     url: &'u Url,
@@ -313,7 +313,7 @@ impl<'u, H, O> GitOidUrlParser<'u, H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     fn new(url: &'u Url) -> GitOidUrlParser<'u, H, O> {
@@ -402,7 +402,7 @@ impl<H, O> TryFrom<Url> for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
 {
     type Error = Error;
@@ -430,7 +430,7 @@ fn gitoid_from_buffer<H, O, R>(
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
     R: Read,
 {
@@ -506,7 +506,7 @@ fn hash_from_buffer<H, O, R>(
 where
     H: HashAlgorithm,
     O: ObjectType,
-    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    H::OutputSize: ArrayLength<u8>,
     GenericArray<u8, H::OutputSize>: Copy,
     R: Read,
 {
