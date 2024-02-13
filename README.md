@@ -1,30 +1,56 @@
-# `omnibor-rs`
+# OmniBOR Rust
 
-__This project is a work in progress and is not ready for any use beyond experimental.__
+This repository contains two Rust crates. To use either crate, please review
+their respective `README.md` files:
 
-[OmniBOR][omnibor] is a draft standard for creating (and optionally embedding
-in a binary) a record of cryptographic hashes for all build inputs for a software
-artifact. It is intended to serve as a complement to Software Bills of Material
-(SBOMs) like SPDX or CycloneDX, by saying not just what dependencies a project has,
-but _what exact inputs_ went into an artifact's production.
+- [`gitoid`][gitoid_crate]: an implementation of GitOIDs ([View the `README.md`][gitoid_readme])
+- [`omnibor`][omnibor_crate]: an implementation of OmniBOR IDs and manifests ([View the `README.md`][omnibor_readme])
 
-This repository contains two Rust crates:
+## What is OmniBOR?
 
-- `omnibor`: an implementation of the OmniBOR specification.
-- `gitoid`: an implement of Git Object Identifiers (GitOids), the mechanism
-  OmniBOR uses for hashing inputs.
+[OmniBOR][omnibor] is a draft specification which defines two key concepts:
 
-## Using from Other Languages
+- __Artifact Identifiers__: independently-reproducible identifiers for
+  software artifacts.
+- __Artifact Input Manifests__: record the IDs of every input used in the
+  build process for an artifact.
 
-The `gitoid` crate exposes a Foreign Function Interface (FFI), and can be used as the
-basis for implementing GitOID generation and matching in other languages.
+Artifact IDs enable _anyone_ to identify and cross-reference information for
+software artifacts without a central authority. Unlike [pURL][purl] or [CPE][cpe],
+OmniBOR Artifact IDs don't rely on a third-party, they are _inherent
+identifiers_ determined only by an artifact itself. They're based on
+[Git's Object IDs (GitOIDs)][gitoid] in both construction and choice of
+cryptographic hash functions.
 
-This interface uses [`cbindgen`][cbindgen] to generate the header file, and the
-`gitoid` crate is configured to generate a library file suitable for linking from
-other languages.
+Artifact Input Manifests allow consumers to reconstruct Artifact Dependency
+Graphs that give _fine-grained_ visibility into how artifacts in your
+software supply chain were made. With these graphs, consumers could
+in the future identify the presence of exact files associated with known
+vulnerabilities, side-stepping the complexities of matching version numbers
+across platforms and patching practicies.
 
-An example of how to build and link with `gitoid` from other languages is given
-in `gitoid/Makefile`.
+[__You can view the OmniBOR specification here.__][omnibor_spec]
+
+The United States Cybersecurity & Infrastructure Security Agency (CISA),
+identified OmniBOR as a major candidate for software identities
+in its 2023 report ["Software Identification Ecosystem Option
+Analysis."][cisa_report]
+
+## Rust Implementation Design Goals
+
+The OmniBOR Rust implementation is designed with the following goals in mind:
+
+- __Cross-language readiness__: The OmniBOR Rust implementation should be
+  built with solid Foreign Function Interface (FFI) support, so it can be
+  used as the basis for libraries in other languages.
+- __Multi-platform__: The OmniBOR Rust implementation should be ready for
+  use in as many contexts as possible, including embedded environments. This
+  means supporting use without an allocator to dynamically allocate memory,
+  and minimizing the size of any types resident in memory.
+- __Fast__: The OmniBOR Rust implementation should run as quickly as possible,
+  and be designed for high-performance use cases like rapid large scale
+  matching of artifacts to identifiers or construction and analysis of artifact
+  dependency graphs.
 
 ## Contributing
 
@@ -35,15 +61,22 @@ in the issue tracker explaining what you'd like to fix, and then open a Pull
 Request with the change.
 
 For larger design changes, you may also want to discuss the changes either in the
-issue tracker or on the `#omnibor` channel on the [Open Source Security Foundation
-(OpenSSF) Slack workspace][ossf_slack].
+issue tracker or in the repository's Discussions page.
 
 ## License
 
 The `omnibor` and `gitoid` crates are both Apache 2.0 licensed. You can read the
-full license text in the `LICENSE` file.
+full license text in the [`LICENSE`][license] file.
 
-[omnibor]: https://omnibor.io
 [cbindgen]: https://github.com/eqrion/cbindgen
-[ossf_slack]: https://slack.openssf.org/
-
+[cisa_report]: https://www.cisa.gov/sites/default/files/2023-10/Software-Identification-Ecosystem-Option-Analysis-508c.pdf
+[cpe]: https://nvd.nist.gov/products/cpe
+[gitoid]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
+[gitoid_crate]: https://crates.io/crates/gitoid
+[gitoid_readme]: https://github.com/omnibor/omnibor-rs/blob/main/gitoid/README.md
+[license]: https://github.com/omnibor/omnibor-rs/blob/main/LICENSE
+[omnibor]: https://omnibor.io
+[omnibor_crate]: https://crates.io/crates/omnibor
+[omnibor_readme]: https://github.com/omnibor/omnibor-rs/blob/main/omnibor/README.md
+[omnibor_spec]: https://github.com/omnibor/spec
+[purl]: https://github.com/package-url/purl-spec
