@@ -1,6 +1,9 @@
 //! `gitoid` Foreign Function Interface (FFI)
 
-pub mod error;
-pub mod gitoid;
-pub mod status;
-pub mod util;
+pub(crate) mod error;
+mod gitoid;
+pub(crate) mod status;
+pub(crate) mod util;
+
+// Re-export
+pub use crate::ffi::gitoid::*;
