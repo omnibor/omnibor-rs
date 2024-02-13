@@ -21,7 +21,8 @@ use std::io::Seek;
 use std::io::SeekFrom;
 use std::str::FromStr;
 use std::str::Split;
-use std::{hash::Hasher, io::BufReader};
+use std::hash::Hasher;
+use std::io::BufReader;
 use url::Url;
 
 /// A struct that computes [gitoids][g] based on the selected algorithm
@@ -98,10 +99,9 @@ where
     }
 
     /// Create a `GitOid` from a reader.
-    pub fn from_reader<R>(mut reader: R) -> Result<GitOid<H, O>>
-    where
-        R: Read + Seek,
-    {
+    pub fn from_reader<R: Read + Seek>(
+        mut reader: R
+    ) -> Result<GitOid<H, O>> {
         let digester = H::new();
         let expected_length = stream_len(&mut reader)? as usize;
         gitoid_from_buffer(digester, reader, expected_length)
