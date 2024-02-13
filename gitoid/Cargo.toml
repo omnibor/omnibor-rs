@@ -16,6 +16,7 @@ crate-type = ["rlib", "cdylib"]
 [dependencies]
 # Match the version used in sha1 and sha2.
 digest = "0.10.7"
+format-bytes = "0.3.0"
 # Match the version used in sha1, sha2, and digest.
 generic-array = "0.14.7"
 hex = { version = "0.4.3", default-features = false, features = ["std"] }

@@ -9,6 +9,9 @@ use core::hash::Hash;
 use core::marker::PhantomData;
 use core::ops::Not as _;
 use digest::OutputSizeUser;
+use format_bytes::format_bytes;
+use format_bytes::write_bytes;
+use format_bytes::DisplayBytes;
 use generic_array::sequence::GenericSequence;
 use generic_array::ArrayLength;
 use generic_array::GenericArray;
@@ -16,13 +19,16 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Result as FmtResult;
+use std::hash::Hasher;
+use std::io::BufRead;
+use std::io::BufReader;
 use std::io::Read;
+use std::io::Result as IoResult;
 use std::io::Seek;
 use std::io::SeekFrom;
+use std::io::Write;
 use std::str::FromStr;
 use std::str::Split;
-use std::hash::Hasher;
-use std::io::BufReader;
 use url::Url;
 
 /// A struct that computes [gitoids][g] based on the selected algorithm
@@ -43,6 +49,8 @@ where
     value: GenericArray<u8, H::OutputSize>,
 }
 
+const GITOID_URL_SCHEME: &str = "gitoid";
+
 impl<H, O> GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -55,6 +63,8 @@ where
     //-------------------------------------------------------------------------------------------
 
     /// Helper constructor for building a [`GitOid`] from a parsed hash.
+    ///
+    /// Use this so you don't have to care about filling in the phantom data.
     fn from_hash(value: GenericArray<u8, H::OutputSize>) -> GitOid<H, O> {
         GitOid {
             _phantom: PhantomData,
@@ -71,12 +81,8 @@ where
             <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
             GenericArray<u8, H::OutputSize>: Copy,
         {
-            let digester = H::new();
-            let reader = BufReader::new(content);
-            let expected_length = content.len();
-
             // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
-            gitoid_from_buffer(digester, reader, expected_length).unwrap()
+            gitoid_from_buffer(H::new(), content, content.len()).unwrap()
         }
 
         inner(content.as_ref())
@@ -99,17 +105,22 @@ where
     }
 
     /// Create a `GitOid` from a reader.
-    pub fn from_reader<R: Read + Seek>(
-        mut reader: R
-    ) -> Result<GitOid<H, O>> {
-        let digester = H::new();
+    pub fn from_reader<R: Read + Seek>(mut reader: R) -> Result<GitOid<H, O>> {
         let expected_length = stream_len(&mut reader)? as usize;
-        gitoid_from_buffer(digester, reader, expected_length)
+        GitOid::from_reader_with_expected_length(reader, expected_length)
+    }
+
+    /// Generate a `GitOid` from a reader, providing an expected length in bytes.
+    pub fn from_reader_with_expected_length<R: Read>(
+        reader: R,
+        expected_length: usize,
+    ) -> Result<GitOid<H, O>> {
+        gitoid_from_buffer(H::new(), reader, expected_length)
     }
 
     /// Construct a new `GitOid` from a `Url`.
     pub fn from_url(url: Url) -> Result<GitOid<H, O>> {
-        url.try_into()
+        GitOid::try_from(url)
     }
 
     //===========================================================================================
@@ -118,9 +129,15 @@ where
 
     /// Get a URL for the current `GitOid`.
     pub fn url(&self) -> Url {
-        let s = format!("gitoid:{}:{}:{}", O::NAME, H::NAME, self.as_hex());
         // PANIC SAFETY: We know that this is a valid URL.
-        Url::parse(&s).unwrap()
+        Url::parse(&format!(
+            "{}:{}:{}:{}",
+            GITOID_URL_SCHEME,
+            O::NAME,
+            H::NAME,
+            self.as_hex()
+        ))
+        .unwrap()
     }
 
     /// Get the underlying bytes of the hash.
@@ -317,7 +334,7 @@ where
     }
 
     fn validate_url_scheme(&self) -> Result<()> {
-        if self.url.scheme() != "gitoid" {
+        if self.url.scheme() != GITOID_URL_SCHEME {
             return Err(Error::InvalidScheme(self.url.clone()));
         }
 
@@ -406,9 +423,9 @@ where
 /// `expected_length`. If the actual bytes hashed differs, then something went
 /// wrong and the hash is not valid.
 fn gitoid_from_buffer<H, O, R>(
-    mut digester: H,
-    mut reader: R,
-    expected_length: usize,
+    digester: H,
+    reader: R,
+    expected_read_length: usize,
 ) -> Result<GitOid<H, O>>
 where
     H: HashAlgorithm,
@@ -417,43 +434,90 @@ where
     GenericArray<u8, H::OutputSize>: Copy,
     R: Read,
 {
-    let prefix = format!("{} {}\0", O::NAME, expected_length);
+    let expected_hash_length = <H as OutputSizeUser>::output_size();
+    let (hash, amount_read) = hash_from_buffer::<H, O, R>(digester, reader, expected_read_length)?;
 
-    // Linux default page size is 4096, so use that.
-    let mut buf = [0; 4096];
-    let mut amount_read: usize = 0;
-
-    digester.update(prefix.as_bytes());
-
-    loop {
-        match reader.read(&mut buf)? {
-            0 => break,
-
-            size => {
-                digester.update(&buf[..size]);
-                amount_read += size;
-            }
-        }
-    }
-
-    if amount_read != expected_length {
+    if amount_read != expected_read_length {
         return Err(Error::BadLength {
-            expected: expected_length,
+            expected: expected_read_length,
             actual: amount_read,
         });
     }
 
-    let hash = digester.finalize();
-    let expected_size = <H as OutputSizeUser>::output_size();
-
-    if hash.len() != expected_size {
+    if hash.len() != expected_hash_length {
         return Err(Error::UnexpectedHashLength {
-            expected: expected_size,
+            expected: expected_hash_length,
             observed: hash.len(),
         });
     }
 
     Ok(GitOid::from_hash(hash))
+}
+
+// Helper struct for using `format_bytes` during prefix construction for hashing.
+struct Str<'s>(&'s str);
+
+impl<'s> DisplayBytes for Str<'s> {
+    fn display_bytes(&self, output: &mut dyn Write) -> IoResult<()> {
+        write_bytes!(output, b"{}", self.0.as_bytes())?;
+        Ok(())
+    }
+}
+
+// Helper extension trait to give a convenient way to iterate over
+// chunks sized to the size of the internal buffer of the reader.
+trait ForEachChunk: BufRead {
+    // Takes a function to apply to each chunk, and returns if any
+    // errors arose along with the number of bytes read in total.
+    fn for_each_chunk(&mut self, f: impl FnMut(&[u8])) -> Result<usize>;
+}
+
+impl<R: BufRead> ForEachChunk for R {
+    fn for_each_chunk(&mut self, mut f: impl FnMut(&[u8])) -> Result<usize> {
+        let mut total_read = 0;
+
+        loop {
+            let buffer = self.fill_buf()?;
+            let amount_read = buffer.len();
+
+            if amount_read == 0 {
+                break;
+            }
+
+            f(buffer);
+
+            self.consume(amount_read);
+            total_read += amount_read;
+        }
+
+        Ok(total_read)
+    }
+}
+
+/// Helper function which actually applies the [`GitOid`] construction rules.
+///
+/// This function handles actually constructing the hash with the GitOID prefix,
+/// and delegates to a buffered reader for performance of the chunked reading.
+fn hash_from_buffer<H, O, R>(
+    mut digester: H,
+    reader: R,
+    expected_read_length: usize,
+) -> Result<(GenericArray<u8, H::OutputSize>, usize)>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+    <H as OutputSizeUser>::OutputSize: ArrayLength<u8>,
+    GenericArray<u8, H::OutputSize>: Copy,
+    R: Read,
+{
+    digester.update(format_bytes!(
+        b"{} {}\0",
+        Str(O::NAME),
+        expected_read_length
+    ));
+    let amount_read = BufReader::new(reader).for_each_chunk(|b| digester.update(b))?;
+    let hash = digester.finalize();
+    Ok((hash, amount_read))
 }
 
 // Adapted from the Rust standard library's unstable implementation
