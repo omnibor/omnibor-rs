@@ -1,7 +1,7 @@
 //! A content-addressable identity for software artifacts.
 //!
 //! ## What are GitOIDs?
-//! 
+//!
 //! Git Object Identifiers ([GitOIDs][gitoid]) are a mechanism for
 //! identifying artifacts in a manner which is independently reproducible
 //! because it relies only on the contents of the artifact itself.
@@ -9,13 +9,13 @@
 //! The GitOID scheme comes from the Git version control system, which uses
 //! this mechanism to identify commits, tags, files (called "blobs"), and
 //! directories (called "trees").
-//! 
+//!
 //! This implementation of GitOIDs is produced by the [OmniBOR][omnibor]
 //! working group, which uses GitOIDs as the basis for OmniBOR Artifact
 //! Identifiers.
 //!
 //! ### GitOID URL Scheme
-//! 
+//!
 //! `gitoid` is also an IANA-registered URL scheme, meaning that GitOIDs
 //! are represented and shared as URLs. A `gitoid` URL looks like:
 //!
@@ -29,14 +29,14 @@
 //! separated by a colon.
 //!
 //! ### GitOID Hash Construction
-//! 
+//!
 //! GitOID hashes are made by hashing a prefix string containing the object
 //! type and the size of the object being hashed in bytes, followed by a null
 //! terminator, and then hashing the object itself. So GitOID hashes do not
 //! match the result of only hashing the object.
-//! 
+//!
 //! ### GitOID Object Types
-//! 
+//!
 //! The valid object types for a GitOID are:
 //!
 //! - `blob`
@@ -47,9 +47,9 @@
 //! Currently, this crate implements convenient handling of `blob` objects,
 //! but does not handle ensuring the proper formatting of `tree`, `commit`,
 //! or `tag` objects to match the Git implementation.
-//! 
+//!
 //! ### GitOID Hash Algorithms
-//! 
+//!
 //! The valid hash algorithms are:
 //!
 //! - `sha1`
@@ -61,37 +61,37 @@
 //! believes to be an attempt to generate a purposeful SHA-1 collision,
 //! in which case it modifies the hash process to produce a different output
 //! and avoid the malicious collision.
-//! 
+//!
 //! Git does this under the hood, but does not clearly distinguish to end
 //! users that the underlying hashing algorithm isn't equivalent to SHA-1.
 //! This is fine for Git, where the specific hash used is an implementation
 //! detail and only matters within a single repository, but for the OmniBOR
 //! working group it's important to distinguish whether plain SHA-1 or
 //! SHA-1DC is being used, so it's distinguished in the code for this crate.
-//! 
+//!
 //! This means for compatibility with Git that SHA-1DC should be used.
-//! 
+//!
 //! ## Why Care About GitOIDs?
-//! 
+//!
 //! GitOIDs provide a convenient mechanism to establish artifact identity and
 //! validate artifact integrity (this artifact hasn't been modified) and
 //! agreement (I have the same artifact you have). The fact that they're based
 //! only on the type of object ("`blob`", usually) and the artifact itself
 //! means they can be derived independently, enabling distributed artifact
 //! identification that avoids a central decider.
-//! 
+//!
 //! Alternative identity schemes, like Package URLs (purls) or Common Platform
 //! Enumerations (CPEs) rely on central authorities to produce identifiers or
 //! define the taxonomy in which identifiers are produced.
-//! 
+//!
 //! ## Using this Crate
-//! 
+//!
 //! The central type of this crate is [`GitOid`], which is generic over both
 //! the hash algorithm used and the object type being identified. The
 //! [`HashAlgorithm`] trait, which is sealed, is implemented by the types
 //! found in `gitoid::hash`. The [`ObjectType`] trait, which is also sealed,
 //! is implemented by the types found in `gitoid::object`.
-//! 
+//!
 //! [gitoid]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
 //! [omnibor]: https://omnibor.io
 

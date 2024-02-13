@@ -8,10 +8,6 @@ use sha1::Sha1;
 use sha1collisiondetection::Sha1CD as Sha1Cd;
 use sha2::Sha256;
 
-mod private {
-    pub trait Sealed {}
-}
-
 /// Hash algorithms that can be used to make a [`GitOid`].
 ///
 /// This is a sealed trait to ensure it's only used for hash

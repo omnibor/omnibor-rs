@@ -25,7 +25,6 @@ use sha1collisiondetection::Sha1CD as Sha1Cd;
 use sha2::Sha256;
 use std::ffi::CString;
 use std::fs::File;
-use std::io::BufReader;
 #[cfg(target_family = "unix")]
 use std::os::unix::prelude::FromRawFd;
 #[cfg(target_family = "unix")]
@@ -120,7 +119,7 @@ macro_rules! generate_gitoid_ffi_for_hash {
             /// `content` must not be null, and the length of the buffer must match the
             /// length in bytes passed by `content_len`.
             #[no_mangle]
-            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _new_from_bytes>](
+            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _from_bytes>](
                 content: *mut u8,
                 content_len: usize,
             ) -> *const [<GitOid $hash_ty $object_ty>] {
@@ -143,7 +142,7 @@ macro_rules! generate_gitoid_ffi_for_hash {
             /// end, all contained in a single contiguous allocation. The pointer must also
             /// not be null.
             #[no_mangle]
-            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _new_from_str>](
+            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _from_str>](
                 s: *const c_char,
             ) -> *const [<GitOid $hash_ty $object_ty>] {
                 let output = catch_panic(|| {
@@ -165,7 +164,7 @@ macro_rules! generate_gitoid_ffi_for_hash {
             ///
             /// The returned `GitOid` must be freed.
             #[no_mangle]
-            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _new_from_url>](
+            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _from_url>](
                 s: *const c_char
             ) -> *const [<GitOid $hash_ty $object_ty>] {
                 let output = catch_panic(|| {
@@ -189,20 +188,36 @@ macro_rules! generate_gitoid_ffi_for_hash {
             /// Returns an invalid `GitOid` if construction fails.
             #[cfg(target_family = "unix")]
             #[no_mangle]
-            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _new_from_reader>](
-                fd: RawFd,
-                should_buffer: bool,
+            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _from_reader>](
+                fd: RawFd
             ) -> *const [<GitOid $hash_ty $object_ty>] {
                 let output = catch_panic(|| {
                     let file = unsafe { File::from_raw_fd(fd) };
+                    let gitoid = GitOid::<$hash_ty, $object_ty>::from_reader(file)?;
+                    let boxed = Box::new(gitoid);
+                    Ok(Box::into_raw(boxed) as *const _)
+                });
 
-                    let gitoid = if should_buffer {
-                        let reader = BufReader::new(file);
-                        GitOid::<$hash_ty, $object_ty>::from_reader(reader)?
-                    } else {
-                        GitOid::<$hash_ty, $object_ty>::from_reader(file)?
-                    };
+                output.unwrap_or_else(null)
+            }
 
+            /// Create a new `GitOid` by reading data from a file.
+            ///
+            /// # Safety
+            ///
+            /// The provided file descriptor must be valid and open for reading.
+            ///
+            /// Returns an invalid `GitOid` if construction fails.
+            #[cfg(target_family = "unix")]
+            #[no_mangle]
+            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _from_reader_with_expected_length>](
+                fd: RawFd,
+                expected_length: c_int,
+            ) -> *const [<GitOid $hash_ty $object_ty>] {
+                let output = catch_panic(|| {
+                    let file = unsafe { File::from_raw_fd(fd) };
+                    let expected_length = expected_length as usize;
+                    let gitoid = GitOid::<$hash_ty, $object_ty>::from_reader_with_expected_length(file, expected_length)?;
                     let boxed = Box::new(gitoid);
                     Ok(Box::into_raw(boxed) as *const _)
                 });
@@ -220,13 +235,39 @@ macro_rules! generate_gitoid_ffi_for_hash {
             #[cfg(target_family = "windows")]
             #[no_mangle]
             /// cbindgen:ignore
-            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _new_from_reader>](
+            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _from_reader>](
                 handle: RawHandle,
             ) -> *const [<GitOid $hash_ty $object_ty>] {
                 let output = catch_panic(|| {
                     let file = unsafe { File::from_raw_handle(handle) };
                     let reader = BufReader::new(file);
                     let gitoid = GitOid::<$hash_ty, $object_ty>::new_from_reader(reader)?;
+                    let boxed = Box::new(gitoid);
+                    Ok(Box::into_raw(boxed) as *const _)
+                });
+
+                output.unwrap_or_else(null)
+            }
+
+            /// Create a new `GitOid` by reading data from a file.
+            ///
+            /// # Safety
+            ///
+            /// The provided file handle must be valid and open for reading.
+            ///
+            /// Returns an invalid `GitOid` if construction fails.
+            #[cfg(target_family = "windows")]
+            #[no_mangle]
+            /// cbindgen:ignore
+            pub unsafe extern "C" fn [<gitoid_ $hash_name _ $object_name _from_reader_with_expected_length>](
+                handle: RawHandle,
+                expected_length: c_int,
+            ) -> *const [<GitOid $hash_ty $object_ty>] {
+                let output = catch_panic(|| {
+                    let file = unsafe { File::from_raw_handle(handle) };
+                    let expected_length = expected_length as usize;
+                    let reader = BufReader::new(file);
+                    let gitoid = GitOid::<$hash_ty, $object_ty>::new_from_reader_with_expected_length(reader, expected_length)?;
                     let boxed = Box::new(gitoid);
                     Ok(Box::into_raw(boxed) as *const _)
                 });
