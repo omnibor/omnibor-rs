@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+      branches: [main]
+  pull_request:
+      branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  RUSTFLAGS: -Dwarnings
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-linux:
+    name: Test (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Building
+        run: cargo build --verbose
+      - name: Testing (Rust)
+        run: cargo test --verbose
+      - name: Linting
+        run: cargo clippy --verbose
+
+  ffi-test-linux:
+      name: FFI Test (Ubuntu)
+      runs-on: ubuntu-latest
+      timeout-minutes: 15
+      steps:
+        - uses: actions/checkout@v4
+        - uses: dtolnay/rust-toolchain@nightly
+        - name: FFI Test
+          run: cd gitoid && make
+
+  ffi-test-windows:
+    name: FFI Test (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: FFI Test
+        run: cd gitoid && make
+
+  conventional-commits:
+      name: Conventional Commits
+      runs-on: ubuntu-latest
+      timeout-minutes: 15
+      steps:
+        - uses: actions/checkout@v4
+        - uses: webiny/action-conventional-commits@v1.3.0
+        
