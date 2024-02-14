@@ -240,8 +240,7 @@ macro_rules! generate_gitoid_ffi_for_hash {
             ) -> *const [<GitOid $hash_ty $object_ty>] {
                 let output = catch_panic(|| {
                     let file = unsafe { File::from_raw_handle(handle) };
-                    let reader = BufReader::new(file);
-                    let gitoid = GitOid::<$hash_ty, $object_ty>::from_reader(reader)?;
+                    let gitoid = GitOid::<$hash_ty, $object_ty>::from_reader(file)?;
                     let boxed = Box::new(gitoid);
                     Ok(Box::into_raw(boxed) as *const _)
                 });
@@ -266,8 +265,7 @@ macro_rules! generate_gitoid_ffi_for_hash {
                 let output = catch_panic(|| {
                     let file = unsafe { File::from_raw_handle(handle) };
                     let expected_length = expected_length as usize;
-                    let reader = BufReader::new(file);
-                    let gitoid = GitOid::<$hash_ty, $object_ty>::from_reader_with_expected_length(reader, expected_length)?;
+                    let gitoid = GitOid::<$hash_ty, $object_ty>::from_reader_with_expected_length(file, expected_length)?;
                     let boxed = Box::new(gitoid);
                     Ok(Box::into_raw(boxed) as *const _)
                 });
