@@ -54,20 +54,14 @@ The OmniBOR Rust implementation is designed with the following goals in mind:
 
 ## Contributing
 
-We're happy to accept contributions!
-
-For bug fixes and minor changes to the implementation, feel free to open an issue
-in the issue tracker explaining what you'd like to fix, and then open a Pull
-Request with the change.
-
-For larger design changes, you may also want to discuss the changes either in the
-issue tracker or in the repository's Discussions page.
+Check out the [Contributing Guide][contributing].
 
 ## License
 
 The `omnibor` and `gitoid` crates are both Apache 2.0 licensed. You can read the
 full license text in the [`LICENSE`][license] file.
 
+[contributing]: CONTRIBUTING.md
 [cbindgen]: https://github.com/eqrion/cbindgen
 [cisa_report]: https://www.cisa.gov/sites/default/files/2023-10/Software-Identification-Ecosystem-Option-Analysis-508c.pdf
 [cpe]: https://nvd.nist.gov/products/cpe
