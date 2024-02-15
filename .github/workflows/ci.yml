@@ -36,7 +36,7 @@ jobs:
         - uses: actions/checkout@v4
         - uses: dtolnay/rust-toolchain@nightly
         - name: FFI Test
-          run: cd gitoid && make
+          run: cd gitoid && ./ctest.sh
 
   ffi-test-windows:
     name: FFI Test (Windows)
@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
       - name: FFI Test
-        run: cd gitoid && make
+        run: cd gitoid && ./ctest.sh
 
   conventional-commits:
       name: Conventional Commits
