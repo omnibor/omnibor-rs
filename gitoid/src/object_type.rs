@@ -60,6 +60,7 @@ macro_rules! define_object_type {
         impl Sealed for $name {}
 
         impl ObjectType for $name {
+            /// cbindgen:ignore
             const NAME: &'static str = $s;
         }
     };

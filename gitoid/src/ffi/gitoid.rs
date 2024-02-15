@@ -59,6 +59,7 @@ pub unsafe extern "C" fn gitoid_get_error_message(buffer: *mut c_char, length: c
 /// Embed a C string into the binary.
 macro_rules! embed_cstr {
     ($name:ident, $arr:expr) => {
+        /// cbindgen:ignore
         const $name: *const c_char = $arr.as_ptr();
     };
 }
