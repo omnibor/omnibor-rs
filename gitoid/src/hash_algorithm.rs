@@ -29,6 +29,7 @@ macro_rules! impl_hash_algorithm {
         impl Sealed for $type {}
 
         impl HashAlgorithm for $type {
+            /// cbindgen:ignore
             const NAME: &'static str = $name;
         }
     };

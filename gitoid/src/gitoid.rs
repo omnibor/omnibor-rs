@@ -10,8 +10,6 @@ use core::marker::PhantomData;
 use core::ops::Not as _;
 use digest::OutputSizeUser;
 use format_bytes::format_bytes;
-use format_bytes::write_bytes;
-use format_bytes::DisplayBytes;
 use generic_array::sequence::GenericSequence;
 use generic_array::ArrayLength;
 use generic_array::GenericArray;
@@ -23,10 +21,8 @@ use std::hash::Hasher;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Read;
-use std::io::Result as IoResult;
 use std::io::Seek;
 use std::io::SeekFrom;
-use std::io::Write;
 use std::str::FromStr;
 use std::str::Split;
 use url::Url;
@@ -49,6 +45,7 @@ where
     value: GenericArray<u8, H::OutputSize>,
 }
 
+/// cbindgen:ignore
 const GITOID_URL_SCHEME: &str = "gitoid";
 
 impl<H, O> GitOid<H, O>
@@ -454,16 +451,6 @@ where
     Ok(GitOid::from_hash(hash))
 }
 
-// Helper struct for using `format_bytes` during prefix construction for hashing.
-struct Str<'s>(&'s str);
-
-impl<'s> DisplayBytes for Str<'s> {
-    fn display_bytes(&self, output: &mut dyn Write) -> IoResult<()> {
-        write_bytes!(output, b"{}", self.0.as_bytes())?;
-        Ok(())
-    }
-}
-
 // Helper extension trait to give a convenient way to iterate over
 // chunks sized to the size of the internal buffer of the reader.
 trait ForEachChunk: BufRead {
@@ -512,7 +499,7 @@ where
 {
     digester.update(format_bytes!(
         b"{} {}\0",
-        Str(O::NAME),
+        O::NAME.as_bytes(),
         expected_read_length
     ));
     let amount_read = BufReader::new(reader).for_each_chunk(|b| digester.update(b))?;
