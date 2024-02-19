@@ -15,6 +15,7 @@ use core::marker::PhantomData;
 use core::ops::Not as _;
 use core::str::FromStr;
 use core::str::Split;
+use digest::Digest;
 use digest::OutputSizeUser;
 use format_bytes::format_bytes;
 use generic_array::sequence::GenericSequence;
@@ -44,7 +45,7 @@ where
     _phantom: PhantomData<O>,
 
     #[doc(hidden)]
-    value: H::ARRAY,
+    value: H::Array,
 }
 
 const GITOID_URL_SCHEME: &str = "gitoid";
@@ -54,14 +55,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
 {
-    /// Helper function to construct GitOid from raw hash.
-    fn from_hash(arr: GenericArray<u8, H::OutputSize>) -> GitOid<H, O> {
-        GitOid {
-            _phantom: PhantomData,
-            value: H::array_from_generic(arr),
-        }
-    }
-
     /// Create a new `GitOid` based on a slice of bytes.
     pub fn from_bytes<B: AsRef<[u8]>>(content: B) -> GitOid<H, O> {
         fn inner<H, O>(content: &[u8]) -> GitOid<H, O>
@@ -160,7 +153,7 @@ where
 
     /// Get the length of the hash in bytes.
     pub fn hash_len(&self) -> usize {
-        <H as OutputSizeUser>::output_size()
+        <H::Alg as OutputSizeUser>::output_size()
     }
 }
 
@@ -304,7 +297,10 @@ where
             .and_then(|_| self.validate_object_type())
             .and_then(|_| self.validate_hash_algorithm())
             .and_then(|_| self.parse_hash())
-            .map(GitOid::from_hash)
+            .map(|hash| GitOid {
+                _phantom: PhantomData,
+                value: H::array_from_generic(hash),
+            })
     }
 
     fn validate_url_scheme(&self) -> Result<()> {
@@ -349,18 +345,19 @@ where
         Ok(())
     }
 
-    fn parse_hash(&mut self) -> Result<GenericArray<u8, H::OutputSize>> {
+    fn parse_hash(&mut self) -> Result<GenericArray<u8, <H::Alg as OutputSizeUser>::OutputSize>> {
         let hex_str = self
             .segments
             .next()
             .and_then(some_if_not_empty)
             .ok_or_else(|| Error::MissingHash(self.url.clone()))?;
 
-        // TODO(abrinker): When `sha1` et al. move to generic-array 1.0, update this to use the `arr!` macro.
+        // TODO(alilleybrinker): When `sha1` et al. move to generic-array 1.0,
+        //                       update this to use the `arr!` macro.
         let mut value = GenericArray::generate(|_| 0);
         hex::decode_to_slice(hex_str, &mut value)?;
 
-        let expected_size = <H as OutputSizeUser>::output_size();
+        let expected_size = <H::Alg as OutputSizeUser>::output_size();
         if value.len() != expected_size {
             return Err(Error::UnexpectedHashLength {
                 expected: expected_size,
@@ -395,7 +392,7 @@ where
 /// `expected_length`. If the actual bytes hashed differs, then something went
 /// wrong and the hash is not valid.
 fn gitoid_from_buffer<H, O, R>(
-    digester: H,
+    digester: H::Alg,
     reader: R,
     expected_read_length: usize,
 ) -> Result<GitOid<H, O>>
@@ -404,8 +401,9 @@ where
     O: ObjectType,
     R: Read,
 {
-    let expected_hash_length = <H as OutputSizeUser>::output_size();
-    let (hash, amount_read) = hash_from_buffer::<H, O, R>(digester, reader, expected_read_length)?;
+    let expected_hash_length = <H::Alg as OutputSizeUser>::output_size();
+    let (hash, amount_read) =
+        hash_from_buffer::<H::Alg, O, R>(digester, reader, expected_read_length)?;
 
     if amount_read != expected_read_length {
         return Err(Error::UnexpectedHashLength {
@@ -421,7 +419,10 @@ where
         });
     }
 
-    Ok(GitOid::from_hash(hash))
+    Ok(GitOid {
+        _phantom: PhantomData,
+        value: H::array_from_generic(hash),
+    })
 }
 
 // Helper extension trait to give a convenient way to iterate over
@@ -458,13 +459,13 @@ impl<R: BufRead> ForEachChunk for R {
 ///
 /// This function handles actually constructing the hash with the GitOID prefix,
 /// and delegates to a buffered reader for performance of the chunked reading.
-fn hash_from_buffer<H, O, R>(
-    mut digester: H,
+fn hash_from_buffer<D, O, R>(
+    mut digester: D,
     reader: R,
     expected_read_length: usize,
-) -> Result<(GenericArray<u8, H::OutputSize>, usize)>
+) -> Result<(GenericArray<u8, D::OutputSize>, usize)>
 where
-    H: HashAlgorithm,
+    D: Digest,
     O: ObjectType,
     R: Read,
 {
@@ -480,7 +481,7 @@ where
 
 /// Async version of `gitoid_from_buffer`.
 async fn gitoid_from_async_buffer<H, O, R>(
-    digester: H,
+    digester: H::Alg,
     reader: R,
     expected_read_length: usize,
 ) -> Result<GitOid<H, O>>
@@ -489,9 +490,9 @@ where
     O: ObjectType,
     R: AsyncRead + Unpin,
 {
-    let expected_hash_length = <H as OutputSizeUser>::output_size();
+    let expected_hash_length = <H::Alg as OutputSizeUser>::output_size();
     let (hash, amount_read) =
-        hash_from_async_buffer::<H, O, R>(digester, reader, expected_read_length).await?;
+        hash_from_async_buffer::<H::Alg, O, R>(digester, reader, expected_read_length).await?;
 
     if amount_read != expected_read_length {
         return Err(Error::UnexpectedHashLength {
@@ -507,17 +508,20 @@ where
         });
     }
 
-    Ok(GitOid::from_hash(hash))
+    Ok(GitOid {
+        _phantom: PhantomData,
+        value: H::array_from_generic(hash),
+    })
 }
 
 /// Async version of `hash_from_buffer`.
-async fn hash_from_async_buffer<H, O, R>(
-    mut digester: H,
+async fn hash_from_async_buffer<D, O, R>(
+    mut digester: D,
     reader: R,
     expected_read_length: usize,
-) -> Result<(GenericArray<u8, H::OutputSize>, usize)>
+) -> Result<(GenericArray<u8, D::OutputSize>, usize)>
 where
-    H: HashAlgorithm,
+    D: Digest,
     O: ObjectType,
     R: AsyncRead + Unpin,
 {
