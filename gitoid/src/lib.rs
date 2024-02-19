@@ -87,48 +87,32 @@
 //! ## Using this Crate
 //!
 //! The central type of this crate is [`GitOid`], which is generic over both
-//! the hash algorithm used and the object type being identified. The
-//! [`HashAlgorithm`] trait, which is sealed, is implemented by the types
-//! found in `gitoid::hash`. The [`ObjectType`] trait, which is also sealed,
-//! is implemented by the types found in `gitoid::object`.
+//! the hash algorithm used and the object type being identified. These are
+//! defined by the [`HashAlgorithm`] and [`ObjectType`] traits.
 //!
 //! [gitoid]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
 //! [omnibor]: https://omnibor.io
 
+pub(crate) mod sealed;
+
 mod error;
-//pub mod ffi;
 mod gitoid;
 mod hash_algorithm;
 mod object_type;
-pub(crate) mod sealed;
+
 #[cfg(test)]
 mod tests;
 
-pub use crate::error::Error;
 pub(crate) use crate::error::Result;
+
+pub use crate::error::Error;
 pub use crate::gitoid::GitOid;
 pub use crate::hash_algorithm::HashAlgorithm;
+pub use crate::hash_algorithm::Sha1;
+pub use crate::hash_algorithm::Sha1Cd;
+pub use crate::hash_algorithm::Sha256;
+pub use crate::object_type::Blob;
+pub use crate::object_type::Commit;
 pub use crate::object_type::ObjectType;
-
-pub mod object {
-    //! Object types supported for [`GitOid`] construction.
-
-    #[cfg(doc)]
-    use crate::GitOid;
-
-    pub use crate::object_type::Blob;
-    pub use crate::object_type::Commit;
-    pub use crate::object_type::Tag;
-    pub use crate::object_type::Tree;
-}
-
-pub mod hash {
-    //! Hash algorithms supported for [`GitOid`] construction.
-
-    #[cfg(doc)]
-    use crate::GitOid;
-
-    pub use crate::hash_algorithm::Sha1;
-    pub use crate::hash_algorithm::Sha1Cd;
-    pub use crate::hash_algorithm::Sha256;
-}
+pub use crate::object_type::Tag;
+pub use crate::object_type::Tree;
