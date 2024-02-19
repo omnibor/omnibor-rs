@@ -11,6 +11,8 @@ use crate::GitOid;
 ///
 /// For more information on sealed traits, read Predrag
 /// Gruevski's ["A Definitive Guide to Sealed Traits in Rust"][1].
+///
+/// [1]: https://predr.ag/blog/definitive-guide-to-sealed-traits-in-rust/
 pub trait ObjectType: Sealed {
     #[doc(hidden)]
     const NAME: &'static str;

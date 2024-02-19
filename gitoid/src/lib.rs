@@ -90,6 +90,18 @@
 //! the hash algorithm used and the object type being identified. These are
 //! defined by the [`HashAlgorithm`] and [`ObjectType`] traits.
 //!
+//! ## Example
+//!
+//! ```rust
+//! # use gitoid::{Sha256, Blob};
+//!
+//! type GitOid = gitoid::GitOid<Sha256, Blob>;
+//!
+//! let gitoid: GitOid = gitoid::GitOid::from_str("hello, world");
+//!
+//! println!("gitoid: {}", gitoid);
+//! ```
+//!
 //! [gitoid]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
 //! [omnibor]: https://omnibor.io
 
