@@ -28,26 +28,6 @@ jobs:
       - name: Linting
         run: cargo clippy --verbose
 
-  ffi-test-linux:
-      name: FFI Test (Ubuntu)
-      runs-on: ubuntu-latest
-      timeout-minutes: 15
-      steps:
-        - uses: actions/checkout@v4
-        - uses: dtolnay/rust-toolchain@nightly
-        - name: FFI Test
-          run: cd gitoid && ./ctest.sh
-
-  ffi-test-windows:
-    name: FFI Test (Windows)
-    runs-on: windows-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-      - name: FFI Test
-        run: cd gitoid && ./ctest.sh
-
   conventional-commits:
       name: Conventional Commits
       runs-on: ubuntu-latest

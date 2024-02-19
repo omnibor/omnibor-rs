@@ -2,7 +2,6 @@ use super::hash::*;
 use super::object::*;
 use super::*;
 use std::fs::File;
-use std::io::BufReader;
 use url::Url;
 
 #[test]
@@ -20,7 +19,7 @@ fn generate_sha1_gitoid_from_bytes() {
 
 #[test]
 fn generate_sha1_gitoid_from_buffer() -> Result<()> {
-    let reader = BufReader::new(File::open("test/data/hello_world.txt")?);
+    let reader = File::open("test/data/hello_world.txt")?;
     let result = GitOid::<Sha1, Blob>::from_reader(reader)?;
 
     assert_eq!(result.as_hex(), "95d09f2b10159347eece71399a7e2e907ea3df4f");
@@ -51,7 +50,7 @@ fn generate_sha256_gitoid_from_bytes() {
 
 #[test]
 fn generate_sha256_gitoid_from_buffer() -> Result<()> {
-    let reader = BufReader::new(File::open("test/data/hello_world.txt")?);
+    let reader = File::open("test/data/hello_world.txt")?;
     let result = GitOid::<Sha256, Blob>::from_reader(reader)?;
 
     assert_eq!(
