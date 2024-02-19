@@ -96,7 +96,7 @@
 //! [omnibor]: https://omnibor.io
 
 mod error;
-pub mod ffi;
+//pub mod ffi;
 mod gitoid;
 mod hash_algorithm;
 mod object_type;

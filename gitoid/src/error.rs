@@ -16,9 +16,6 @@ pub(crate) type Result<T> = StdResult<T, Error>;
 /// An error arising during `GitOid` construction or use.
 #[derive(Debug)]
 pub enum Error {
-    /// The expected and actual length of the data being read didn't
-    /// match, indicating something has likely gone wrong.
-    BadLength { expected: usize, actual: usize },
     /// Tried to construct a `GitOid` from a `Url` with a scheme besides `gitoid`.
     InvalidScheme(Url),
     /// Tried to construct a `GitOid` from a `Url` without an `ObjectType` in it.
@@ -46,9 +43,6 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
-            Error::BadLength { expected, actual } => {
-                write!(f, "expected length {}, actual length {}", expected, actual)
-            }
             Error::InvalidScheme(url) => write!(f, "invalid scheme in URL '{}'", url.scheme()),
             Error::MissingObjectType(url) => write!(f, "missing object type in URL '{}'", url),
             Error::MissingHashAlgorithm(url) => {
@@ -83,8 +77,7 @@ impl Display for Error {
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
-            Error::BadLength { .. }
-            | Error::InvalidScheme(_)
+            Error::InvalidScheme(_)
             | Error::MissingObjectType(_)
             | Error::MissingHashAlgorithm(_)
             | Error::MissingHash(_)

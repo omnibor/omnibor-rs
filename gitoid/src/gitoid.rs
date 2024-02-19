@@ -4,27 +4,27 @@ use crate::Error;
 use crate::HashAlgorithm;
 use crate::ObjectType;
 use crate::Result;
+use core::cmp::Ordering;
+use core::fmt::Debug;
+use core::fmt::Display;
 use core::fmt::Formatter;
+use core::fmt::Result as FmtResult;
 use core::hash::Hash;
+use core::hash::Hasher;
 use core::marker::PhantomData;
 use core::ops::Not as _;
+use core::str::FromStr;
+use core::str::Split;
 use digest::OutputSizeUser;
 use format_bytes::format_bytes;
 use generic_array::sequence::GenericSequence;
 use generic_array::ArrayLength;
 use generic_array::GenericArray;
-use std::cmp::Ordering;
-use std::fmt::Debug;
-use std::fmt::Display;
-use std::fmt::Result as FmtResult;
-use std::hash::Hasher;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
-use std::str::FromStr;
-use std::str::Split;
 use url::Url;
 
 /// A struct that computes [gitoids][g] based on the selected algorithm
@@ -36,7 +36,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     #[doc(hidden)]
     _phantom: PhantomData<O>,
@@ -53,12 +52,7 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
-    //===========================================================================================
-    // Constructors
-    //-------------------------------------------------------------------------------------------
-
     /// Helper constructor for building a [`GitOid`] from a parsed hash.
     ///
     /// Use this so you don't have to care about filling in the phantom data.
@@ -76,7 +70,6 @@ where
             H: HashAlgorithm,
             O: ObjectType,
             H::OutputSize: ArrayLength<u8>,
-            GenericArray<u8, H::OutputSize>: Copy,
         {
             // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
             gitoid_from_buffer(H::new(), content, content.len()).unwrap()
@@ -93,7 +86,6 @@ where
             H: HashAlgorithm,
             O: ObjectType,
             H::OutputSize: ArrayLength<u8>,
-            GenericArray<u8, H::OutputSize>: Copy,
         {
             GitOid::from_bytes(s.as_bytes())
         }
@@ -119,10 +111,6 @@ where
     pub fn from_url(url: Url) -> Result<GitOid<H, O>> {
         GitOid::try_from(url)
     }
-
-    //===========================================================================================
-    // Getters
-    //-------------------------------------------------------------------------------------------
 
     /// Get a URL for the current `GitOid`.
     pub fn url(&self) -> Url {
@@ -168,7 +156,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     type Err = Error;
 
@@ -203,7 +190,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     fn eq(&self, other: &GitOid<H, O>) -> bool {
         self.value == other.value
@@ -215,7 +201,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
 }
 
@@ -224,7 +209,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -236,7 +220,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.value.cmp(&other.value)
@@ -248,7 +231,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     fn hash<H2>(&self, state: &mut H2)
     where
@@ -263,7 +245,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("GitOid")
@@ -277,7 +258,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "{}:{}", H::NAME, self.as_hex())
@@ -289,7 +269,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     url: &'u Url,
 
@@ -311,7 +290,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     fn new(url: &'u Url) -> GitOidUrlParser<'u, H, O> {
         GitOidUrlParser {
@@ -400,7 +378,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     type Error = Error;
 
@@ -428,16 +405,15 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
     R: Read,
 {
     let expected_hash_length = <H as OutputSizeUser>::output_size();
     let (hash, amount_read) = hash_from_buffer::<H, O, R>(digester, reader, expected_read_length)?;
 
     if amount_read != expected_read_length {
-        return Err(Error::BadLength {
+        return Err(Error::UnexpectedHashLength {
             expected: expected_read_length,
-            actual: amount_read,
+            observed: amount_read,
         });
     }
 
@@ -494,7 +470,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
     H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
     R: Read,
 {
     digester.update(format_bytes!(

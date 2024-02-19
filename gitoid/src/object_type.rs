@@ -4,10 +4,10 @@ use crate::sealed::Sealed;
 use crate::Error;
 #[cfg(doc)]
 use crate::GitOid;
+use core::fmt::Display;
+use core::fmt::Formatter;
+use core::fmt::Result as FmtResult;
 use core::str::FromStr;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::fmt::Result as FmtResult;
 
 /// Object types usable to construct a [`GitOid`]
 pub trait ObjectType: Display + FromStr + Copy + Clone + Sealed {
