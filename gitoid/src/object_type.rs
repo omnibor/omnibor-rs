@@ -10,20 +10,8 @@ use core::fmt::Result as FmtResult;
 use core::str::FromStr;
 
 /// Object types usable to construct a [`GitOid`]
-pub trait ObjectType: Display + FromStr + Copy + Clone + Sealed {
+pub trait ObjectType: Display + FromStr + Sealed {
     const NAME: &'static str;
-}
-
-macro_rules! impl_copy_and_clone {
-    ( $name:tt, $s:literal ) => {
-        impl Clone for $name {
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-
-        impl Copy for $name {}
-    };
 }
 
 macro_rules! impl_from_str {
@@ -53,14 +41,12 @@ macro_rules! impl_display {
 
 macro_rules! define_object_type {
     ( $name:tt, $s:literal ) => {
-        impl_copy_and_clone!($name, $s);
         impl_from_str!($name, $s);
         impl_display!($name, $s);
 
         impl Sealed for $name {}
 
         impl ObjectType for $name {
-            /// cbindgen:ignore
             const NAME: &'static str = $s;
         }
     };

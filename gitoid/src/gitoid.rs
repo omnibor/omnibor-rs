@@ -18,7 +18,6 @@ use core::str::Split;
 use digest::OutputSizeUser;
 use format_bytes::format_bytes;
 use generic_array::sequence::GenericSequence;
-use generic_array::ArrayLength;
 use generic_array::GenericArray;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -35,41 +34,27 @@ pub struct GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
     #[doc(hidden)]
     _phantom: PhantomData<O>,
 
     #[doc(hidden)]
-    value: GenericArray<u8, H::OutputSize>,
+    value: H::ARRAY,
 }
 
-/// cbindgen:ignore
 const GITOID_URL_SCHEME: &str = "gitoid";
 
 impl<H, O> GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
-    /// Helper constructor for building a [`GitOid`] from a parsed hash.
-    ///
-    /// Use this so you don't have to care about filling in the phantom data.
-    fn from_hash(value: GenericArray<u8, H::OutputSize>) -> GitOid<H, O> {
-        GitOid {
-            _phantom: PhantomData,
-            value,
-        }
-    }
-
     /// Create a new `GitOid` based on a slice of bytes.
     pub fn from_bytes<B: AsRef<[u8]>>(content: B) -> GitOid<H, O> {
         fn inner<H, O>(content: &[u8]) -> GitOid<H, O>
         where
             H: HashAlgorithm,
             O: ObjectType,
-            H::OutputSize: ArrayLength<u8>,
         {
             // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
             gitoid_from_buffer(H::new(), content, content.len()).unwrap()
@@ -85,7 +70,6 @@ where
         where
             H: HashAlgorithm,
             O: ObjectType,
-            H::OutputSize: ArrayLength<u8>,
         {
             GitOid::from_bytes(s.as_bytes())
         }
@@ -155,7 +139,6 @@ impl<H, O> FromStr for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
     type Err = Error;
 
@@ -168,8 +151,6 @@ impl<H, O> Clone for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
     fn clone(&self) -> Self {
         *self
@@ -180,8 +161,6 @@ impl<H, O> Copy for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
-    GenericArray<u8, H::OutputSize>: Copy,
 {
 }
 
@@ -189,7 +168,6 @@ impl<H, O> PartialEq<GitOid<H, O>> for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
     fn eq(&self, other: &GitOid<H, O>) -> bool {
         self.value == other.value
@@ -200,7 +178,6 @@ impl<H, O> Eq for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
 }
 
@@ -208,7 +185,6 @@ impl<H, O> PartialOrd<GitOid<H, O>> for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -219,7 +195,6 @@ impl<H, O> Ord for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.value.cmp(&other.value)
@@ -230,7 +205,6 @@ impl<H, O> Hash for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
     fn hash<H2>(&self, state: &mut H2)
     where
@@ -244,7 +218,6 @@ impl<H, O> Debug for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("GitOid")
@@ -257,7 +230,6 @@ impl<H, O> Display for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "{}:{}", H::NAME, self.as_hex())
@@ -268,7 +240,6 @@ struct GitOidUrlParser<'u, H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
     url: &'u Url,
 
@@ -289,7 +260,6 @@ impl<'u, H, O> GitOidUrlParser<'u, H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
     fn new(url: &'u Url) -> GitOidUrlParser<'u, H, O> {
         GitOidUrlParser {
@@ -305,7 +275,10 @@ where
             .and_then(|_| self.validate_object_type())
             .and_then(|_| self.validate_hash_algorithm())
             .and_then(|_| self.parse_hash())
-            .map(GitOid::from_hash)
+            .map(|arr| GitOid {
+                _phantom: PhantomData,
+                value: H::array_from_generic(arr),
+            })
     }
 
     fn validate_url_scheme(&self) -> Result<()> {
@@ -377,7 +350,6 @@ impl<H, O> TryFrom<Url> for GitOid<H, O>
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
 {
     type Error = Error;
 
@@ -404,7 +376,6 @@ fn gitoid_from_buffer<H, O, R>(
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
     R: Read,
 {
     let expected_hash_length = <H as OutputSizeUser>::output_size();
@@ -424,7 +395,10 @@ where
         });
     }
 
-    Ok(GitOid::from_hash(hash))
+    Ok(GitOid {
+        _phantom: PhantomData,
+        value: H::array_from_generic(hash),
+    })
 }
 
 // Helper extension trait to give a convenient way to iterate over
@@ -469,7 +443,6 @@ fn hash_from_buffer<H, O, R>(
 where
     H: HashAlgorithm,
     O: ObjectType,
-    H::OutputSize: ArrayLength<u8>,
     R: Read,
 {
     digester.update(format_bytes!(
