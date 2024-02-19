@@ -14,15 +14,31 @@ version = "0.4.0"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
+
+## Core Dependencies
+
 # Match the version used in sha1 and sha2.
 digest = "0.10.7"
 format-bytes = "0.3.0"
 # Match the version used in sha1, sha2, and digest.
 generic-array = "0.14.7"
-hex = { version = "0.4.3", default-features = false, features = ["std"] }
-paste = "1.0.14"
+
+## Hash Algorithms
+
 sha1 = { version = "0.10.6", default-features = false, features = ["std"] }
 sha1collisiondetection = "0.3.3"
 sha2 = { version = "0.10.8", default-features = false }
+
+## Async Support
+
 tokio = { version = "1.36.0", features = ["io-util"] }
+
+## Representations
+
+hex = { version = "0.4.3", default-features = false, features = ["std"] }
 url = "2.4.1"
+
+[dev-dependencies]
+
+# Need "rt" and "fs" additionally for tests.
+tokio = { version = "1.36.0", features = ["io-util", "fs", "rt", "rt-multi-thread"] }

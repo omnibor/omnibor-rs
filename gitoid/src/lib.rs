@@ -128,12 +128,7 @@ pub mod hash {
     #[cfg(doc)]
     use crate::GitOid;
 
-    /// SHA-1 hasher.
-    pub type Sha1 = sha1::Sha1;
-
-    /// SHA-1CD hasher.
-    pub type Sha1Cd = sha1collisiondetection::Sha1CD;
-
-    /// SHA-256 hasher.
-    pub type Sha256 = sha2::Sha256;
+    pub use crate::hash_algorithm::Sha1;
+    pub use crate::hash_algorithm::Sha1Cd;
+    pub use crate::hash_algorithm::Sha256;
 }

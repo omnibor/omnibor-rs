@@ -2,6 +2,8 @@ use super::hash::*;
 use super::object::*;
 use super::*;
 use std::fs::File;
+use tokio::fs::File as AsyncFile;
+use tokio::runtime::Runtime;
 use url::Url;
 
 #[test]
@@ -64,6 +66,27 @@ fn generate_sha256_gitoid_from_buffer() -> Result<()> {
     );
 
     Ok(())
+}
+
+#[test]
+fn generate_sha256_gitoid_from_async_buffer() -> Result<()> {
+    let runtime = Runtime::new()?;
+    runtime.block_on(async {
+        let reader = AsyncFile::open("test/data/hello_world.txt").await?;
+        let result = GitOid::<Sha256, Blob>::from_async_reader(reader).await?;
+
+        assert_eq!(
+            result.as_hex(),
+            "fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03"
+        );
+
+        assert_eq!(
+            result.to_string(),
+            "sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03"
+        );
+
+        Ok(())
+    })
 }
 
 #[test]

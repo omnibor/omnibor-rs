@@ -1,49 +1,16 @@
 //! The types of objects for which a `GitOid` can be made.
 
 use crate::sealed::Sealed;
-use crate::Error;
 #[cfg(doc)]
 use crate::GitOid;
-use core::fmt::Display;
-use core::fmt::Formatter;
-use core::fmt::Result as FmtResult;
-use core::str::FromStr;
 
 /// Object types usable to construct a [`GitOid`]
-pub trait ObjectType: Display + FromStr + Sealed {
+pub trait ObjectType: Sealed {
     const NAME: &'static str;
-}
-
-macro_rules! impl_from_str {
-    ( $name:tt, $s:literal ) => {
-        impl FromStr for $name {
-            type Err = Error;
-
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                match s {
-                    $s => Ok($name),
-                    _ => Err(Error::UnknownObjectType(s.to_owned())),
-                }
-            }
-        }
-    };
-}
-
-macro_rules! impl_display {
-    ( $name:tt, $s:literal ) => {
-        impl Display for $name {
-            fn fmt(&self, f: &mut Formatter) -> FmtResult {
-                write!(f, "{}", $s)
-            }
-        }
-    };
 }
 
 macro_rules! define_object_type {
     ( $name:tt, $s:literal ) => {
-        impl_from_str!($name, $s);
-        impl_display!($name, $s);
-
         impl Sealed for $name {}
 
         impl ObjectType for $name {
@@ -53,17 +20,32 @@ macro_rules! define_object_type {
 }
 
 /// A Blob GitOid object.
-pub struct Blob;
+pub struct Blob {
+    #[doc(hidden)]
+    _private: (),
+}
+
 define_object_type!(Blob, "blob");
 
 /// A Tree GitOid object.
-pub struct Tree;
+pub struct Tree {
+    #[doc(hidden)]
+    _private: (),
+}
+
 define_object_type!(Tree, "tree");
 
 /// A Tag GitOid object.
-pub struct Tag;
+pub struct Tag {
+    #[doc(hidden)]
+    _private: (),
+}
+
 define_object_type!(Tag, "tag");
 
 /// A Commit GitOid object.
-pub struct Commit;
+pub struct Commit {
+    _private: (),
+}
+
 define_object_type!(Commit, "commit");
