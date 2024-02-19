@@ -4,8 +4,15 @@ use crate::sealed::Sealed;
 #[cfg(doc)]
 use crate::GitOid;
 
-/// Object types usable to construct a [`GitOid`]
+/// Object types usable to construct a [`GitOid`].
+///
+/// This is a sealed trait to ensure it's only used for hash
+/// algorithms which are actually supported by Git.
+///
+/// For more information on sealed traits, read Predrag
+/// Gruevski's ["A Definitive Guide to Sealed Traits in Rust"][1].
 pub trait ObjectType: Sealed {
+    #[doc(hidden)]
     const NAME: &'static str;
 }
 
