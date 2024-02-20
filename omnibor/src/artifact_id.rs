@@ -1,5 +1,7 @@
 use crate::Error;
 use crate::Result;
+#[cfg(doc)]
+use crate::Sha256;
 use crate::SupportedHash;
 use gitoid::Blob;
 use gitoid::GitOid;
@@ -31,6 +33,11 @@ pub struct ArtifactId<H: SupportedHash> {
 impl<H: SupportedHash> ArtifactId<H> {
     /// Construct an [`ArtifactId`] from an existing [`GitOid`].
     ///
+    /// This produces an identifier using the provided [`GitOid`] directly,
+    /// without additional validation. The type system ensures the [`GitOid`]
+    /// hash algorithm is one supported for an [`ArtifactId`], and that the
+    /// object type is [`gitoid::Blob`].
+    ///
     /// # Example
     ///
     /// ```rust
@@ -38,44 +45,71 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// # use omnibor::Sha256;
     /// # use gitoid::GitOid;
     /// let gitoid = GitOid::from_str("hello, world");
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_gitoid(gitoid);
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_gitoid(gitoid);
     /// println!("Artifact ID: {}", id);
     /// ```
-    pub fn from_gitoid(gitoid: GitOid<H::HashAlgorithm, Blob>) -> ArtifactId<H> {
+    pub fn id_gitoid(gitoid: GitOid<H::HashAlgorithm, Blob>) -> ArtifactId<H> {
         ArtifactId { gitoid }
     }
 
     /// Construct an [`ArtifactId`] from raw bytes.
     ///
+    /// This hashes the bytes to produce an identifier.
+    ///
     /// # Example
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_bytes(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_bytes(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     /// println!("Artifact ID: {}", id);
     /// ```
-    pub fn from_bytes<B: AsRef<[u8]>>(content: B) -> ArtifactId<H> {
-        ArtifactId::from_gitoid(GitOid::from_bytes(content))
+    pub fn id_bytes<B: AsRef<[u8]>>(content: B) -> ArtifactId<H> {
+        ArtifactId::id_gitoid(GitOid::from_bytes(content))
     }
 
     /// Construct an [`ArtifactId`] from a string.
     ///
+    /// This hashes the contents of the string to produce an identifier.
+    ///
     /// # Example
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_str("hello, world");
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID: {}", id);
     /// ```
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str<S: AsRef<str>>(s: S) -> ArtifactId<H> {
-        ArtifactId::from_gitoid(GitOid::from_str(s))
+    pub fn id_str<S: AsRef<str>>(s: S) -> ArtifactId<H> {
+        ArtifactId::id_gitoid(GitOid::from_str(s))
     }
 
     /// Construct an [`ArtifactId`] from a synchronous reader.
     ///
+    /// This reads the content of the reader and hashes it to produce an identifier.
+    ///
+    /// Note that this will figure out the expected size in bytes of the content
+    /// being read by seeking to the end of the content and then back to wherever the
+    /// reading initially started. This is to enable a correctness check where the total
+    /// number of bytes hashed is checked against the expected length. If they do not
+    /// match, we return an [`Error`] rather than proceeding with a potentially-invalid
+    /// identifier.
+    ///
+    /// If you don't want this seeking to occur, you can use
+    /// [`ArtifactId::id_reader_with_length`] instead, which takes an explicit expected
+    /// length and checks against _that_ value, rather than inferring an expected length.
+    ///
+    /// Also note that this doesn't reset the reader to the beginning of its region; if
+    /// you provide a reader which has already read some portion of an underlying file or
+    /// has seeked to a point that's not the beginning, this function will continue reading
+    /// from that point, and the resulting hash will _not_ encompass the contents of the
+    /// entire file. You can use [`ArtifactId::id_reader_with_length`] and provide the
+    /// expected length of the full file in bytes to defend against this "partial hash"
+    /// error.
+    ///
+    /// Reads are buffered internally to reduce the number of syscalls and context switches
+    /// between the kernel and user code.
+    ///
     /// # Example
     ///
     /// ```rust
@@ -83,16 +117,33 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// # use omnibor::Sha256;
     /// # use std::fs::File;
     /// let file = File::open("test/data/hello_world.txt").unwrap();
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_reader(&file).unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_reader(&file).unwrap();
     /// println!("Artifact ID: {}", id);
     /// ```
-    pub fn from_reader<R: Read + Seek>(reader: R) -> Result<ArtifactId<H>> {
+    pub fn id_reader<R: Read + Seek>(reader: R) -> Result<ArtifactId<H>> {
         let gitoid = GitOid::from_reader(reader)?;
-        Ok(ArtifactId::from_gitoid(gitoid))
+        Ok(ArtifactId::id_gitoid(gitoid))
     }
 
     /// Construct an [`ArtifactId`] from a synchronous reader with an expected length.
     ///
+    /// This reads the content of the reader and hashes it to produce an identifier.
+    ///
+    /// This uses the `expected_len` to enable a correctness check where the total
+    /// number of bytes hashed is checked against the expected length. If they do not
+    /// match, we return an [`Error`] rather than proceeding with a potentially-invalid
+    /// identifier.
+    ///
+    /// Also note that this doesn't reset the reader to the beginning of its region; if
+    /// you provide a reader which has already read some portion of an underlying file or
+    /// has seeked to a point that's not the beginning, this function will continue reading
+    /// from that point, and the resulting hash will _not_ encompass the contents of the
+    /// entire file. Make sure to provide the expected number of bytes for the full file
+    /// to protect against this error.
+    ///
+    /// Reads are buffered internally to reduce the number of syscalls and context switches
+    /// between the kernel and user code.
+    ///
     /// # Example
     ///
     /// ```rust
@@ -100,19 +151,46 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// # use omnibor::Sha256;
     /// # use std::fs::File;
     /// let file = File::open("test/data/hello_world.txt").unwrap();
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_reader_with_length(&file, 11).unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_reader_with_length(&file, 11).unwrap();
     /// println!("Artifact ID: {}", id);
     /// ```
-    pub fn from_reader_with_length<R: Read>(
+    pub fn id_reader_with_length<R: Read>(
         reader: R,
         expected_length: usize,
     ) -> Result<ArtifactId<H>> {
         let gitoid = GitOid::from_reader_with_length(reader, expected_length)?;
-        Ok(ArtifactId::from_gitoid(gitoid))
+        Ok(ArtifactId::id_gitoid(gitoid))
     }
 
     /// Construct an [`ArtifactId`] from an asynchronous reader.
     ///
+    /// This reads the content of the reader and hashes it to produce an identifier.
+    ///
+    /// Reading is done asynchronously by the Tokio runtime. The specifics of how this
+    /// is done are based on the configuration of the runtime.
+    ///
+    /// Note that this will figure out the expected size in bytes of the content
+    /// being read by seeking to the end of the content and then back to wherever the
+    /// reading initially started. This is to enable a correctness check where the total
+    /// number of bytes hashed is checked against the expected length. If they do not
+    /// match, we return an [`Error`] rather than proceeding with a potentially-invalid
+    /// identifier.
+    ///
+    /// If you don't want this seeking to occur, you can use
+    /// [`ArtifactId::id_reader_with_length`] instead, which takes an explicit expected
+    /// length and checks against _that_ value, rather than inferring an expected length.
+    ///
+    /// Also note that this doesn't reset the reader to the beginning of its region; if
+    /// you provide a reader which has already read some portion of an underlying file or
+    /// has seeked to a point that's not the beginning, this function will continue reading
+    /// from that point, and the resulting hash will _not_ encompass the contents of the
+    /// entire file. You can use [`ArtifactId::id_reader_with_length`] and provide the
+    /// expected length of the full file in bytes to defend against this "partial hash"
+    /// error.
+    ///
+    /// Reads are buffered internally to reduce the number of syscalls and context switches
+    /// between the kernel and user code.
+    ///
     /// # Example
     ///
     /// ```rust
@@ -121,19 +199,39 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// # use tokio::fs::File;
     /// # tokio_test::block_on(async {
     /// let mut file = File::open("test/data/hello_world.txt").await.unwrap();
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_async_reader(&mut file).await.unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_async_reader(&mut file).await.unwrap();
     /// println!("Artifact ID: {}", id);
     /// # })
     /// ```
-    pub async fn from_async_reader<R: AsyncRead + AsyncSeek + Unpin>(
+    pub async fn id_async_reader<R: AsyncRead + AsyncSeek + Unpin>(
         reader: R,
     ) -> Result<ArtifactId<H>> {
         let gitoid = GitOid::from_async_reader(reader).await?;
-        Ok(ArtifactId::from_gitoid(gitoid))
+        Ok(ArtifactId::id_gitoid(gitoid))
     }
 
     /// Construct an [`ArtifactId`] from an asynchronous reader with an expected length.
     ///
+    /// This reads the content of the reader and hashes it to produce an identifier.
+    ///
+    /// Reading is done asynchronously by the Tokio runtime. The specifics of how this
+    /// is done are based on the configuration of the runtime.
+    ///
+    /// This uses the `expected_len` to enable a correctness check where the total
+    /// number of bytes hashed is checked against the expected length. If they do not
+    /// match, we return an [`Error`] rather than proceeding with a potentially-invalid
+    /// identifier.
+    ///
+    /// Also note that this doesn't reset the reader to the beginning of its region; if
+    /// you provide a reader which has already read some portion of an underlying file or
+    /// has seeked to a point that's not the beginning, this function will continue reading
+    /// from that point, and the resulting hash will _not_ encompass the contents of the
+    /// entire file. Make sure to provide the expected number of bytes for the full file
+    /// to protect against this error.
+    ///
+    /// Reads are buffered internally to reduce the number of syscalls and context switches
+    /// between the kernel and user code.
+    ///
     /// # Example
     ///
     /// ```rust
@@ -142,19 +240,30 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// # use tokio::fs::File;
     /// # tokio_test::block_on(async {
     /// let mut file = File::open("test/data/hello_world.txt").await.unwrap();
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_async_reader_with_length(&mut file, 11).await.unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_async_reader_with_length(&mut file, 11).await.unwrap();
     /// println!("Artifact ID: {}", id);
     /// # })
     /// ```
-    pub async fn from_async_reader_with_length<R: AsyncRead + Unpin>(
+    pub async fn id_async_reader_with_length<R: AsyncRead + Unpin>(
         reader: R,
         expected_length: usize,
     ) -> Result<ArtifactId<H>> {
         let gitoid = GitOid::from_async_reader_with_length(reader, expected_length).await?;
-        Ok(ArtifactId::from_gitoid(gitoid))
+        Ok(ArtifactId::id_gitoid(gitoid))
     }
 
-    /// Construct an [`ArtifactId`] from a [`Url`].
+    /// Construct an [`ArtifactId`] from a `gitoid`-scheme [`Url`].
+    ///
+    /// This validates that the provided URL has a hashing scheme which matches the one
+    /// selected for your [`ArtifactId`] (today, only `sha256` is supported), and has the
+    /// `blob` object type. It also validates that the provided hash is a valid hash for
+    /// the specified hashing scheme. If any of these checks fail, the function returns
+    /// an [`Error`].
+    ///
+    /// Note that this expects a `gitoid`-scheme URL, as defined by IANA. This method
+    /// _does not_ expect an HTTP or HTTPS URL to access, retrieve contents, and hash
+    /// those contents to produce an identifier. You _can_ implement that yourself with
+    /// a Rust HTTP(S) crate and [`ArtifactId::id_bytes`].
     ///
     /// # Example
     ///
@@ -163,21 +272,23 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// # use omnibor::Sha256;
     /// # use url::Url;
     /// let url = Url::parse("gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03").unwrap();
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_url(url).unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_url(url).unwrap();
     /// println!("Artifact ID: {}", id);
     /// ```
-    pub fn from_url(url: Url) -> Result<ArtifactId<H>> {
+    pub fn id_url(url: Url) -> Result<ArtifactId<H>> {
         ArtifactId::try_from(url)
     }
 
     /// Get the [`Url`] representation of the [`ArtifactId`].
+    ///
+    /// This returns a `gitoid`-scheme URL for the [`ArtifactId`].
     ///
     /// # Example
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_str("hello, world");
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID URL: {}", id.url());
     /// ```
     pub fn url(&self) -> Url {
@@ -186,12 +297,15 @@ impl<H: SupportedHash> ArtifactId<H> {
 
     /// Get the underlying bytes of the [`ArtifactId`] hash.
     ///
+    /// This slice is the raw underlying buffer of the [`ArtifactId`], exactly
+    /// as produced by the hasher.
+    ///
     /// # Example
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_str("hello, world");
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID bytes: {:?}", id.as_bytes());
     /// ```
     pub fn as_bytes(&self) -> &[u8] {
@@ -200,12 +314,16 @@ impl<H: SupportedHash> ArtifactId<H> {
 
     /// Get the bytes of the [`ArtifactId`] hash as a hexadecimal string.
     ///
+    /// This returns a [`String`] rather than [`str`] because the string must be
+    /// constructed on the fly, as we do not store a hexadecimal representation
+    /// of the hash data.
+    ///
     /// # Example
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_str("hello, world");
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID bytes as hex: {}", id.as_hex());
     /// ```
     pub fn as_hex(&self) -> String {
@@ -214,12 +332,14 @@ impl<H: SupportedHash> ArtifactId<H> {
 
     /// Get the name of the hash algorithm used in the [`ArtifactId`] as a string.
     ///
+    /// For [`Sha256`], this is the string `"sha256"`.
+    ///
     /// # Example
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_str("hello, world");
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID hash algorithm: {}", id.hash_algorithm());
     /// ```
     pub const fn hash_algorithm(&self) -> &'static str {
@@ -228,12 +348,15 @@ impl<H: SupportedHash> ArtifactId<H> {
 
     /// Get the object type used in the [`ArtifactId`] as a string.
     ///
+    /// For all [`ArtifactId`]s this is `"blob"`, but the method is provided
+    /// for completeness nonetheless.
+    ///
     /// # Example
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_str("hello, world");
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID object type: {}", id.object_type());
     /// ```
     pub const fn object_type(&self) -> &'static str {
@@ -242,12 +365,16 @@ impl<H: SupportedHash> ArtifactId<H> {
 
     /// Get the length in bytes of the hash used in the [`ArtifactId`].
     ///
+    /// In the future this method will be `const`, but is not able to be
+    /// today due to limitations in the Rust cryptography crates we use
+    /// internally.
+    ///
     /// # Example
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactId::from_str("hello, world");
+    /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID hash length in bytes: {}", id.hash_len());
     /// ```
     pub fn hash_len(&self) -> usize {
@@ -259,7 +386,7 @@ impl<H: SupportedHash> FromStr for ArtifactId<H> {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<ArtifactId<H>> {
-        Ok(ArtifactId::from_str(s))
+        Ok(ArtifactId::id_str(s))
     }
 }
 
@@ -319,6 +446,6 @@ impl<H: SupportedHash> TryFrom<Url> for ArtifactId<H> {
 
     fn try_from(url: Url) -> Result<ArtifactId<H>> {
         let gitoid = GitOid::from_url(url)?;
-        Ok(ArtifactId::from_gitoid(gitoid))
+        Ok(ArtifactId::id_gitoid(gitoid))
     }
 }
