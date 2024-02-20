@@ -1,8 +1,14 @@
 //! OmniBOR in Rust.
 
-use gitoid::hash::Sha256;
-use gitoid::object::Blob;
-use gitoid::GitOid;
+pub(crate) mod sealed;
 
-/// An OmniBOR Artifact Identifier.
-pub type ArtifactId = GitOid<Sha256, Blob>;
+mod artifact_id;
+mod error;
+mod supported_hash;
+
+pub(crate) use crate::error::Result;
+
+pub use crate::artifact_id::ArtifactId;
+pub use crate::error::Error;
+pub use crate::supported_hash::Sha256;
+pub use crate::supported_hash::SupportedHash;
