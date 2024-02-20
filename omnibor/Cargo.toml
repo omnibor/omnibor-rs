@@ -11,4 +11,10 @@ repository = "https://github.com/omnibor/omnibor-rs"
 version = "0.1.7"
 
 [dependencies]
-gitoid = "0.4.0"
+gitoid = "0.5.0"
+tokio = { version = "1.36.0", features = ["io-util"] }
+url = "2.5.0"
+
+[dev-dependencies]
+tokio = { version = "1.36.0", features = ["io-util", "fs"] }
+tokio-test = "0.4.3"

@@ -94,11 +94,9 @@
 //!
 //! ```rust
 //! # use gitoid::{Sha256, Blob};
-//!
 //! type GitOid = gitoid::GitOid<Sha256, Blob>;
 //!
-//! let gitoid: GitOid = gitoid::GitOid::from_str("hello, world");
-//!
+//! let gitoid = GitOid::from_str("hello, world");
 //! println!("gitoid: {}", gitoid);
 //! ```
 //!
