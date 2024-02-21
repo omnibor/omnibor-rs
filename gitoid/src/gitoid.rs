@@ -120,15 +120,9 @@ where
 
     /// Get a URL for the current `GitOid`.
     pub fn url(&self) -> Url {
-        // PANIC SAFETY: We know that this is a valid URL.
-        Url::parse(&format!(
-            "{}:{}:{}:{}",
-            GITOID_URL_SCHEME,
-            O::NAME,
-            H::NAME,
-            self.as_hex()
-        ))
-        .unwrap()
+        // PANIC SAFETY: We know that this is a valid URL;
+        //               our `Display` impl is the URL representation.
+        Url::parse(&self.to_string()).unwrap()
     }
 
     /// Get the underlying bytes of the hash.
@@ -254,7 +248,14 @@ where
     O: ObjectType,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}:{}", H::NAME, self.as_hex())
+        write!(
+            f,
+            "{}:{}:{}:{}",
+            GITOID_URL_SCHEME,
+            O::NAME,
+            H::NAME,
+            self.as_hex()
+        )
     }
 }
 
