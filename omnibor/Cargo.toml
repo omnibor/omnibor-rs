@@ -14,7 +14,18 @@ version = "0.3.0"
 gitoid = "0.5.0"
 tokio = { version = "1.36.0", features = ["io-util"] }
 url = "2.5.0"
+clap = { version = "4.5.1", features = ["derive"], optional = true }
+anyhow = { version = "1.0.80", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.36.0", features = ["io-util", "fs"] }
 tokio-test = "0.4.3"
+
+[features]
+build-binary = ["anyhow", "clap"]
+
+[[bin]]
+name = "omnibor"
+test = false
+bench = false
+required-features = ["build-binary"]
