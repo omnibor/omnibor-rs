@@ -13,7 +13,7 @@ fn generate_sha1_gitoid_from_bytes() {
 
     assert_eq!(
         result.to_string(),
-        "sha1:95d09f2b10159347eece71399a7e2e907ea3df4f"
+        "gitoid:blob:sha1:95d09f2b10159347eece71399a7e2e907ea3df4f"
     );
 }
 
@@ -26,7 +26,7 @@ fn generate_sha1_gitoid_from_buffer() -> Result<()> {
 
     assert_eq!(
         result.to_string(),
-        "sha1:95d09f2b10159347eece71399a7e2e907ea3df4f"
+        "gitoid:blob:sha1:95d09f2b10159347eece71399a7e2e907ea3df4f"
     );
 
     Ok(())
@@ -44,7 +44,7 @@ fn generate_sha256_gitoid_from_bytes() {
 
     assert_eq!(
         result.to_string(),
-        "sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03"
+        "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03"
     );
 }
 
@@ -60,7 +60,7 @@ fn generate_sha256_gitoid_from_buffer() -> Result<()> {
 
     assert_eq!(
         result.to_string(),
-        "sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03"
+        "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03"
     );
 
     Ok(())
@@ -80,7 +80,7 @@ fn generate_sha256_gitoid_from_async_buffer() -> Result<()> {
 
         assert_eq!(
             result.to_string(),
-            "sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03"
+            "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03"
         );
 
         Ok(())
