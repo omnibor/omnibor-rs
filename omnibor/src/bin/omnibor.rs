@@ -73,22 +73,30 @@ enum Command {
 
 #[derive(Debug, Args)]
 struct IdArgs {
-    /// The path to identify.
+    /// Path to identify
     path: PathBuf,
 
-    /// The format of output
+    /// Output format (can be "plain" or "json")
     #[arg(short = 'f', long = "format", default_value_t)]
     format: Format,
+
+    /// Hash algorithm (can be "sha256")
+    #[arg(short = 'H', long = "hash", default_value_t)]
+    hash: SelectedHash,
 }
 
 #[derive(Debug, Args)]
 struct TreeArgs {
-    /// The root of the tree to identify.
+    /// Root of the tree to identify.
     path: PathBuf,
 
-    /// The format of output (can be "plain" or "json")
+    /// Output format (can be "plain" or "json")
     #[arg(short = 'f', long = "format", default_value_t)]
     format: Format,
+
+    /// Hash algorithm (can be "sha256")
+    #[arg(short = 'H', long = "hash", default_value_t)]
+    hash: SelectedHash,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -124,6 +132,36 @@ impl FromStr for Format {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum SelectedHash {
+    Sha256,
+}
+
+impl Default for SelectedHash {
+    fn default() -> Self {
+        SelectedHash::Sha256
+    }
+}
+
+impl Display for SelectedHash {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            SelectedHash::Sha256 => write!(f, "sha256"),
+        }
+    }
+}
+
+impl FromStr for SelectedHash {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<SelectedHash> {
+        match s {
+            "sha256" => Ok(SelectedHash::Sha256),
+            _ => Err(anyhow!("unknown hash algorithm '{}'", s)),
+        }
+    }
+}
+
 /*===========================================================================
  * Command Implementations
  *-------------------------------------------------------------------------*/
@@ -137,15 +175,20 @@ type ArtifactId = omnibor::ArtifactId<Sha256>;
 fn run_id(args: &IdArgs) -> Result<()> {
     let path = &args.path;
     let file = File::open(path).with_context(|| format!("failed to open '{}'", path.display()))?;
-    let id = ArtifactId::id_reader(&file).context("failed to produce Artifact ID")?;
 
-    match args.format {
-        Format::Plain => {
-            println!("{}", id.url());
-        }
-        Format::Json => {
-            let output = json!({ "id": id.url().to_string() });
-            println!("{}", output);
+    match args.hash {
+        SelectedHash::Sha256 => {
+            let id = ArtifactId::id_reader(&file).context("failed to produce Artifact ID")?;
+
+            match args.format {
+                Format::Plain => {
+                    println!("{}", id.url());
+                }
+                Format::Json => {
+                    let output = json!({ "id": id.url().to_string() });
+                    println!("{}", output);
+                }
+            }
         }
     }
 
@@ -157,7 +200,7 @@ fn run_id(args: &IdArgs) -> Result<()> {
 /// This command produces the `gitoid` URL for all files in a directory tree.
 fn run_tree(args: &TreeArgs) -> Result<()> {
     #[async_recursion]
-    async fn process_dir(path: &Path, format: Format) -> Result<()> {
+    async fn process_dir(path: &Path, format: Format, hash: SelectedHash) -> Result<()> {
         let mut entries = WalkDir::new(path);
 
         loop {
@@ -165,13 +208,12 @@ fn run_tree(args: &TreeArgs) -> Result<()> {
                 Some(Ok(entry)) => {
                     let path = &entry.path();
 
-                    let file_type = entry
-                        .file_type()
-                        .await
-                        .with_context(|| format!("unable to identify file type for '{}'", path.display()))?;
+                    let file_type = entry.file_type().await.with_context(|| {
+                        format!("unable to identify file type for '{}'", path.display())
+                    })?;
 
                     if file_type.is_dir() {
-                        process_dir(path, format).await?;
+                        process_dir(path, format, hash).await?;
                         continue;
                     }
 
@@ -179,21 +221,28 @@ fn run_tree(args: &TreeArgs) -> Result<()> {
                         .await
                         .with_context(|| format!("failed to open file '{}'", path.display()))?;
 
-                    let id = ArtifactId::id_async_reader(&mut file)
-                        .await
-                        .with_context(|| {
-                            format!("failed to produce Artifact ID for '{}'", path.display())
-                        })?;
+                    match hash {
+                        SelectedHash::Sha256 => {
+                            let id = ArtifactId::id_async_reader(&mut file).await.with_context(
+                                || {
+                                    format!(
+                                        "failed to produce Artifact ID for '{}'",
+                                        path.display()
+                                    )
+                                },
+                            )?;
 
-                    match format {
-                        Format::Plain => println!("{} => {}", path.display(), id.url()),
-                        Format::Json => {
-                            let output = json!({
-                                "path": path.display().to_string(),
-                                "id": id.url().to_string()
-                            });
+                            match format {
+                                Format::Plain => println!("{} => {}", path.display(), id.url()),
+                                Format::Json => {
+                                    let output = json!({
+                                        "path": path.display().to_string(),
+                                        "id": id.url().to_string()
+                                    });
 
-                            println!("{}", output);
+                                    println!("{}", output);
+                                }
+                            }
                         }
                     }
                 }
@@ -206,7 +255,7 @@ fn run_tree(args: &TreeArgs) -> Result<()> {
     }
 
     let runtime = Runtime::new().context("failed to initialize the async runtime")?;
-    runtime.block_on(process_dir(&args.path, args.format))
+    runtime.block_on(process_dir(&args.path, args.format, args.hash))
 }
 
 /// Print an error, respecting formatting.
