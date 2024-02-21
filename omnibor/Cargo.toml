@@ -11,18 +11,37 @@ repository = "https://github.com/omnibor/omnibor-rs"
 version = "0.3.0"
 
 [dependencies]
+
+# Library dependencies
+
 gitoid = "0.5.0"
 tokio = { version = "1.36.0", features = ["io-util"] }
 url = "2.5.0"
-clap = { version = "4.5.1", features = ["derive"], optional = true }
+
+# Binary-only dependencies
+
 anyhow = { version = "1.0.80", optional = true }
+async-recursion = { version = "1.0.5", optional = true }
+async-walkdir = { version = "1.0.0", optional = true }
+clap = { version = "4.5.1", features = ["derive"], optional = true }
+futures-lite = { version = "2.2.0", optional = true }
+serde_json = { version = "1.0.114", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.36.0", features = ["io-util", "fs"] }
 tokio-test = "0.4.3"
 
 [features]
-build-binary = ["anyhow", "clap"]
+build-binary = [
+    "dep:anyhow",
+    "dep:async-recursion",
+    "dep:async-walkdir",
+    "dep:clap",
+    "dep:futures-lite",
+    "dep:serde_json",
+    "tokio/fs",
+    "tokio/rt-multi-thread"
+]
 
 [[bin]]
 name = "omnibor"
