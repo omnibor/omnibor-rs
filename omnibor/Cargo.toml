@@ -1,6 +1,6 @@
 [package]
 categories = ["cryptography", "development-tools"]
-description = "An experimental implementation of gitbom in Rust"
+description = "Reproducible software identity and fine-grained build dependency tracking."
 edition = "2021"
 homepage = "https://omnibor.io/"
 keywords = ["gitbom", "omnibor", "sbom"]

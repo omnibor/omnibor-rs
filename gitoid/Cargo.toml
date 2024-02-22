@@ -1,6 +1,6 @@
 [package]
 categories = ["cryptography", "development-tools"]
-description = "An experimental implementation of gitoids in Rust"
+description = "Git Object Identifiers in Rust"
 edition = "2021"
 homepage = "https://omnibor.io/"
 keywords = ["gitbom", "omnibor", "sbom", "gitoid"]
