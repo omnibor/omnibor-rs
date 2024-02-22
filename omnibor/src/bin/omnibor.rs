@@ -2,12 +2,13 @@ use anyhow::anyhow;
 use anyhow::Context as _;
 use anyhow::Error;
 use anyhow::Result;
-use async_recursion::async_recursion;
+use async_walkdir::DirEntry as AsyncDirEntry;
 use async_walkdir::WalkDir;
 use clap::Args;
 use clap::Parser;
 use clap::Subcommand;
 use futures_lite::stream::StreamExt as _;
+use omnibor::ArtifactId;
 use omnibor::Sha256;
 use serde_json::json;
 use std::default::Default;
@@ -166,29 +167,20 @@ impl FromStr for SelectedHash {
  * Command Implementations
  *-------------------------------------------------------------------------*/
 
-/// Type alias for the specific ID we're using.
-type ArtifactId = omnibor::ArtifactId<Sha256>;
-
 /// Run the `id` subcommand.
 ///
 /// This command just produces the `gitoid` URL for the given file.
 fn run_id(args: &IdArgs) -> Result<()> {
-    let path = &args.path;
-    let file = File::open(path).with_context(|| format!("failed to open '{}'", path.display()))?;
+    let file = open_file(&args.path)?;
+    let url = match args.hash {
+        SelectedHash::Sha256 => sha256_id_file(&file, &args.path)?.url(),
+    };
 
-    match args.hash {
-        SelectedHash::Sha256 => {
-            let id = ArtifactId::id_reader(&file).context("failed to produce Artifact ID")?;
-
-            match args.format {
-                Format::Plain => {
-                    println!("{}", id.url());
-                }
-                Format::Json => {
-                    let output = json!({ "id": id.url().to_string() });
-                    println!("{}", output);
-                }
-            }
+    match args.format {
+        Format::Plain => println!("{}", url),
+        Format::Json => {
+            let output = json!({ "id": url.to_string() });
+            println!("{}", output);
         }
     }
 
@@ -199,80 +191,114 @@ fn run_id(args: &IdArgs) -> Result<()> {
 ///
 /// This command produces the `gitoid` URL for all files in a directory tree.
 fn run_tree(args: &TreeArgs) -> Result<()> {
-    #[async_recursion]
-    async fn process_dir(path: &Path, format: Format, hash: SelectedHash) -> Result<()> {
-        let mut entries = WalkDir::new(path);
+    let TreeArgs { path, format, hash } = args;
 
-        loop {
-            match entries.next().await {
-                Some(Ok(entry)) => {
-                    let path = &entry.path();
+    Runtime::new()
+        .context("failed to initialize the async runtime")?
+        .block_on(async move {
+            let mut entries = WalkDir::new(path);
 
-                    let file_type = entry.file_type().await.with_context(|| {
-                        format!("unable to identify file type for '{}'", path.display())
-                    })?;
+            loop {
+                match entries.next().await {
+                    None => break,
+                    Some(Err(e)) => print_error(e, *format),
+                    Some(Ok(entry)) => {
+                        let path = &entry.path();
 
-                    if file_type.is_dir() {
-                        process_dir(path, format, hash).await?;
-                        continue;
-                    }
+                        if entry_is_dir(&entry).await? {
+                            continue;
+                        }
 
-                    let mut file = AsyncFile::open(path)
-                        .await
-                        .with_context(|| format!("failed to open file '{}'", path.display()))?;
+                        let mut file = open_async_file(path).await?;
 
-                    match hash {
-                        SelectedHash::Sha256 => {
-                            let id = ArtifactId::id_async_reader(&mut file).await.with_context(
-                                || {
-                                    format!(
-                                        "failed to produce Artifact ID for '{}'",
-                                        path.display()
-                                    )
-                                },
-                            )?;
-
-                            match format {
-                                Format::Plain => println!("{} => {}", path.display(), id.url()),
-                                Format::Json => {
-                                    let output = json!({
-                                        "path": path.display().to_string(),
-                                        "id": id.url().to_string()
-                                    });
-
-                                    println!("{}", output);
-                                }
+                        // This 'match' is included to ensure this gets updated
+                        // if we ever add a new hash algorithm.
+                        let url = match *hash {
+                            SelectedHash::Sha256 => {
+                                sha256_id_async_file(&mut file, path).await?.url()
                             }
+                        };
+
+                        match *format {
+                            Format::Plain => println!("{} => {}", path.display(), url),
+                            Format::Json => println!(
+                                "{}",
+                                json!({
+                                        "path": path.display().to_string(),
+                                        "id": url.to_string()
+                                })
+                            ),
                         }
                     }
                 }
-                Some(Err(e)) => print_error(Error::from(e), format),
-                None => break,
             }
-        }
 
-        Ok(())
-    }
-
-    let runtime = Runtime::new().context("failed to initialize the async runtime")?;
-    runtime.block_on(process_dir(&args.path, args.format, args.hash))
+            Ok(())
+        })
 }
 
-/// Print an error, respecting formatting.
-fn print_error(error: Error, format: Format) {
-    match format {
-        Format::Plain => print_plain_error(error),
-        Format::Json => {
-            let output = json!({
-                "error": error.to_string(),
-            });
+/*===========================================================================
+ * Helper Functions
+ *-------------------------------------------------------------------------*/
 
-            eprintln!("{}", output);
+/// Print an error, respecting formatting.
+fn print_error<E: Into<Error>>(error: E, format: Format) {
+    fn _print_error(error: Error, format: Format) {
+        match format {
+            Format::Plain => print_plain_error(error),
+            Format::Json => {
+                let output = json!({
+                    "error": error.to_string(),
+                });
+
+                eprintln!("{}", output);
+            }
         }
     }
+
+    _print_error(error.into(), format)
 }
 
 /// Print an error in plain formatting.
 fn print_plain_error(error: Error) {
     eprintln!("error: {}", error);
+}
+
+/// Check if the entry is for a directory.
+async fn entry_is_dir(entry: &AsyncDirEntry) -> Result<bool> {
+    entry
+        .file_type()
+        .await
+        .with_context(|| {
+            format!(
+                "unable to identify file type for '{}'",
+                entry.path().display()
+            )
+        })
+        .map(|file_type| file_type.is_dir())
+}
+
+/// Open a file.
+fn open_file(path: &Path) -> Result<File> {
+    File::open(path).with_context(|| format!("failed to open '{}'", path.display()))
+}
+
+/// Open an asynchronous file.
+async fn open_async_file(path: &Path) -> Result<AsyncFile> {
+    AsyncFile::open(path)
+        .await
+        .with_context(|| format!("failed to open file '{}'", path.display()))
+}
+
+/// Identify a file using a SHA-256 hash.
+fn sha256_id_file(file: &File, path: &Path) -> Result<ArtifactId<Sha256>> {
+    ArtifactId::id_reader(file)
+        .with_context(|| format!("failed to produce Artifact ID for '{}'", path.display()))
+}
+
+/// Identify a file using a SHA-256 hash.
+async fn sha256_id_async_file(file: &mut AsyncFile, path: &Path) -> Result<ArtifactId<Sha256>> {
+    ArtifactId::id_async_reader(file)
+        .await
+        .with_context(|| format!("failed to produce Artifact ID for '{}'", path.display()))
 }
