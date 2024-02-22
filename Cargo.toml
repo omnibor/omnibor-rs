@@ -21,3 +21,6 @@ pr-run-mode = "plan"
 inherits = "release"
 lto = "thin"
 
+
+[workspace.metadata.release]
+pre-release-commit-message = "chore: Release"
