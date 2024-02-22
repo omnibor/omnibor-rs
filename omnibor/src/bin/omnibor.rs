@@ -11,24 +11,25 @@ use futures_lite::stream::StreamExt as _;
 use omnibor::ArtifactId;
 use omnibor::Sha256;
 use serde_json::json;
+use smart_default::SmartDefault;
 use std::default::Default;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
-use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::str::FromStr;
 use tokio::fs::File as AsyncFile;
 use tokio::runtime::Runtime;
+use url::Url;
 
 fn main() -> ExitCode {
     let args = Cli::parse();
 
     let result = match args.command {
         Command::Id(ref args) => run_id(args),
-        Command::Tree(ref args) => run_tree(args),
+        Command::Find(ref args) => run_find(args),
     };
 
     if let Err(e) = result {
@@ -59,17 +60,18 @@ impl Cli {
     fn format(&self) -> Option<Format> {
         match &self.command {
             Command::Id(args) => Some(args.format),
-            Command::Tree(args) => Some(args.format),
+            Command::Find(args) => Some(args.format),
         }
     }
 }
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Print the Artifact ID of the path given.
+    /// For files, prints their Artifact ID. For directories, recursively prints IDs for all files under it.
     Id(IdArgs),
-    /// Print the Artifact IDs of a directory tree.
-    Tree(TreeArgs),
+
+    /// Find file matching an Artifact ID.
+    Find(FindArgs),
 }
 
 #[derive(Debug, Args)]
@@ -87,29 +89,23 @@ struct IdArgs {
 }
 
 #[derive(Debug, Args)]
-struct TreeArgs {
-    /// Root of the tree to identify.
+struct FindArgs {
+    /// `gitoid` URL to match
+    url: Url,
+
+    /// The root path to search under
     path: PathBuf,
 
     /// Output format (can be "plain" or "json")
     #[arg(short = 'f', long = "format", default_value_t)]
     format: Format,
-
-    /// Hash algorithm (can be "sha256")
-    #[arg(short = 'H', long = "hash", default_value_t)]
-    hash: SelectedHash,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, SmartDefault)]
 enum Format {
+    #[default]
     Plain,
     Json,
-}
-
-impl Default for Format {
-    fn default() -> Self {
-        Format::Plain
-    }
 }
 
 impl Display for Format {
@@ -133,15 +129,10 @@ impl FromStr for Format {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, SmartDefault)]
 enum SelectedHash {
+    #[default]
     Sha256,
-}
-
-impl Default for SelectedHash {
-    fn default() -> Self {
-        SelectedHash::Sha256
-    }
 }
 
 impl Display for SelectedHash {
@@ -168,35 +159,31 @@ impl FromStr for SelectedHash {
  *-------------------------------------------------------------------------*/
 
 /// Run the `id` subcommand.
-///
-/// This command just produces the `gitoid` URL for the given file.
 fn run_id(args: &IdArgs) -> Result<()> {
-    let file = open_file(&args.path)?;
-    let url = match args.hash {
-        SelectedHash::Sha256 => sha256_id_file(&file, &args.path)?.url(),
-    };
+    Runtime::new()
+        .context("failed to initialize the async runtime")?
+        .block_on(async move {
+            let mut file = open_async_file(&args.path).await?;
 
-    match args.format {
-        Format::Plain => println!("{}", url),
-        Format::Json => {
-            let output = json!({ "id": url.to_string() });
-            println!("{}", output);
-        }
-    }
-
-    Ok(())
+            if file_is_dir(&file).await? {
+                id_directory(&args.path, args.format, args.hash).await
+            } else {
+                id_file(&mut file, &args.path, args.format, args.hash).await
+            }
+        })
 }
 
-/// Run the `tree` subcommand.
-///
-/// This command produces the `gitoid` URL for all files in a directory tree.
-fn run_tree(args: &TreeArgs) -> Result<()> {
-    let TreeArgs { path, format, hash } = args;
+/// Run the `find` subcommand.
+fn run_find(args: &FindArgs) -> Result<()> {
+    let FindArgs { url, path, format } = args;
 
     Runtime::new()
         .context("failed to initialize the async runtime")?
         .block_on(async move {
-            let mut entries = WalkDir::new(path);
+            let id = ArtifactId::<Sha256>::id_url(url.clone())?;
+            let url = id.url();
+
+            let mut entries = WalkDir::new(&path);
 
             loop {
                 match entries.next().await {
@@ -209,25 +196,12 @@ fn run_tree(args: &TreeArgs) -> Result<()> {
                             continue;
                         }
 
-                        let mut file = open_async_file(path).await?;
+                        let mut file = open_async_file(&path).await?;
+                        let file_url = hash_file(SelectedHash::Sha256, &mut file, &path).await?;
 
-                        // This 'match' is included to ensure this gets updated
-                        // if we ever add a new hash algorithm.
-                        let url = match *hash {
-                            SelectedHash::Sha256 => {
-                                sha256_id_async_file(&mut file, path).await?.url()
-                            }
-                        };
-
-                        match *format {
-                            Format::Plain => println!("{} => {}", path.display(), url),
-                            Format::Json => println!(
-                                "{}",
-                                json!({
-                                        "path": path.display().to_string(),
-                                        "id": url.to_string()
-                                })
-                            ),
+                        if url == file_url {
+                            print_id(&path, &url, *format);
+                            return Ok(());
                         }
                     }
                 }
@@ -240,6 +214,60 @@ fn run_tree(args: &TreeArgs) -> Result<()> {
 /*===========================================================================
  * Helper Functions
  *-------------------------------------------------------------------------*/
+
+// Identify, recursively, all the files under a directory.
+async fn id_directory(path: &Path, format: Format, hash: SelectedHash) -> Result<()> {
+    let mut entries = WalkDir::new(path);
+
+    loop {
+        match entries.next().await {
+            None => break,
+            Some(Err(e)) => print_error(e, format),
+            Some(Ok(entry)) => {
+                let path = &entry.path();
+
+                if entry_is_dir(&entry).await? {
+                    continue;
+                }
+
+                let mut file = open_async_file(&path).await?;
+                id_file(&mut file, &path, format, hash).await?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Identify a single file.
+async fn id_file(
+    file: &mut AsyncFile,
+    path: &Path,
+    format: Format,
+    hash: SelectedHash,
+) -> Result<()> {
+    let url = hash_file(hash, file, &path).await?;
+    print_id(path, &url, format);
+    Ok(())
+}
+
+/// Hash the file and produce a `gitoid`-scheme URL.
+async fn hash_file(hash: SelectedHash, file: &mut AsyncFile, path: &Path) -> Result<Url> {
+    match hash {
+        SelectedHash::Sha256 => sha256_id_async_file(file, &path).await.map(|id| id.url()),
+    }
+}
+
+/// Print IDs for path and file in the chosen format.
+fn print_id(path: &Path, url: &Url, format: Format) {
+    let path = path.display().to_string();
+    let url = url.to_string();
+
+    match format {
+        Format::Plain => println!("path: {}, id: {}", path, url),
+        Format::Json => println!("{}", json!({ "path": path, "id": url })),
+    }
+}
 
 /// Print an error, respecting formatting.
 fn print_error<E: Into<Error>>(error: E, format: Format) {
@@ -264,6 +292,11 @@ fn print_plain_error(error: Error) {
     eprintln!("error: {}", error);
 }
 
+/// Check if the file is for a directory.
+async fn file_is_dir(file: &AsyncFile) -> Result<bool> {
+    Ok(file.metadata().await.map(|meta| meta.is_dir())?)
+}
+
 /// Check if the entry is for a directory.
 async fn entry_is_dir(entry: &AsyncDirEntry) -> Result<bool> {
     entry
@@ -278,22 +311,11 @@ async fn entry_is_dir(entry: &AsyncDirEntry) -> Result<bool> {
         .map(|file_type| file_type.is_dir())
 }
 
-/// Open a file.
-fn open_file(path: &Path) -> Result<File> {
-    File::open(path).with_context(|| format!("failed to open '{}'", path.display()))
-}
-
 /// Open an asynchronous file.
 async fn open_async_file(path: &Path) -> Result<AsyncFile> {
     AsyncFile::open(path)
         .await
         .with_context(|| format!("failed to open file '{}'", path.display()))
-}
-
-/// Identify a file using a SHA-256 hash.
-fn sha256_id_file(file: &File, path: &Path) -> Result<ArtifactId<Sha256>> {
-    ArtifactId::id_reader(file)
-        .with_context(|| format!("failed to produce Artifact ID for '{}'", path.display()))
 }
 
 /// Identify a file using a SHA-256 hash.
