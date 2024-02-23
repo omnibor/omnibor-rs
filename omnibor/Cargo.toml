@@ -40,6 +40,10 @@ build-binary = [
     "dep:serde_json",
     "dep:smart-default",
     "tokio/fs",
+    "tokio/io-std",
+    "tokio/macros",
+    "tokio/rt",
+    "tokio/sync",
     "tokio/rt-multi-thread"
 ]
 
