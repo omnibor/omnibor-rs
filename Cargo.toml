@@ -1,7 +1,13 @@
 [workspace]
 
-members = ["omnibor", "gitoid"]
+members = ["omnibor", "gitoid", "xtask"]
 resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+license-file = "LICENSE"
+homepage = "https://omnibor.io"
 
 # Config for 'cargo dist'
 [workspace.metadata.dist]

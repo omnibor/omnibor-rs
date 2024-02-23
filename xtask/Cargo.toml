@@ -1,0 +1,17 @@
+[package]
+name = "xtask"
+description = "Helper tasks for the omnibor project workspace"
+version = "0.1.0"
+publish = false
+readme = "README.md"
+
+homepage.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = "1.0.80"
+clap = "4.5.1"
+duct = "0.13.7"
+env_logger = "0.11.2"
+log = "0.4.20"
