@@ -20,16 +20,14 @@ where
     It: Iterator<Item = DynStep<'step>>,
     I: IntoIterator<Item = DynStep<'step>, IntoIter = It>,
 {
-    fn inner<'step>(
-        mut steps: impl Iterator<Item = DynStep<'step>>,
-    ) -> Result<()> {
-        let mut forward_error = None;
+    fn inner<'step>(steps: impl Iterator<Item = DynStep<'step>>) -> Result<()> {
+        let mut forward_err = None;
         let mut completed_steps = Vec::new();
 
         // Run the steps forward.
-        while let Some(step) = steps.next() {
+        for step in steps {
             if let Err(forward) = forward(step) {
-                forward_error = Some(forward);
+                forward_err = Some(forward);
                 completed_steps.push(step);
                 break;
             }
@@ -38,16 +36,14 @@ where
         }
 
         // If forward had an error, initiate rollback.
-        if let Some(forward) = forward_error {
-            let mut steps = completed_steps.into_iter();
-
-            while let Some(reverse_step) = steps.next() {
-                if let Err(backward) = backward(reverse_step) {
-                    bail!(PipelineError::rollback(forward, backward));
+        if let Some(forward_err) = forward_err {
+            for step in completed_steps {
+                if let Err(backward_err) = backward(step) {
+                    bail!(PipelineError::rollback(forward_err, backward_err));
                 }
             }
 
-            bail!(PipelineError::forward(forward));
+            bail!(PipelineError::forward(forward_err));
         }
 
         Ok(())
