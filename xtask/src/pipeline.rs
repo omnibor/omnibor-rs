@@ -1,7 +1,7 @@
 use anyhow::{bail, Error, Result};
 use std::error::Error as StdError;
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::iter::DoubleEndedIterator;
+use std::iter::Iterator;
 use std::result::Result as StdResult;
 
 /// A mutable-reference [`Step`]` trait object.
@@ -17,20 +17,33 @@ pub type DynStep<'step> = &'step mut dyn Step;
 /// also assisted by the `step!` macro.
 pub fn run<'step, I, It>(steps: I) -> Result<()>
 where
-    It: DoubleEndedIterator<Item = DynStep<'step>>,
+    It: Iterator<Item = DynStep<'step>>,
     I: IntoIterator<Item = DynStep<'step>, IntoIter = It>,
 {
-    fn inner<'step>(mut steps: impl DoubleEndedIterator<Item = DynStep<'step>>) -> Result<()> {
-        while let Some(step) = steps.next() {
-            if let Err(forward) = forward(step) {
-                while let Some(reverse_step) = steps.next_back() {
-                    if let Err(backward) = backward(reverse_step) {
-                        bail!(PipelineError::rollback(forward, backward));
-                    }
-                }
+    fn inner<'step>(steps: impl Iterator<Item = DynStep<'step>>) -> Result<()> {
+        let mut forward_err = None;
+        let mut completed_steps = Vec::new();
 
-                bail!(PipelineError::forward(forward));
+        // Run the steps forward.
+        for step in steps {
+            if let Err(forward) = forward(step) {
+                forward_err = Some(forward);
+                completed_steps.push(step);
+                break;
             }
+
+            completed_steps.push(step);
+        }
+
+        // If forward had an error, initiate rollback.
+        if let Some(forward_err) = forward_err {
+            for step in completed_steps {
+                if let Err(backward_err) = backward(step) {
+                    bail!(PipelineError::rollback(forward_err, backward_err));
+                }
+            }
+
+            bail!(PipelineError::forward(forward_err));
         }
 
         Ok(())
@@ -83,6 +96,11 @@ pub trait Step {
     /// you cancel an operation with a kill signal before the `undo`
     /// operation can complete.
     fn undo(&mut self) -> Result<()>;
+
+    /// Check if a step mutates the environment, so undo might be skipped.
+    fn can_skip_undo(&self) -> bool {
+        false
+    }
 }
 
 /// Helper function to run a step forward and convert the error to [`StepError`]
@@ -97,6 +115,11 @@ fn forward(step: &mut dyn Step) -> StdResult<(), StepError> {
 
 /// Helper function to run a step backward and convert the error to [`StepError`]
 fn backward(step: &mut dyn Step) -> StdResult<(), StepError> {
+    if step.can_skip_undo() {
+        log::info!("skipping rollback for step '{}'", step.name());
+        return Ok(());
+    }
+
     log::info!("rolling back step '{}'", step.name());
 
     step.undo().map_err(|error| StepError {

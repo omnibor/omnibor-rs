@@ -24,7 +24,7 @@ pub fn args() -> ArgMatches {
                     arg!(--execute)
                         .required(false)
                         .value_parser(value_parser!(bool))
-                        .help("not a dry run, actually execute the release")
+                        .help("not a dry run, actually execute the release"),
                 ),
         )
         .get_matches()
