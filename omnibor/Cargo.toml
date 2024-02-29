@@ -45,6 +45,7 @@ build-binary = [
     "tokio/macros",
     "tokio/rt",
     "tokio/sync",
+    "tokio/time",
     "tokio/rt-multi-thread"
 ]
 
