@@ -31,7 +31,7 @@ async fn main() -> ExitCode {
     exit_code
 }
 
-/// Select and run the chosen chosen.
+/// Select and run the chosen command.
 async fn run(tx: &Sender<PrinterCmd>, cmd: &Command) -> Result<()> {
     match cmd {
         Command::Id(ref args) => id::run(tx, args).await,

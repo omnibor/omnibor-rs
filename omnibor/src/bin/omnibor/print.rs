@@ -87,7 +87,10 @@ impl Printer {
 /// A print queue message, either an actual message or a signals to end printing.
 #[derive(Debug, Clone)]
 pub enum PrinterCmd {
+    /// Shut down the printer task.
     End,
+
+    /// Print the following message.
     Message(Msg),
 }
 
