@@ -16,6 +16,7 @@ use tokio::sync::mpsc::Sender;
 pub async fn run(tx: &Sender<PrinterCmd>, args: &FindArgs) -> Result<()> {
     let FindArgs { url, path, format } = args;
 
+    // TODO(alilleybrinker): Correctly handle possible future hash formats.
     let id = ArtifactId::<Sha256>::id_url(url.clone())?;
     let url = id.url();
 
@@ -24,7 +25,7 @@ pub async fn run(tx: &Sender<PrinterCmd>, args: &FindArgs) -> Result<()> {
     loop {
         match entries.next().await {
             None => break,
-            Some(Err(e)) => tx.send(PrinterCmd::Message(Msg::error(e, *format))).await?,
+            Some(Err(e)) => tx.send(PrinterCmd::error(e, *format)).await?,
             Some(Ok(entry)) => {
                 let path = &entry.path();
 
