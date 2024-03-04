@@ -18,6 +18,7 @@ edition.workspace = true
 gitoid = "0.5.0"
 tokio = { version = "1.36.0", features = ["io-util"] }
 url = "2.5.0"
+serde = { version = "1.0.197", optional = true }
 
 # Binary-only dependencies
 
@@ -33,8 +34,14 @@ tokio = { version = "1.36.0", features = ["io-util", "fs"] }
 tokio-test = "0.4.3"
 # Match the version used in the `gitoid` crate.
 digest = "0.10.7"
+serde_test = "1.0.176"
 
 [features]
+
+# Support serde serialization and deserialization
+serde = ["dep:serde"]
+
+# Used to build the `omnibor` CLI.
 build-binary = [
     "dep:anyhow",
     "dep:async-walkdir",

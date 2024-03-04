@@ -16,7 +16,7 @@ pub async fn run(tx: &Sender<PrinterCmd>, args: &FindArgs) -> Result<()> {
     let FindArgs { url, path, format } = args;
 
     // TODO(alilleybrinker): Correctly handle possible future hash formats.
-    let id = ArtifactId::<Sha256>::id_url(url.clone())?;
+    let id = ArtifactId::<Sha256>::try_from_url(url.clone())?;
     let url = id.url();
 
     let mut entries = WalkDir::new(&path);
