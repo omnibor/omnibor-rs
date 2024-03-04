@@ -37,7 +37,6 @@ pub async fn run(tx: &Sender<PrinterCmd>, args: &FindArgs) -> Result<()> {
 
                 if url == file_url {
                     tx.send(PrinterCmd::find(&path, &url, *format)).await?;
-                    return Ok(());
                 }
             }
         }
