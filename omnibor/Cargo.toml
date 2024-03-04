@@ -31,6 +31,8 @@ smart-default = { version = "0.7.1", optional = true }
 [dev-dependencies]
 tokio = { version = "1.36.0", features = ["io-util", "fs"] }
 tokio-test = "0.4.3"
+# Match the version used in the `gitoid` crate.
+digest = "0.10.7"
 
 [features]
 build-binary = [
