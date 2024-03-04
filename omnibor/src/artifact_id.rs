@@ -5,6 +5,18 @@ use crate::Sha256;
 use crate::SupportedHash;
 use gitoid::Blob;
 use gitoid::GitOid;
+#[cfg(feature = "serde")]
+use serde::de::Deserializer;
+#[cfg(feature = "serde")]
+use serde::de::Error as DeserializeError;
+#[cfg(feature = "serde")]
+use serde::de::Visitor;
+#[cfg(feature = "serde")]
+use serde::Deserialize;
+#[cfg(feature = "serde")]
+use serde::Serialize;
+#[cfg(feature = "serde")]
+use serde::Serializer;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -14,6 +26,10 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::io::Read;
 use std::io::Seek;
+#[cfg(feature = "serde")]
+use std::marker::PhantomData;
+#[cfg(feature = "serde")]
+use std::result::Result as StdResult;
 use std::str::FromStr;
 use tokio::io::AsyncRead;
 use tokio::io::AsyncSeek;
@@ -38,23 +54,29 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// hash algorithm is one supported for an [`ArtifactId`], and that the
     /// object type is [`gitoid::Blob`].
     ///
-    /// # Example
+    /// # Note
     ///
-    /// ```rust
-    /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
-    /// # use gitoid::GitOid;
-    /// let gitoid = GitOid::from_str("hello, world");
-    /// let id: ArtifactId<Sha256> = ArtifactId::id_gitoid(gitoid);
-    /// println!("Artifact ID: {}", id);
-    /// ```
-    pub fn id_gitoid(gitoid: GitOid<H::HashAlgorithm, Blob>) -> ArtifactId<H> {
+    /// This function is not exported because we don't re-export the `GitOid`
+    /// type we use, which would mean users of the crate would themselves
+    /// need to import a binary-compatible version of the `GitOid` crate as
+    /// well. This is extra complexity for minimal gain, so we don't support it.
+    ///
+    /// If it were ever absolutely needed in the future, we might expose this
+    /// constructor with a `#[doc(hidden)]` attribute, or with documentation
+    /// which clearly outlines the extra complexity.
+    fn from_gitoid(gitoid: GitOid<H::HashAlgorithm, Blob>) -> ArtifactId<H> {
         ArtifactId { gitoid }
     }
 
     /// Construct an [`ArtifactId`] from raw bytes.
     ///
     /// This hashes the bytes to produce an identifier.
+    ///
+    /// # Note
+    ///
+    /// Generally, `ArtifactId`s are produced so independent parties
+    /// can compare ID's in the future. It's generally not useful to identify
+    /// artifacts which are never persisted or shared in some way.
     ///
     /// # Example
     ///
@@ -65,12 +87,18 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// println!("Artifact ID: {}", id);
     /// ```
     pub fn id_bytes<B: AsRef<[u8]>>(content: B) -> ArtifactId<H> {
-        ArtifactId::id_gitoid(GitOid::from_bytes(content))
+        ArtifactId::from_gitoid(GitOid::from_bytes(content))
     }
 
     /// Construct an [`ArtifactId`] from a string.
     ///
     /// This hashes the contents of the string to produce an identifier.
+    ///
+    /// # Note
+    ///
+    /// Generally, `ArtifactId`s are produced so independent parties
+    /// can compare ID's in the future. It's generally not useful to identify
+    /// artifacts which are never persisted or shared in some way.
     ///
     /// # Example
     ///
@@ -81,7 +109,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// println!("Artifact ID: {}", id);
     /// ```
     pub fn id_str<S: AsRef<str>>(s: S) -> ArtifactId<H> {
-        ArtifactId::id_gitoid(GitOid::from_str(s))
+        ArtifactId::from_gitoid(GitOid::from_str(s))
     }
 
     /// Construct an [`ArtifactId`] from a synchronous reader.
@@ -122,7 +150,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// ```
     pub fn id_reader<R: Read + Seek>(reader: R) -> Result<ArtifactId<H>> {
         let gitoid = GitOid::from_reader(reader)?;
-        Ok(ArtifactId::id_gitoid(gitoid))
+        Ok(ArtifactId::from_gitoid(gitoid))
     }
 
     /// Construct an [`ArtifactId`] from a synchronous reader with an expected length.
@@ -159,7 +187,7 @@ impl<H: SupportedHash> ArtifactId<H> {
         expected_length: usize,
     ) -> Result<ArtifactId<H>> {
         let gitoid = GitOid::from_reader_with_length(reader, expected_length)?;
-        Ok(ArtifactId::id_gitoid(gitoid))
+        Ok(ArtifactId::from_gitoid(gitoid))
     }
 
     /// Construct an [`ArtifactId`] from an asynchronous reader.
@@ -207,7 +235,7 @@ impl<H: SupportedHash> ArtifactId<H> {
         reader: R,
     ) -> Result<ArtifactId<H>> {
         let gitoid = GitOid::from_async_reader(reader).await?;
-        Ok(ArtifactId::id_gitoid(gitoid))
+        Ok(ArtifactId::from_gitoid(gitoid))
     }
 
     /// Construct an [`ArtifactId`] from an asynchronous reader with an expected length.
@@ -249,7 +277,7 @@ impl<H: SupportedHash> ArtifactId<H> {
         expected_length: usize,
     ) -> Result<ArtifactId<H>> {
         let gitoid = GitOid::from_async_reader_with_length(reader, expected_length).await?;
-        Ok(ArtifactId::id_gitoid(gitoid))
+        Ok(ArtifactId::from_gitoid(gitoid))
     }
 
     /// Construct an [`ArtifactId`] from a `gitoid`-scheme [`Url`].
@@ -272,10 +300,10 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// # use omnibor::Sha256;
     /// # use url::Url;
     /// let url = Url::parse("gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03").unwrap();
-    /// let id: ArtifactId<Sha256> = ArtifactId::id_url(url).unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::try_from_url(url).unwrap();
     /// println!("Artifact ID: {}", id);
     /// ```
-    pub fn id_url(url: Url) -> Result<ArtifactId<H>> {
+    pub fn try_from_url(url: Url) -> Result<ArtifactId<H>> {
         ArtifactId::try_from(url)
     }
 
@@ -386,7 +414,8 @@ impl<H: SupportedHash> FromStr for ArtifactId<H> {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<ArtifactId<H>> {
-        Ok(ArtifactId::id_str(s))
+        let url = Url::parse(s)?;
+        ArtifactId::try_from_url(url)
     }
 }
 
@@ -441,11 +470,67 @@ impl<H: SupportedHash> Display for ArtifactId<H> {
     }
 }
 
+impl<H: SupportedHash> From<GitOid<H::HashAlgorithm, Blob>> for ArtifactId<H> {
+    fn from(gitoid: GitOid<H::HashAlgorithm, Blob>) -> Self {
+        ArtifactId::from_gitoid(gitoid)
+    }
+}
+
+impl<'r, H: SupportedHash> TryFrom<&'r str> for ArtifactId<H> {
+    type Error = Error;
+
+    fn try_from(s: &'r str) -> Result<Self> {
+        ArtifactId::from_str(s)
+    }
+}
+
 impl<H: SupportedHash> TryFrom<Url> for ArtifactId<H> {
     type Error = Error;
 
     fn try_from(url: Url) -> Result<ArtifactId<H>> {
         let gitoid = GitOid::from_url(url)?;
-        Ok(ArtifactId::id_gitoid(gitoid))
+        Ok(ArtifactId::from_gitoid(gitoid))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<H: SupportedHash> Serialize for ArtifactId<H> {
+    fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Serialize self as the URL string.
+        let self_as_url_str = self.url().to_string();
+        serializer.serialize_str(&self_as_url_str)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, H: SupportedHash> Deserialize<'de> for ArtifactId<H> {
+    fn deserialize<D>(deserializer: D) -> StdResult<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // Deserialize self from the URL string.
+        struct ArtifactIdVisitor<H: SupportedHash>(PhantomData<H>);
+
+        impl<'de, H: SupportedHash> Visitor<'de> for ArtifactIdVisitor<H> {
+            type Value = ArtifactId<H>;
+
+            fn expecting(&self, formatter: &mut Formatter<'_>) -> FmtResult {
+                formatter.write_str("an ArtifactId")
+            }
+
+            fn visit_str<E>(self, value: &str) -> StdResult<Self::Value, E>
+            where
+                E: DeserializeError,
+            {
+                let url = Url::parse(value).map_err(E::custom)?;
+                let id = ArtifactId::try_from_url(url).map_err(E::custom)?;
+                Ok(id)
+            }
+        }
+
+        deserializer.deserialize_str(ArtifactIdVisitor(PhantomData))
     }
 }
