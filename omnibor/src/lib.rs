@@ -46,6 +46,8 @@ pub(crate) mod sealed;
 mod artifact_id;
 mod error;
 mod supported_hash;
+#[cfg(test)]
+mod test;
 
 pub(crate) use crate::error::Result;
 
