@@ -12,7 +12,8 @@ use std::future::Future;
 use std::panic;
 use std::path::Path;
 use std::result::Result as StdResult;
-use tokio::io::AsyncWrite;
+use tokio::io::stderr;
+use tokio::io::stdout;
 use tokio::io::AsyncWriteExt as _;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
@@ -100,6 +101,11 @@ impl PrinterCmd {
         PrinterCmd::Message(Msg::id(path, url, format))
     }
 
+    /// Construct a new find printer command.
+    pub fn find(path: &Path, url: &Url, format: Format) -> Self {
+        PrinterCmd::Message(Msg::find(path, url, format))
+    }
+
     /// Construct a new error printer command.
     pub fn error<E: Into<Error>>(error: E, format: Format) -> PrinterCmd {
         PrinterCmd::Message(Msg::error(error, format))
@@ -126,6 +132,19 @@ impl Msg {
         match format {
             Format::Plain => Msg::plain(status, &format!("{} => {}", path, url)),
             Format::Short => Msg::plain(status, &format!("{}", url)),
+            Format::Json => Msg::json(status, json!({ "path": path, "id": url })),
+        }
+    }
+
+    /// Construct a new find message.
+    pub fn find(path: &Path, url: &Url, format: Format) -> Self {
+        let status = Status::Success;
+        let path = path.display().to_string();
+        let url = url.to_string();
+
+        match format {
+            Format::Plain => Msg::plain(status, &format!("{} => {}", url, path)),
+            Format::Short => Msg::plain(status, &format!("{}", path)),
             Format::Json => Msg::json(status, json!({ "path": path, "id": url })),
         }
     }
@@ -165,16 +184,18 @@ impl Msg {
     /// Print the Msg to the appropriate sink.
     async fn print(self) -> Result<()> {
         let to_output = self.content.to_string();
-        self.resolve_sink().write_all(to_output.as_bytes()).await?;
+        self.write(to_output.as_bytes()).await?;
         Ok(())
     }
 
-    /// Get the sink associated with the type of Msg.
-    fn resolve_sink(&self) -> Box<dyn AsyncWrite + Unpin + Send> {
+    /// Write bytes to the correct sink.
+    async fn write(&self, bytes: &[u8]) -> Result<()> {
         match self.status {
-            Status::Success => Box::new(tokio::io::stdout()),
-            Status::Error => Box::new(tokio::io::stderr()),
+            Status::Success => stdout().write_all(bytes).await?,
+            Status::Error => stderr().write_all(bytes).await?,
         }
+
+        Ok(())
     }
 }
 

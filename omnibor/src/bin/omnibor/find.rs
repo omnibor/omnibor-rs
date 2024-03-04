@@ -3,7 +3,6 @@
 use crate::cli::FindArgs;
 use crate::cli::SelectedHash;
 use crate::fs::*;
-use crate::print::Msg;
 use crate::print::PrinterCmd;
 use anyhow::Result;
 use async_walkdir::WalkDir;
@@ -37,7 +36,7 @@ pub async fn run(tx: &Sender<PrinterCmd>, args: &FindArgs) -> Result<()> {
                 let file_url = hash_file(SelectedHash::Sha256, &mut file, &path).await?;
 
                 if url == file_url {
-                    tx.send(PrinterCmd::id(&path, &url, *format)).await?;
+                    tx.send(PrinterCmd::find(&path, &url, *format)).await?;
                     return Ok(());
                 }
             }
