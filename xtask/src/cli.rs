@@ -23,6 +23,7 @@ pub fn args() -> ArgMatches {
                 .arg(
                     arg!(--execute)
                         .required(false)
+                        .default_value("false")
                         .value_parser(value_parser!(bool))
                         .help("not a dry run, actually execute the release"),
                 ),
@@ -37,12 +38,18 @@ pub enum Crate {
     OmniBor,
 }
 
+impl Crate {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Crate::GitOid => "gitoid",
+            Crate::OmniBor => "omnibor",
+        }
+    }
+}
+
 impl Display for Crate {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Crate::GitOid => write!(f, "gitoid"),
-            Crate::OmniBor => write!(f, "omnibor"),
-        }
+        write!(f, "{}", self.name())
     }
 }
 
@@ -52,10 +59,7 @@ impl ValueEnum for Crate {
     }
 
     fn to_possible_value(&self) -> Option<PossibleValue> {
-        Some(match self {
-            Crate::GitOid => PossibleValue::new("gitoid"),
-            Crate::OmniBor => PossibleValue::new("omnibor"),
-        })
+        Some(PossibleValue::new(self.name()))
     }
 }
 
