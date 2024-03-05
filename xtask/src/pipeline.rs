@@ -1,32 +1,45 @@
-use anyhow::{bail, Error, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use std::error::Error as StdError;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::iter::Iterator;
 use std::result::Result as StdResult;
 
-/// A mutable-reference [`Step`]` trait object.
-pub type DynStep<'step> = &'step mut dyn Step;
-
-/// Run a pipeline of steps in order, rolling back if needed.
-///
-/// The type signature here is a little funky, but it just means that
-/// it takes as a parameter something which can be turned into an owning
-/// iterator over mutable references to Step trait objects.
-///
-/// This lets the user call it with just a plain array of trait objects,
-/// also assisted by the `step!` macro.
-pub fn run<'step, I, It>(steps: I) -> Result<()>
+pub struct Pipeline<It>
 where
-    It: Iterator<Item = DynStep<'step>>,
-    I: IntoIterator<Item = DynStep<'step>, IntoIter = It>,
+    It: Iterator<Item = DynStep>,
 {
-    fn inner<'step>(steps: impl Iterator<Item = DynStep<'step>>) -> Result<()> {
+    steps: It,
+    force_rollback: bool,
+}
+
+impl<It> Pipeline<It>
+where
+    It: Iterator<Item = DynStep>,
+{
+    /// Construct a new pipeline.
+    pub fn new<I>(steps: I) -> Self
+    where
+        I: IntoIterator<Item = DynStep, IntoIter = It>,
+    {
+        Pipeline {
+            steps: steps.into_iter(),
+            force_rollback: false,
+        }
+    }
+
+    /// Force rollback at the end of the pipeline, regardless of outcome.
+    pub fn force_rollback(&mut self) {
+        self.force_rollback = true;
+    }
+
+    /// Run the pipeline.
+    pub fn run(self) -> Result<()> {
         let mut forward_err = None;
         let mut completed_steps = Vec::new();
 
         // Run the steps forward.
-        for step in steps {
-            if let Err(forward) = forward(step) {
+        for mut step in self.steps {
+            if let Err(forward) = forward(step.as_mut()) {
                 forward_err = Some(forward);
                 completed_steps.push(step);
                 break;
@@ -35,10 +48,12 @@ where
             completed_steps.push(step);
         }
 
-        // If forward had an error, initiate rollback.
-        if let Some(forward_err) = forward_err {
-            for step in completed_steps {
-                if let Err(backward_err) = backward(step) {
+        // If we're forcing rollback or forward had an error, initiate rollback.
+        if self.force_rollback || forward_err.is_some() {
+            let forward_err = forward_err.unwrap_or_else(StepError::forced_rollback);
+
+            for mut step in completed_steps {
+                if let Err(backward_err) = backward(step.as_mut()) {
                     bail!(PipelineError::rollback(forward_err, backward_err));
                 }
             }
@@ -48,14 +63,15 @@ where
 
         Ok(())
     }
-
-    inner(steps.into_iter())
 }
+
+/// A Boxed [`Step`]` trait object.
+pub type DynStep = Box<dyn Step>;
 
 #[macro_export]
 macro_rules! step {
     ( $step:expr ) => {{
-        &mut $step as &mut dyn Step
+        Box::new($step) as Box<dyn Step>
     }};
 }
 
@@ -95,11 +111,8 @@ pub trait Step {
     /// Note that this trait does _not_ ensure graceful shutdown if
     /// you cancel an operation with a kill signal before the `undo`
     /// operation can complete.
-    fn undo(&mut self) -> Result<()>;
-
-    /// Check if a step mutates the environment, so undo might be skipped.
-    fn can_skip_undo(&self) -> bool {
-        false
+    fn undo(&mut self) -> Result<()> {
+        Ok(())
     }
 }
 
@@ -115,11 +128,6 @@ fn forward(step: &mut dyn Step) -> StdResult<(), StepError> {
 
 /// Helper function to run a step backward and convert the error to [`StepError`]
 fn backward(step: &mut dyn Step) -> StdResult<(), StepError> {
-    if step.can_skip_undo() {
-        log::info!("skipping rollback for step '{}'", step.name());
-        return Ok(());
-    }
-
     log::info!("rolling back step '{}'", step.name());
 
     step.undo().map_err(|error| StepError {
@@ -205,6 +213,15 @@ struct StepError {
 
     /// The error the step produced.
     error: Error,
+}
+
+impl StepError {
+    fn forced_rollback() -> Self {
+        StepError {
+            name: "forced-rollback",
+            error: anyhow!("forced rollback"),
+        }
+    }
 }
 
 impl Display for StepError {
