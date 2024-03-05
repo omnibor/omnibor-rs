@@ -1,9 +1,16 @@
+#![allow(unused_imports)]
+
 use super::*;
+#[cfg(feature = "std")]
 use std::fs::File;
+#[cfg(feature = "async")]
 use tokio::fs::File as AsyncFile;
+#[cfg(feature = "async")]
 use tokio::runtime::Runtime;
+#[cfg(feature = "url")]
 use url::Url;
 
+#[cfg(all(feature = "sha1", feature = "hex"))]
 #[test]
 fn generate_sha1_gitoid_from_bytes() {
     let input = b"hello world";
@@ -17,6 +24,7 @@ fn generate_sha1_gitoid_from_bytes() {
     );
 }
 
+#[cfg(all(feature = "sha1", feature = "std"))]
 #[test]
 fn generate_sha1_gitoid_from_buffer() -> Result<()> {
     let reader = File::open("test/data/hello_world.txt")?;
@@ -32,6 +40,7 @@ fn generate_sha1_gitoid_from_buffer() -> Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "sha256")]
 #[test]
 fn generate_sha256_gitoid_from_bytes() {
     let input = b"hello world";
@@ -48,6 +57,7 @@ fn generate_sha256_gitoid_from_bytes() {
     );
 }
 
+#[cfg(all(feature = "sha256", feature = "std"))]
 #[test]
 fn generate_sha256_gitoid_from_buffer() -> Result<()> {
     let reader = File::open("test/data/hello_world.txt")?;
@@ -66,6 +76,7 @@ fn generate_sha256_gitoid_from_buffer() -> Result<()> {
     Ok(())
 }
 
+#[cfg(all(feature = "sha256", feature = "async"))]
 #[test]
 fn generate_sha256_gitoid_from_async_buffer() -> Result<()> {
     let runtime = Runtime::new()?;
@@ -87,6 +98,7 @@ fn generate_sha256_gitoid_from_async_buffer() -> Result<()> {
     })
 }
 
+#[cfg(feature = "sha256")]
 #[test]
 fn validate_uri() -> Result<()> {
     let content = b"hello world";
@@ -100,6 +112,7 @@ fn validate_uri() -> Result<()> {
     Ok(())
 }
 
+#[cfg(all(feature = "sha256", feature = "url"))]
 #[test]
 fn try_from_url_bad_scheme() {
     let url = Url::parse(
@@ -113,6 +126,7 @@ fn try_from_url_bad_scheme() {
     }
 }
 
+#[cfg(all(feature = "sha1", feature = "url"))]
 #[test]
 fn try_from_url_missing_object_type() {
     let url = Url::parse("gitoid:").unwrap();
@@ -123,19 +137,18 @@ fn try_from_url_missing_object_type() {
     }
 }
 
+#[cfg(all(feature = "sha1", feature = "url"))]
 #[test]
 fn try_from_url_bad_object_type() {
     let url = Url::parse("gitoid:whatever").unwrap();
 
     match GitOid::<Sha1, Blob>::from_url(url) {
         Ok(_) => panic!("gitoid parsing should fail"),
-        Err(e) => assert_eq!(
-            e.to_string(),
-            "mismatched object type; expected 'blob', got 'whatever'"
-        ),
+        Err(e) => assert_eq!(e.to_string(), "mismatched object type; expected 'blob'"),
     }
 }
 
+#[cfg(all(feature = "sha256", feature = "url"))]
 #[test]
 fn try_from_url_missing_hash_algorithm() {
     let url = Url::parse("gitoid:blob:").unwrap();
@@ -149,19 +162,18 @@ fn try_from_url_missing_hash_algorithm() {
     }
 }
 
+#[cfg(all(feature = "sha1", feature = "url"))]
 #[test]
 fn try_from_url_bad_hash_algorithm() {
     let url = Url::parse("gitoid:blob:sha10000").unwrap();
 
     match GitOid::<Sha1, Blob>::from_url(url) {
         Ok(_) => panic!("gitoid parsing should fail"),
-        Err(e) => assert_eq!(
-            e.to_string(),
-            "mismatched hash algorithm; expected 'sha1', got 'sha10000'"
-        ),
+        Err(e) => assert_eq!(e.to_string(), "mismatched hash algorithm; expected 'sha1'"),
     }
 }
 
+#[cfg(all(feature = "sha256", feature = "url"))]
 #[test]
 fn try_from_url_missing_hash() {
     let url = Url::parse("gitoid:blob:sha256:").unwrap();
@@ -172,6 +184,7 @@ fn try_from_url_missing_hash() {
     }
 }
 
+#[cfg(all(feature = "sha256", feature = "url"))]
 #[test]
 fn try_url_roundtrip() {
     let url = Url::parse(
@@ -180,9 +193,5 @@ fn try_url_roundtrip() {
     .unwrap();
     let gitoid = GitOid::<Sha256, Blob>::from_url(url.clone()).unwrap();
     let output = gitoid.url();
-
-    eprintln!("{}", url);
-    eprintln!("{}", output);
-
     assert_eq!(url, output);
 }

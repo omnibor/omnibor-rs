@@ -92,7 +92,7 @@
 //!
 //! ## Example
 //!
-//! ```rust
+//! ```text
 //! # use gitoid::{Sha256, Blob};
 //! type GitOid = gitoid::GitOid<Sha256, Blob>;
 //!
@@ -102,6 +102,13 @@
 //!
 //! [gitoid]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
 //! [omnibor]: https://omnibor.io
+
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(any(feature = "sha1", feature = "sha1cd", feature = "sha256")))]
+compile_error!(
+    r#"At least one hash algorithm feature must be active: "sha1", "sha1cd", or "sha256""#
+);
 
 pub(crate) mod sealed;
 
@@ -118,8 +125,11 @@ pub(crate) use crate::error::Result;
 pub use crate::error::Error;
 pub use crate::gitoid::GitOid;
 pub use crate::hash_algorithm::HashAlgorithm;
+#[cfg(feature = "sha1")]
 pub use crate::hash_algorithm::Sha1;
+#[cfg(feature = "sha1cd")]
 pub use crate::hash_algorithm::Sha1Cd;
+#[cfg(feature = "sha256")]
 pub use crate::hash_algorithm::Sha256;
 pub use crate::object_type::Blob;
 pub use crate::object_type::Commit;
