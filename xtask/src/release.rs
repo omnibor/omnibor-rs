@@ -1,7 +1,7 @@
 use crate::cli::{Bump, Crate};
 use crate::pipeline::{Pipeline, Step};
 use crate::step;
-use anyhow::{anyhow, bail, Error, Result};
+use anyhow::{anyhow, bail, Result};
 use cargo_metadata::MetadataCommand;
 use clap::ArgMatches;
 use pathbuf::pathbuf;
@@ -24,12 +24,15 @@ pub fn run(args: &ArgMatches) -> Result<()> {
         .expect("--execute has a default value, so it should never be missing");
 
     log::info!(
-        "running 'release', bumping the {} number for crate '{}'",
+        "running 'release', bumping the {} version number for crate '{}'",
         bump,
         krate
     );
 
-    let workspace_root = workspace_root()?;
+    let workspace_root = MetadataCommand::new()
+        .exec()?
+        .workspace_root
+        .into_std_path_buf();
 
     let mut pipeline = Pipeline::new([
         step!(CheckDependencies),
@@ -63,19 +66,14 @@ impl Step for CheckDependencies {
     }
 
     fn run(&mut self) -> Result<()> {
-        let mut missing_cmds = Vec::new();
-
-        check_cmd(&mut missing_cmds, "git");
-        check_cmd(&mut missing_cmds, "git-cliff");
-        check_cmd(&mut missing_cmds, "cargo");
-        check_cmd(&mut missing_cmds, "cargo-release");
+        let missing_cmds = ["git", "git-cliff", "cargo", "cargo-release"]
+            .into_iter()
+            .inspect(|name| log::info!("checking command '{}'", name))
+            .filter(|name| which::which(name).is_err())
+            .collect::<Vec<_>>();
 
         if missing_cmds.is_empty().not() {
-            let commands = missing_cmds
-                .iter()
-                .map(|i| i.name)
-                .collect::<Vec<_>>()
-                .join(", ");
+            let commands = missing_cmds.join(", ");
             bail!(
                 "missing commands: {}; please install before continuing",
                 commands
@@ -97,13 +95,10 @@ impl Step for CheckGitReady {
         let sh = Shell::new()?;
 
         // 1. Make sure the index is up to date (ignore errors).
-        let _ = cmd!(sh, "git update-index -q --ignore-submodules --refresh")
-            .quiet()
-            .run();
+        let _ = cmd!(sh, "git update-index -q --ignore-submodules --refresh").run();
 
         // 2. Check for unstaged changes in the working tree.
         if cmd!(sh, "git diff-files --quiet --ignore-submodules")
-            .quiet()
             .run()
             .is_err()
         {
@@ -117,7 +112,6 @@ impl Step for CheckGitReady {
             sh,
             "git diff-index --cached --quiet HEAD --ignore-submodules"
         )
-        .quiet()
         .run()
         .is_err()
         {
@@ -138,7 +132,7 @@ impl Step for CheckGitBranch {
     fn run(&mut self) -> Result<()> {
         let sh = Shell::new()?;
 
-        let current_branch = cmd!(sh, "git rev-parse --abbrev-ref HEAD").quiet().read()?;
+        let current_branch = cmd!(sh, "git rev-parse --abbrev-ref HEAD").read()?;
 
         if current_branch != "main" {
             bail!(
@@ -185,7 +179,6 @@ impl Step for GenerateChangelog {
             sh,
             "git cliff --config {config} --include-path {include} -o {output}"
         )
-        .quiet()
         .run()?;
         Ok(())
     }
@@ -194,7 +187,7 @@ impl Step for GenerateChangelog {
     fn undo(&mut self) -> Result<()> {
         let sh = Shell::new()?;
         let output = self.output();
-        cmd!(sh, "rm {output}").quiet().run()?;
+        cmd!(sh, "rm {output}").run()?;
         Ok(())
     }
 }
@@ -218,23 +211,21 @@ impl Step for CommitChangelog {
         let sh = Shell::new()?;
         let msg = self.commit_msg();
         let changelog = pathbuf![self.krate.name(), "CHANGELOG.md"];
-        cmd!(sh, "git add {changelog}").quiet().run()?;
-        cmd!(sh, "git commit --signoff -m \"{msg}\"")
-            .quiet()
-            .run()?;
+        cmd!(sh, "git add {changelog}").run()?;
+        cmd!(sh, "git commit --signoff -m \"{msg}\"").run()?;
         Ok(())
     }
 
     fn undo(&mut self) -> Result<()> {
         let sh = Shell::new()?;
-        let last_msg = cmd!(sh, "git log -1 --pretty=%s").quiet().read()?;
+        let last_msg = cmd!(sh, "git log -1 --pretty=%s").read()?;
         let expected_msg = self.commit_msg();
 
         if last_msg != expected_msg {
             bail!("last commit isn't CHANGELOG commit; aborting to avoid breaking git history");
         }
 
-        cmd!(sh, "git reset --hard HEAD~1").quiet().run()?;
+        cmd!(sh, "git reset --hard HEAD~1").run()?;
         Ok(())
     }
 }
@@ -254,26 +245,4 @@ impl Step for ReleaseCrate {
     fn run(&mut self) -> Result<()> {
         bail!("not yet implemented");
     }
-}
-
-/// Check if a command exists on the command line.
-fn check_cmd(missing_cmds: &mut Vec<MissingCmd>, name: &'static str) {
-    if let Err(err) = which::which(name) {
-        let err = anyhow!(err);
-        missing_cmds.push(MissingCmd { name, err });
-    }
-}
-
-#[derive(Debug)]
-struct MissingCmd {
-    name: &'static str,
-    #[allow(unused)]
-    err: Error,
-}
-
-// Figure out the root of the current Cargo workspace.
-fn workspace_root() -> Result<PathBuf> {
-    let metadata = MetadataCommand::new().exec()?;
-    let root = metadata.workspace_root.into_std_path_buf();
-    Ok(root)
 }
