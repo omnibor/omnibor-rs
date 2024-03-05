@@ -1,20 +1,12 @@
 # Security Policy
 
-The following versions of this repository's crates are considered supported,
-and will receive security updates.
+The following is the security policy for:
 
-__`gitoid`__
+- The `gitoid` library crate.
+- The `omnibor` library crate.
+- The `omnibor` binary crate.
 
-| Version          | Supported          |
-|:-----------------| ------------------ |
-| `gitoid-0.4.x`   | :white_check_mark: |
-| `gitoid-0.3.x`   | :x:                |
-
-__`omnibor`__
-
-| Version          | Supported          |
-|:-----------------| ------------------ |
-| `omnibor-0.2.x`  | :white_check_mark: |
+All of which are found in this workspace.
 
 ## Reporting a Vulnerability
 
