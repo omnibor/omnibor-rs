@@ -52,7 +52,7 @@ where
         if self.force_rollback || forward_err.is_some() {
             let forward_err = forward_err.unwrap_or_else(StepError::forced_rollback);
 
-            for mut step in completed_steps {
+            for mut step in completed_steps.into_iter().rev() {
                 if let Err(backward_err) = backward(step.as_mut()) {
                     bail!(PipelineError::rollback(forward_err, backward_err));
                 }
