@@ -9,6 +9,13 @@ use tokio::fs::File as AsyncFile;
 use tokio::runtime::Runtime;
 #[cfg(feature = "url")]
 use url::Url;
+#[cfg(feature = "serde")]
+use {
+    crate::Blob,
+    crate::GitOid,
+    crate::Sha256,
+    serde_test::{assert_tokens, Token},
+};
 
 #[cfg(all(feature = "sha1", feature = "hex"))]
 #[test]
@@ -194,4 +201,18 @@ fn try_url_roundtrip() {
     let gitoid = GitOid::<Sha256, Blob>::from_url(url.clone()).unwrap();
     let output = gitoid.url();
     assert_eq!(url, output);
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn valid_gitoid_ser_de() {
+    let id = GitOid::<Sha256, Blob>::from_str("hello, world");
+
+    // This validates both serialization and deserialization.
+    assert_tokens(
+        &id,
+        &[Token::Str(
+            "gitoid:blob:sha256:7d0be525d6521168c74051e5ab1b99e3b6d1c962fba763818f1954ab9e1c821a",
+        )],
+    );
 }

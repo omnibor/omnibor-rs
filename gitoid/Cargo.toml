@@ -30,6 +30,7 @@ sha2 = { version = "0.10.8", default-features = false, optional = true }
 
 format-bytes = { version = "0.3.0", optional = true }
 hex = { version = "0.4.3", optional = true }
+serde = { version = "1.0.197", optional = true }
 tokio = { version = "1.36.0", features = ["io-util"], optional = true }
 url = { version = "2.4.1", optional = true }
 
@@ -37,6 +38,7 @@ url = { version = "2.4.1", optional = true }
 
 # Need "rt" and "fs" additionally for tests.
 tokio = { version = "1.36.0", features = ["io-util", "fs", "rt", "rt-multi-thread"] }
+serde_test = "1.0.176"
 
 [features]
 
@@ -46,7 +48,8 @@ tokio = { version = "1.36.0", features = ["io-util", "fs", "rt", "rt-multi-threa
 # - Async: ability to asynchronously produce GitOIDs using the Tokio runtime.
 # - Hex: ability to print a GitOid with a hexadecimal hash representation.
 # - Url: ability to convert a GitOid to and from a gitoid-scheme URL.
-default = ["async", "hex", "sha1", "sha1cd", "sha256", "std", "url"]
+# - Serde: ability to serialize and deserialize a GitOid to and from a URL.
+default = ["async", "hex", "serde", "sha1", "sha1cd", "sha256", "std", "url"]
 
 # Async support is optional. That said, it's currently _only_ with Tokio,
 # meaning you'd need to handle integrating with any other async runtime
@@ -62,6 +65,9 @@ async = ["dep:tokio", "std"]
 # This relies on `std` as we don't currently expose a `no_std`-compatible
 # variant of our API's which use `hex`.
 hex = ["dep:hex", "std"]
+
+# Get the ability to serialize and deserialize `GitOids`.
+serde = ["dep:serde", "url", "std"]
 
 # All hash algorithms are optional, though you need to have at least one
 # algorithm turned on for this crate to be useful. This is intended to
