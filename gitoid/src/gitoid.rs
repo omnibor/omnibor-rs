@@ -6,6 +6,7 @@ use crate::ObjectType;
 use crate::Result;
 use core::cmp::Ordering;
 use core::fmt::Debug;
+#[cfg(feature = "hex")]
 use core::fmt::Display;
 use core::fmt::Formatter;
 use core::fmt::Result as FmtResult;
@@ -14,22 +15,25 @@ use core::hash::Hasher;
 use core::marker::PhantomData;
 use core::ops::Not as _;
 use core::str::FromStr;
+#[cfg(feature = "url")]
 use core::str::Split;
+#[cfg(feature = "std")]
+use digest::block_buffer::generic_array::sequence::GenericSequence;
+use digest::block_buffer::generic_array::GenericArray;
 use digest::Digest;
 use digest::OutputSizeUser;
+#[cfg(feature = "std")]
 use format_bytes::format_bytes;
-use generic_array::sequence::GenericSequence;
-use generic_array::GenericArray;
-use std::io::BufRead;
-use std::io::BufReader;
-use std::io::Read;
-use std::io::Seek;
-use std::io::SeekFrom;
-use tokio::io::AsyncBufReadExt as _;
-use tokio::io::AsyncRead;
-use tokio::io::AsyncSeek;
-use tokio::io::AsyncSeekExt as _;
-use tokio::io::BufReader as AsyncBufReader;
+
+#[cfg(feature = "std")]
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
+
+#[cfg(feature = "async")]
+use tokio::io::{
+    AsyncBufReadExt as _, AsyncRead, AsyncSeek, AsyncSeekExt as _, BufReader as AsyncBufReader,
+};
+
+#[cfg(feature = "url")]
 use url::Url;
 
 /// A struct that computes [gitoids][g] based on the selected algorithm
@@ -48,6 +52,7 @@ where
     value: H::Array,
 }
 
+#[cfg(feature = "url")]
 const GITOID_URL_SCHEME: &str = "gitoid";
 
 impl<H, O> GitOid<H, O>
@@ -83,12 +88,14 @@ where
         inner(s.as_ref())
     }
 
+    #[cfg(feature = "std")]
     /// Create a `GitOid` from a reader.
     pub fn from_reader<R: Read + Seek>(mut reader: R) -> Result<GitOid<H, O>> {
         let expected_length = stream_len(&mut reader)? as usize;
         GitOid::from_reader_with_length(reader, expected_length)
     }
 
+    #[cfg(feature = "std")]
     /// Generate a `GitOid` from a reader, providing an expected length in bytes.
     pub fn from_reader_with_length<R: Read>(
         reader: R,
@@ -97,6 +104,7 @@ where
         gitoid_from_buffer(H::new(), reader, expected_length)
     }
 
+    #[cfg(feature = "async")]
     /// Generate a `GitOid` from an asynchronous reader.
     pub async fn from_async_reader<R: AsyncRead + AsyncSeek + Unpin>(
         mut reader: R,
@@ -105,6 +113,7 @@ where
         GitOid::from_async_reader_with_length(reader, expected_length).await
     }
 
+    #[cfg(feature = "async")]
     /// Generate a `GitOid` from an asynchronous reader, providing an expected length in bytes.
     pub async fn from_async_reader_with_length<R: AsyncRead + Unpin>(
         reader: R,
@@ -113,11 +122,13 @@ where
         gitoid_from_async_buffer(H::new(), reader, expected_length).await
     }
 
+    #[cfg(feature = "url")]
     /// Construct a new `GitOid` from a `Url`.
     pub fn from_url(url: Url) -> Result<GitOid<H, O>> {
         GitOid::try_from(url)
     }
 
+    #[cfg(feature = "url")]
     /// Get a URL for the current `GitOid`.
     pub fn url(&self) -> Url {
         // PANIC SAFETY: We know that this is a valid URL;
@@ -130,6 +141,7 @@ where
         &self.value[..]
     }
 
+    #[cfg(feature = "hex")]
     /// Convert the hash to a hexadecimal string.
     pub fn as_hex(&self) -> String {
         hex::encode(self.as_bytes())
@@ -242,6 +254,7 @@ where
     }
 }
 
+#[cfg(feature = "hex")]
 impl<H, O> Display for GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -259,6 +272,7 @@ where
     }
 }
 
+#[cfg(feature = "url")]
 struct GitOidUrlParser<'u, H, O>
 where
     H: HashAlgorithm,
@@ -275,10 +289,12 @@ where
     _object_type: PhantomData<O>,
 }
 
+#[allow(dead_code)]
 fn some_if_not_empty(s: &str) -> Option<&str> {
     s.is_empty().not().then_some(s)
 }
 
+#[cfg(feature = "url")]
 impl<'u, H, O> GitOidUrlParser<'u, H, O>
 where
     H: HashAlgorithm,
@@ -320,10 +336,7 @@ where
             .ok_or_else(|| Error::MissingObjectType(self.url.clone()))?;
 
         if object_type != O::NAME {
-            return Err(Error::MismatchedObjectType {
-                expected: O::NAME.to_string(),
-                observed: object_type.to_string(),
-            });
+            return Err(Error::MismatchedObjectType { expected: O::NAME });
         }
 
         Ok(())
@@ -337,10 +350,7 @@ where
             .ok_or_else(|| Error::MissingHashAlgorithm(self.url.clone()))?;
 
         if hash_algorithm != H::NAME {
-            return Err(Error::MismatchedHashAlgorithm {
-                expected: H::NAME.to_string(),
-                observed: hash_algorithm.to_string(),
-            });
+            return Err(Error::MismatchedHashAlgorithm { expected: H::NAME });
         }
 
         Ok(())
@@ -370,6 +380,7 @@ where
     }
 }
 
+#[cfg(feature = "url")]
 impl<H, O> TryFrom<Url> for GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -382,16 +393,8 @@ where
     }
 }
 
-/// Take a `BufReader` and generate a hash based on the `GitOid`'s hashing algorithm.
-///
-/// Will return an `Err` if the `BufReader` generates an `Err` or if the
-/// `expected_length` is different from the actual length.
-///
-/// Why the latter `Err`?
-///
-/// The prefix string includes the number of bytes being hashed and that's the
-/// `expected_length`. If the actual bytes hashed differs, then something went
-/// wrong and the hash is not valid.
+#[cfg(feature = "std")]
+/// Generate a GitOid by reading from an arbitrary reader.
 fn gitoid_from_buffer<H, O, R>(
     digester: H::Alg,
     reader: R,
@@ -407,7 +410,7 @@ where
         hash_from_buffer::<H::Alg, O, R>(digester, reader, expected_read_length)?;
 
     if amount_read != expected_read_length {
-        return Err(Error::UnexpectedHashLength {
+        return Err(Error::UnexpectedReadLength {
             expected: expected_read_length,
             observed: amount_read,
         });
@@ -426,6 +429,42 @@ where
     })
 }
 
+#[cfg(not(feature = "std"))]
+/// Generate a GitOid from data in a buffer of bytes.
+fn gitoid_from_buffer<H, O>(
+    digester: H::Alg,
+    reader: &[u8],
+    expected_read_length: usize,
+) -> Result<GitOid<H, O>>
+where
+    H: HashAlgorithm,
+    O: ObjectType,
+{
+    let expected_hash_length = <H::Alg as OutputSizeUser>::output_size();
+    let (hash, amount_read) =
+        hash_from_buffer::<H::Alg, O>(digester, reader, expected_read_length)?;
+
+    if amount_read != expected_read_length {
+        return Err(Error::UnexpectedReadLength {
+            expected: expected_read_length,
+            observed: amount_read,
+        });
+    }
+
+    if hash.len() != expected_hash_length {
+        return Err(Error::UnexpectedHashLength {
+            expected: expected_hash_length,
+            observed: hash.len(),
+        });
+    }
+
+    Ok(GitOid {
+        _phantom: PhantomData,
+        value: H::array_from_generic(hash),
+    })
+}
+
+#[cfg(feature = "std")]
 // Helper extension trait to give a convenient way to iterate over
 // chunks sized to the size of the internal buffer of the reader.
 trait ForEachChunk: BufRead {
@@ -434,6 +473,7 @@ trait ForEachChunk: BufRead {
     fn for_each_chunk(&mut self, f: impl FnMut(&[u8])) -> Result<usize>;
 }
 
+#[cfg(feature = "std")]
 impl<R: BufRead> ForEachChunk for R {
     fn for_each_chunk(&mut self, mut f: impl FnMut(&[u8])) -> Result<usize> {
         let mut total_read = 0;
@@ -456,6 +496,7 @@ impl<R: BufRead> ForEachChunk for R {
     }
 }
 
+#[cfg(feature = "std")]
 /// Helper function which actually applies the [`GitOid`] construction rules.
 ///
 /// This function handles actually constructing the hash with the GitOID prefix,
@@ -480,6 +521,34 @@ where
     Ok((hash, amount_read))
 }
 
+#[cfg(not(feature = "std"))]
+/// Helper function which actually applies the [`GitOid`] construction rules.
+///
+/// This function handles actually constructing the hash with the GitOID prefix,
+/// and delegates to a buffered reader for performance of the chunked reading.
+fn hash_from_buffer<D, O>(
+    mut digester: D,
+    reader: &[u8],
+    expected_read_length: usize,
+) -> Result<(GenericArray<u8, D::OutputSize>, usize)>
+where
+    D: Digest,
+    O: ObjectType,
+{
+    // Manually write out the prefix
+    digester.update(O::NAME.as_bytes());
+    digester.update(b" ");
+    digester.update(expected_read_length.to_ne_bytes());
+    digester.update(b"\0");
+
+    // It's in memory, so we know the exact size up front.
+    let amount_read = reader.len();
+    digester.update(reader);
+    let hash = digester.finalize();
+    Ok((hash, amount_read))
+}
+
+#[cfg(feature = "async")]
 /// Async version of `gitoid_from_buffer`.
 async fn gitoid_from_async_buffer<H, O, R>(
     digester: H::Alg,
@@ -515,6 +584,7 @@ where
     })
 }
 
+#[cfg(feature = "async")]
 /// Async version of `hash_from_buffer`.
 async fn hash_from_async_buffer<D, O, R>(
     mut digester: D,
@@ -584,6 +654,7 @@ where
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
+#[cfg(feature = "std")]
 fn stream_len<R>(mut stream: R) -> Result<u64>
 where
     R: Seek,
@@ -600,6 +671,7 @@ where
     Ok(len)
 }
 
+#[cfg(feature = "async")]
 /// An async equivalent of `stream_len`.
 async fn async_stream_len<R>(mut stream: R) -> Result<u64>
 where

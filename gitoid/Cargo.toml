@@ -6,40 +6,84 @@ name = "gitoid"
 readme = "README.md"
 repository = "https://github.com/omnibor/omnibor-rs"
 version = "0.5.1"
-
 homepage.workspace = true
 license.workspace = true
 edition.workspace = true
 
-[lib]
-crate-type = ["rlib", "cdylib"]
-
 [dependencies]
 
-## Core Dependencies
+# no_std compatible dependencies.
 
-# Match the version used in sha1 and sha2.
-digest = "0.10.7"
-format-bytes = "0.3.0"
-# Match the version used in sha1, sha2, and digest.
-generic-array = "0.14.7"
+# NOTE: Must match the version used in the hash crate.
+#
+# Technically, we could rely on the re-export from one of those crates,
+# but since all the hash crates are optional dependencies our usage code
+# within the 'gitoid' crate would be more complex to handle the possibility
+# for any/all of them to be missing. It's simpler to just specify it here
+# so we know we always get the crate.
+digest = { version = "0.10.7" }
+sha1 = { version = "0.10.6", default-features = false, optional = true }
+sha1collisiondetection = { version = "0.3.3", default-features = false, features = ["digest-trait"], optional = true }
+sha2 = { version = "0.10.8", default-features = false, optional = true }
 
-## Hash Algorithms
+# std-requiring dependencies.
 
-sha1 = { version = "0.10.6", default-features = false, features = ["std"] }
-sha1collisiondetection = "0.3.3"
-sha2 = { version = "0.10.8", default-features = false }
-
-## Async Support
-
-tokio = { version = "1.36.0", features = ["io-util"] }
-
-## Representations
-
-hex = { version = "0.4.3", default-features = false, features = ["std"] }
-url = "2.4.1"
+format-bytes = { version = "0.3.0", optional = true }
+hex = { version = "0.4.3", optional = true }
+tokio = { version = "1.36.0", features = ["io-util"], optional = true }
+url = { version = "2.4.1", optional = true }
 
 [dev-dependencies]
 
 # Need "rt" and "fs" additionally for tests.
 tokio = { version = "1.36.0", features = ["io-util", "fs", "rt", "rt-multi-thread"] }
+
+[features]
+
+# By default, you get:
+#
+# - Hashes: sha1, sha1cd, sha256.
+# - Async: ability to asynchronously produce GitOIDs using the Tokio runtime.
+# - Hex: ability to print a GitOid with a hexadecimal hash representation.
+# - Url: ability to convert a GitOid to and from a gitoid-scheme URL.
+default = ["async", "hex", "sha1", "sha1cd", "sha256", "std", "url"]
+
+# Async support is optional. That said, it's currently _only_ with Tokio,
+# meaning you'd need to handle integrating with any other async runtime
+# yourself. In the future it may be nice to make our async support fully
+# generic and not specific to a given runtime.
+#
+# Note also that async support implies using the standard library, as Tokio
+# is not `no_std`-compatible.
+async = ["dep:tokio", "std"]
+
+# Get the ability to print the contents of the hash buffer as a hexadecimal string.
+#
+# This relies on `std` as we don't currently expose a `no_std`-compatible
+# variant of our API's which use `hex`.
+hex = ["dep:hex", "std"]
+
+# All hash algorithms are optional, though you need to have at least one
+# algorithm turned on for this crate to be useful. This is intended to
+# just let you avoid paying the cost of algorithms you don't use.
+sha1 = ["dep:sha1"]
+sha1cd = ["dep:sha1collisiondetection"]
+sha256 = ["dep:sha2"]
+
+# Get standard library support.
+#
+# This feature is enabled by default. You can disable it to run in
+# environments without `std`, usually embedded environments.
+std = [
+    "digest/std",
+    "sha1?/std",
+    "sha1collisiondetection?/std",
+    "sha2?/std",
+    "dep:format-bytes"
+]
+
+# Get the ability to construct and get out URLs.
+#
+# This relies on `std` as the `url` crate isn't `no_std`-compatible.
+# This also relies on `hex` as the URL includes the hex-encoded hash.
+url = ["dep:url", "hex", "std"]
