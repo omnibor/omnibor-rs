@@ -90,11 +90,20 @@ impl Step for CheckDependencies {
     }
 
     fn run(&mut self) -> Result<()> {
-        let missing_cmds = ["git", "git-cliff", "cargo", "cargo-release"]
-            .into_iter()
-            .inspect(|name| log::info!("checking command '{}'", name))
-            .filter(|name| which::which(name).is_err())
-            .collect::<Vec<_>>();
+        let missing_cmds = [
+            // Version control
+            "git",
+            // Rust package management tool.
+            "cargo",
+            // Automatically produces CHANGELOG.md.
+            "git-cliff",
+            // Publishes new versions to Crates.io, tags releases, and commits to git.
+            "cargo-release",
+        ]
+        .into_iter()
+        .inspect(|name| log::info!("checking command '{}'", name))
+        .filter(|name| which::which(name).is_err())
+        .collect::<Vec<_>>();
 
         if missing_cmds.is_empty().not() {
             let commands = missing_cmds.join(", ");
@@ -208,7 +217,11 @@ impl Step for CheckChangelogVersionBump {
         let bumped = detect_bumped_version(current, &bumped)?;
 
         if bumped != self.bump {
-            bail!("git-cliff disagrees about version bump: git-cliff: {}, requested: {}", bumped, self.bump);
+            bail!(
+                "git-cliff disagrees about version bump: git-cliff: {}, requested: {}",
+                bumped,
+                self.bump
+            );
         }
 
         Ok(())
@@ -314,7 +327,6 @@ impl Step for CommitChangelog {
     }
 }
 
-#[allow(unused)]
 struct ReleaseCrate {
     krate: Crate,
     bump: Bump,
@@ -327,6 +339,20 @@ impl Step for ReleaseCrate {
     }
 
     fn run(&mut self) -> Result<()> {
-        bail!("not yet implemented");
+        let sh = Shell::new()?;
+        let krate = self.krate.name();
+        let bump = self.bump.to_string();
+        let execute = self.execute.then_some("--execute");
+        cmd!(
+            sh,
+            "cargo release -p {krate} --allow-branch main {execute...} {bump}"
+        )
+        .run()?;
+        Ok(())
     }
+
+    // No `undo` method implemented here, because without `--execute`, `cargo release`
+    // avoids doing anything permanent to the state of the environment. If `--execute`
+    // is enabled, then it'll run, _and_ we won't need to force-rollback at the end
+    // because that requires `execute == false`. So either way, no undo is required.
 }
