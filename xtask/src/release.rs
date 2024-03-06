@@ -284,7 +284,7 @@ impl Step for GenerateChangelog {
     fn undo(&mut self) -> Result<()> {
         let sh = Shell::new()?;
         let output = self.output();
-        cmd!(sh, "rm {output}").run()?;
+        cmd!(sh, "rm -f {output}").run()?;
         Ok(())
     }
 }
