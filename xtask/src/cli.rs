@@ -1,6 +1,9 @@
+//! The `cargo xtask` Command Line Interface (CLI).
+
 use clap::{arg, builder::PossibleValue, value_parser, ArgMatches, Command, ValueEnum};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
+/// Define the CLI and parse arguments from the command line.
 pub fn args() -> ArgMatches {
     Command::new("xtask")
         .about("Task runner for the OmniBOR Rust workspace")
@@ -34,7 +37,10 @@ pub fn args() -> ArgMatches {
 /// The crate to release; can be "gitoid" or "omnibor"
 #[derive(Debug, Clone, Copy)]
 pub enum Crate {
+    /// The `gitoid` crate, found in the `gitoid` folder.
     GitOid,
+
+    /// The `omnibor` crate, found in the `omnibor` folder.
     OmniBor,
 }
 
@@ -53,6 +59,8 @@ impl Display for Crate {
     }
 }
 
+// This is needed for `clap` to be able to parse string values
+// into this `Crate` enum.
 impl ValueEnum for Crate {
     fn value_variants<'a>() -> &'a [Self] {
         &[Crate::GitOid, Crate::OmniBor]
@@ -66,8 +74,13 @@ impl ValueEnum for Crate {
 /// The version to bump; can be "major", "minor", or "patch"
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bump {
+    /// Bump the major version.
     Major,
+
+    /// Bump the minor version.
     Minor,
+
+    /// Bump the patch version.
     Patch,
 }
 
@@ -80,7 +93,8 @@ impl Display for Bump {
         }
     }
 }
-
+// This is needed for `clap` to be able to parse string values
+// into this `Bump` enum.
 impl ValueEnum for Bump {
     fn value_variants<'a>() -> &'a [Self] {
         &[Bump::Major, Bump::Minor, Bump::Patch]
