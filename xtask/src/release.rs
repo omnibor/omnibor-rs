@@ -209,7 +209,7 @@ impl Step for CheckChangelogVersionBump {
                 "git cliff --config {config} --include-path {include} --bumped-version"
             )
             .read()?;
-            let prefix = format!("{}-", self.krate.name());
+            let prefix = format!("{}-v", self.krate.name());
             let stripped = raw.strip_prefix(&prefix).unwrap_or(&raw);
             Version::parse(stripped)?
         };
