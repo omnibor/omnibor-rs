@@ -3,12 +3,13 @@ mod pipeline;
 mod release;
 
 use env_logger::{Builder as LoggerBuilder, Env};
-use std::io::Write as _;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
     LoggerBuilder::from_env(Env::default().default_filter_or("info"))
-        .format(|buf, record| writeln!(buf, "{:>10}: {}", record.level(), record.args()))
+        .format_timestamp(None)
+        .format_module_path(false)
+        .format_target(false)
         .init();
 
     let args = cli::args();
