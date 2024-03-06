@@ -1,12 +1,14 @@
-use crate::cli::{Bump, Crate};
-use crate::pipeline::{Pipeline, Step};
-use crate::step;
+use crate::{
+    cli::{Bump, Crate},
+    pipeline::{Pipeline, Step},
+    step,
+};
 use anyhow::{anyhow, bail, Result};
-use cargo_metadata::MetadataCommand;
+use cargo_metadata::{Metadata, MetadataCommand, Package};
 use clap::ArgMatches;
 use pathbuf::pathbuf;
-use std::ops::Not as _;
-use std::path::PathBuf;
+use semver::Version;
+use std::{ops::Not as _, path::PathBuf};
 use xshell::{cmd, Shell};
 
 /// Run the release command.
@@ -29,17 +31,27 @@ pub fn run(args: &ArgMatches) -> Result<()> {
         krate
     );
 
-    let workspace_root = MetadataCommand::new()
-        .exec()?
+    let workspace_metadata = MetadataCommand::new().exec()?;
+
+    let workspace_root = workspace_metadata
         .workspace_root
+        .clone()
         .into_std_path_buf();
+
+    let pkg = find_pkg(&workspace_metadata, krate)
+        .ok_or_else(|| anyhow!("failed to find package in workspace"))?;
 
     let mut pipeline = Pipeline::new([
         step!(CheckDependencies),
         step!(CheckGitReady),
         step!(CheckGitBranch),
+        step!(CheckChangelogVersionBump {
+            crate_version: pkg.version.clone(),
+            krate,
+            bump,
+        }),
         step!(GenerateChangelog {
-            workspace_root,
+            workspace_root: workspace_root.clone(),
             krate
         }),
         step!(CommitChangelog { krate }),
@@ -56,6 +68,18 @@ pub fn run(args: &ArgMatches) -> Result<()> {
     }
 
     pipeline.run()
+}
+
+fn find_pkg(workspace_metadata: &Metadata, krate: Crate) -> Option<&Package> {
+    for id in &workspace_metadata.workspace_members {
+        let pkg = &workspace_metadata[id];
+
+        if pkg.name == krate.name() {
+            return Some(pkg);
+        }
+    }
+
+    None
 }
 
 struct CheckDependencies;
@@ -141,6 +165,66 @@ impl Step for CheckGitBranch {
         }
 
         Ok(())
+    }
+}
+
+struct CheckChangelogVersionBump {
+    crate_version: Version,
+    krate: Crate,
+    bump: Bump,
+}
+
+impl CheckChangelogVersionBump {
+    fn config(&self) -> PathBuf {
+        pathbuf!["Cargo.toml"]
+    }
+
+    fn include(&self) -> PathBuf {
+        pathbuf![self.krate.name(), "*"]
+    }
+}
+
+impl Step for CheckChangelogVersionBump {
+    fn name(&self) -> &'static str {
+        "check-changelog-version-bump"
+    }
+
+    fn run(&mut self) -> Result<()> {
+        let sh = Shell::new()?;
+        let config = self.config();
+        let include = self.include();
+        let current = &self.crate_version;
+        let bumped = {
+            let raw = cmd!(
+                sh,
+                "git cliff --config {config} --include-path {include} --bumped-version"
+            )
+            .read()?;
+            let prefix = format!("{}-", self.krate.name());
+            let stripped = raw.strip_prefix(&prefix).unwrap_or(&raw);
+            Version::parse(stripped)?
+        };
+
+        let bumped = detect_bumped_version(current, &bumped)?;
+
+        if bumped != self.bump {
+            bail!("git-cliff disagrees about version bump: git-cliff: {}, requested: {}", bumped, self.bump);
+        }
+
+        Ok(())
+    }
+}
+
+fn detect_bumped_version(current: &Version, bumped: &Version) -> Result<Bump> {
+    match (
+        bumped.major > current.major,
+        bumped.minor > current.minor,
+        bumped.patch > current.patch,
+    ) {
+        (true, false, false) => Ok(Bump::Major),
+        (false, true, false) => Ok(Bump::Minor),
+        (false, false, true) => Ok(Bump::Patch),
+        _ => bail!("can't bump more than one version number at a time"),
     }
 }
 

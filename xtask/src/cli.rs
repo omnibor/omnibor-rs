@@ -64,7 +64,7 @@ impl ValueEnum for Crate {
 }
 
 /// The version to bump; can be "major", "minor", or "patch"
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bump {
     Major,
     Minor,
