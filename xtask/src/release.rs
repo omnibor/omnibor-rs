@@ -309,7 +309,7 @@ impl Step for CommitChangelog {
         let msg = self.commit_msg();
         let changelog = pathbuf![self.krate.name(), "CHANGELOG.md"];
         cmd!(sh, "git add {changelog}").run()?;
-        cmd!(sh, "git commit --signoff -m \"{msg}\"").run()?;
+        cmd!(sh, "git commit --signoff -m {msg}").run()?;
         Ok(())
     }
 
