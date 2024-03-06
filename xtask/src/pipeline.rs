@@ -1,14 +1,27 @@
+//! Generic mechanisms for running sequences of steps with rollback.
+
 use anyhow::{anyhow, bail, Error, Result};
 use std::error::Error as StdError;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::iter::Iterator;
+use std::ops::Not as _;
 use std::result::Result as StdResult;
 
+/// A pipeline of steps to execute and optionally rollback.
+///
+/// The goal of the `Pipeline` type is to enable running a series of
+/// steps which may fail, and to correctly handling rolling them back
+/// if they _do_ fail. It's essentially a wrapper around an iterator
+/// of steps along with some minimal configuration for how execution
+/// should be done.
 pub struct Pipeline<It>
 where
     It: Iterator<Item = DynStep>,
 {
+    /// The steps to execute.
     steps: It,
+
+    /// Whether rollback should be forced even if all steps succeed.
     force_rollback: bool,
 }
 
@@ -45,7 +58,11 @@ where
                 break;
             }
 
-            completed_steps.push(step);
+            // We expect steps beginning with "check-" don't mutate the
+            // environment and therefore don't need to be rolled back.
+            if step.name().starts_with("check-").not() {
+                completed_steps.push(step);
+            }
         }
 
         // If we're forcing rollback or forward had an error, initiate rollback.
@@ -68,6 +85,7 @@ where
 /// A Boxed [`Step`]` trait object.
 pub type DynStep = Box<dyn Step>;
 
+/// Move a step to the heap and get an owning fat pointer to the trait object.
 #[macro_export]
 macro_rules! step {
     ( $step:expr ) => {{
@@ -216,6 +234,7 @@ struct StepError {
 }
 
 impl StepError {
+    /// A dummy error for when forced rollback is requested.
     fn forced_rollback() -> Self {
         StepError {
             name: "forced-rollback",
