@@ -345,7 +345,9 @@ impl Step for ReleaseCrate {
         let sh = Shell::new()?;
         let krate = self.krate.name();
         let bump = self.bump.to_string();
-        let execute = self.execute.then_some("--execute --no-confirm");
+
+        let possible_args = ["--execute", "--no-confirm"];
+        let execute = self.execute.then_some(&possible_args[..]).unwrap_or(&[]);
 
         cmd!(
             sh,
