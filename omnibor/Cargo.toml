@@ -15,7 +15,7 @@ edition.workspace = true
 
 # Library dependencies
 
-gitoid = "0.5.0"
+gitoid = { version = "0.7.0", default-features = false, features = ["async", "hex", "serde", "sha256", "std", "url"] }
 tokio = { version = "1.36.0", features = ["io-util"] }
 url = "2.5.0"
 serde = { version = "1.0.197", optional = true }
