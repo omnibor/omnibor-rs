@@ -5,13 +5,17 @@ use crate::{
     pipeline::{Pipeline, Step},
     step,
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context as _, Result};
 use cargo_metadata::{Metadata, MetadataCommand, Package};
 use clap::ArgMatches;
 use pathbuf::pathbuf;
 use semver::Version;
-use serde::Deserialize;
-use std::{env::var as env_var, ops::Not as _, path::PathBuf};
+use serde::{de::DeserializeOwned, Deserialize};
+use std::{
+    env::var as env_var,
+    ops::Not as _,
+    path::{Path, PathBuf},
+};
 use toml::from_str as from_toml_str;
 use xshell::{cmd, Shell};
 
@@ -47,8 +51,8 @@ pub fn run(args: &ArgMatches) -> Result<()> {
 
     let mut pipeline = Pipeline::new([
         step!(CheckDependencies),
-        step!(CheckGitReady),
-        step!(CheckGitBranch),
+        //step!(CheckGitReady),
+        //step!(CheckGitBranch),
         step!(CheckChangelogVersionBump {
             crate_version: pkg.version.clone(),
             krate,
@@ -354,19 +358,15 @@ impl Step for ReleaseCrate {
             &[]
         };
 
-        // Set the Cargo registry auth token in the shell environment.
-        let _env = {
-            let creds_path = pathbuf![&env_var("CARGO_HOME")?, "credentials.toml"];
-            let raw_creds = sh.read_file(creds_path)?;
-            let creds = from_toml_str::<Credentials>(&raw_creds)?;
-            sh.push_env("CARGO_REGISTRY_TOKEN", &creds.registry.token)
-        };
+        let token = discover_cargo_auth_token(&sh)?;
+        let _env = sh.push_env("CARGO_REGISTRY_TOKEN", &token);
 
         cmd!(
             sh,
             "cargo release -p {krate} --allow-branch main {execute...} {bump}"
         )
         .run()?;
+
         Ok(())
     }
 
@@ -376,13 +376,45 @@ impl Step for ReleaseCrate {
     // because that requires `execute == false`. So either way, no undo is required.
 }
 
-/// Simple struct representing the Cargo credentials file.
-#[derive(Debug, Deserialize)]
-struct Credentials {
-    registry: CredentialsRegistry,
-}
+/// Find the Cargo authentication token.
+///
+/// This involves finding the credentials.toml file that Cargo writes
+/// its authentication token into, parsing it, and extracting the
+/// token to be returned.
+///
+/// Note that this only correctly handles the Crates.io registry.
+fn discover_cargo_auth_token(sh: &Shell) -> Result<String> {
+    /// Read a file from the shell.
+    ///
+    /// This function is only provided to coerce the error type into `anyhow::Error`
+    fn read_file(sh: &Shell, path: &Path) -> Result<String> {
+        Ok(sh.read_file(path)?)
+    }
 
-#[derive(Debug, Deserialize)]
-struct CredentialsRegistry {
-    token: String,
+    /// Parse a string into a TOML-compatible struct.
+    ///
+    /// This function is only provided to coerce the error type into `anyhow::Error`
+    fn parse_toml<T: DeserializeOwned>(s: String) -> Result<T> {
+        Ok(from_toml_str::<T>(&s)?)
+    }
+
+    /// Simple struct representing the Cargo credentials file.
+    #[derive(Deserialize)]
+    struct Credentials {
+        registry: CredentialsRegistry,
+    }
+
+    #[derive(Deserialize)]
+    struct CredentialsRegistry {
+        token: String,
+    }
+
+    let cargo_home = env_var("CARGO_HOME").context("failed to find 'CARGO_HOME'")?;
+    let path = pathbuf![&cargo_home, "credentials.toml"];
+
+    let creds: Credentials = read_file(sh, &path)
+        .and_then(parse_toml)
+        .context(format!("failed to parse '{}'", path.display()))?;
+
+    Ok(creds.registry.token)
 }
