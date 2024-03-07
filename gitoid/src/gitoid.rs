@@ -64,7 +64,7 @@ where
     O: ObjectType,
 {
     /// Create a new `GitOid` based on a slice of bytes.
-    pub fn from_bytes<B: AsRef<[u8]>>(content: B) -> GitOid<H, O> {
+    pub fn id_bytes<B: AsRef<[u8]>>(content: B) -> GitOid<H, O> {
         fn inner<H, O>(content: &[u8]) -> GitOid<H, O>
         where
             H: HashAlgorithm,
@@ -78,14 +78,13 @@ where
     }
 
     /// Create a `GitOid` from a UTF-8 string slice.
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str<S: AsRef<str>>(s: S) -> GitOid<H, O> {
+    pub fn id_str<S: AsRef<str>>(s: S) -> GitOid<H, O> {
         fn inner<H, O>(s: &str) -> GitOid<H, O>
         where
             H: HashAlgorithm,
             O: ObjectType,
         {
-            GitOid::from_bytes(s.as_bytes())
+            GitOid::id_bytes(s.as_bytes())
         }
 
         inner(s.as_ref())
@@ -93,14 +92,14 @@ where
 
     #[cfg(feature = "std")]
     /// Create a `GitOid` from a reader.
-    pub fn from_reader<R: Read + Seek>(mut reader: R) -> Result<GitOid<H, O>> {
+    pub fn id_reader<R: Read + Seek>(mut reader: R) -> Result<GitOid<H, O>> {
         let expected_length = stream_len(&mut reader)? as usize;
-        GitOid::from_reader_with_length(reader, expected_length)
+        GitOid::id_reader_with_length(reader, expected_length)
     }
 
     #[cfg(feature = "std")]
     /// Generate a `GitOid` from a reader, providing an expected length in bytes.
-    pub fn from_reader_with_length<R: Read>(
+    pub fn id_reader_with_length<R: Read>(
         reader: R,
         expected_length: usize,
     ) -> Result<GitOid<H, O>> {
@@ -109,16 +108,16 @@ where
 
     #[cfg(feature = "async")]
     /// Generate a `GitOid` from an asynchronous reader.
-    pub async fn from_async_reader<R: AsyncRead + AsyncSeek + Unpin>(
+    pub async fn id_async_reader<R: AsyncRead + AsyncSeek + Unpin>(
         mut reader: R,
     ) -> Result<GitOid<H, O>> {
         let expected_length = async_stream_len(&mut reader).await? as usize;
-        GitOid::from_async_reader_with_length(reader, expected_length).await
+        GitOid::id_async_reader_with_length(reader, expected_length).await
     }
 
     #[cfg(feature = "async")]
     /// Generate a `GitOid` from an asynchronous reader, providing an expected length in bytes.
-    pub async fn from_async_reader_with_length<R: AsyncRead + Unpin>(
+    pub async fn id_async_reader_with_length<R: AsyncRead + Unpin>(
         reader: R,
         expected_length: usize,
     ) -> Result<GitOid<H, O>> {
@@ -127,7 +126,7 @@ where
 
     #[cfg(feature = "url")]
     /// Construct a new `GitOid` from a `Url`.
-    pub fn from_url(url: Url) -> Result<GitOid<H, O>> {
+    pub fn try_from_url(url: Url) -> Result<GitOid<H, O>> {
         GitOid::try_from(url)
     }
 
@@ -174,7 +173,8 @@ where
     type Err = Error;
 
     fn from_str(s: &str) -> Result<GitOid<H, O>> {
-        Ok(GitOid::from_str(s))
+        let url = Url::parse(s)?;
+        GitOid::try_from_url(url)
     }
 }
 
