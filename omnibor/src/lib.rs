@@ -45,6 +45,8 @@ pub(crate) mod sealed;
 
 mod artifact_id;
 mod error;
+#[doc(hidden)]
+pub mod ffi;
 mod supported_hash;
 #[cfg(test)]
 mod test;

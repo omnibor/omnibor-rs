@@ -10,9 +10,9 @@
 //! - An "error message" type to assist capturing messages from panics.
 //!
 //! Together, these provide a consistent mechanism for collecting and reporting
-//! errors to users of the `gitoid` FFI.
+//! errors to users of the `ArtifactId` FFI.
 
-use crate::error::Error as GitOidError;
+use crate::error::Error as ArtifactIdError;
 use core::any::Any;
 use core::cell::RefCell;
 use core::fmt::Display;
@@ -83,11 +83,11 @@ where
 pub(crate) enum Error {
     ContentPtrIsNull,
     StringPtrIsNull,
-    GitOidPtrIsNull,
+    ArtifactIdPtrIsNull,
     Utf8UnexpectedEnd,
     Utf8InvalidByte(usize, usize),
     NotValidUrl(UrlError),
-    NotGitOidUrl(GitOidError),
+    NotArtifactIdUrl(ArtifactIdError),
     StringHadInteriorNul(usize),
 }
 
@@ -96,7 +96,7 @@ impl Display for Error {
         match self {
             Error::ContentPtrIsNull => write!(f, "data pointer is null"),
             Error::StringPtrIsNull => write!(f, "string pointer is null"),
-            Error::GitOidPtrIsNull => write!(f, "GitOID pointer is null"),
+            Error::ArtifactIdPtrIsNull => write!(f, "ArtifactId pointer is null"),
             Error::Utf8UnexpectedEnd => write!(f, "UTF-8 byte sequence ended unexpectedly"),
             Error::Utf8InvalidByte(start, len) => write!(
                 f,
@@ -104,7 +104,7 @@ impl Display for Error {
                 len, start
             ),
             Error::NotValidUrl(_) => write!(f, "string is not a valid URL"),
-            Error::NotGitOidUrl(_) => write!(f, "string is not a valid GitOID URL"),
+            Error::NotArtifactIdUrl(_) => write!(f, "string is not a valid ArtifactId URL"),
             Error::StringHadInteriorNul(loc) => {
                 write!(f, "string had interior NUL at byte {}", loc)
             }
@@ -116,7 +116,7 @@ impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
             Error::NotValidUrl(e) => Some(e),
-            Error::NotGitOidUrl(e) => Some(e),
+            Error::NotArtifactIdUrl(e) => Some(e),
             _ => None,
         }
     }
@@ -137,9 +137,9 @@ impl From<UrlError> for Error {
     }
 }
 
-impl From<GitOidError> for Error {
-    fn from(gitoid_error: GitOidError) -> Error {
-        Error::NotGitOidUrl(gitoid_error)
+impl From<ArtifactIdError> for Error {
+    fn from(artifact_id_error: ArtifactIdError) -> Error {
+        Error::NotArtifactIdUrl(artifact_id_error)
     }
 }
 
