@@ -10,4 +10,6 @@ pub(crate) enum Status {
     BufferTooSmall = -3,
     /// Writing to the provided buffer failed.
     BufferWriteFailed = -4,
+    /// Input pointer is invalid.
+    InvalidPtr = -5,
 }
