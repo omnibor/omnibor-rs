@@ -345,15 +345,8 @@ impl Step for ReleaseCrate {
         let sh = Shell::new()?;
         let krate = self.krate.name();
         let bump = self.bump.to_string();
-        let execute = self.execute.then_some("--execute");
+        let execute = self.execute.then_some("--execute --no-confirm");
 
-        // TODO(alilleybrinker): It currently looks like this fails on networks
-        //                       which substitute in their own certificates,
-        //                       because Cargo is unable to validate the certificate.
-        //                       I believe this is because of how `xshell` isolates
-        //                       commands, which may be causing Cargo _not_ to pickup
-        //                       relevant configuration which would otherwise enable
-        //                       it to work on such a network.
         cmd!(
             sh,
             "cargo release -p {krate} --allow-branch main {execute...} {bump}"
