@@ -10,7 +10,9 @@ use cargo_metadata::{Metadata, MetadataCommand, Package};
 use clap::ArgMatches;
 use pathbuf::pathbuf;
 use semver::Version;
-use std::{ops::Not as _, path::PathBuf};
+use serde::Deserialize;
+use std::{env::var as env_var, ops::Not as _, path::PathBuf};
+use toml::from_str as from_toml_str;
 use xshell::{cmd, Shell};
 
 /// Run the release command.
@@ -346,8 +348,19 @@ impl Step for ReleaseCrate {
         let krate = self.krate.name();
         let bump = self.bump.to_string();
 
-        let possible_args = ["--execute", "--no-confirm"];
-        let execute = self.execute.then_some(&possible_args[..]).unwrap_or(&[]);
+        let execute = if self.execute {
+            &["--execute", "--no-confirm"][..]
+        } else {
+            &[]
+        };
+
+        // Set the Cargo registry auth token in the shell environment.
+        let _env = {
+            let creds_path = pathbuf![&env_var("CARGO_HOME")?, "credentials.toml"];
+            let raw_creds = sh.read_file(creds_path)?;
+            let creds = from_toml_str::<Credentials>(&raw_creds)?;
+            sh.push_env("CARGO_REGISTRY_TOKEN", &creds.registry.token)
+        };
 
         cmd!(
             sh,
@@ -361,4 +374,15 @@ impl Step for ReleaseCrate {
     // avoids doing anything permanent to the state of the environment. If `--execute`
     // is enabled, then it'll run, _and_ we won't need to force-rollback at the end
     // because that requires `execute == false`. So either way, no undo is required.
+}
+
+/// Simple struct representing the Cargo credentials file.
+#[derive(Debug, Deserialize)]
+struct Credentials {
+    registry: CredentialsRegistry,
+}
+
+#[derive(Debug, Deserialize)]
+struct CredentialsRegistry {
+    token: String,
 }
