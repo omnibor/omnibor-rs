@@ -5,68 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [gitoid-v0.6.0] - 2024-03-07
 
 ### Changed
 
-- Initial full ArtifactId impl (#114)
-- Make GitOid display print URL format (#116)
 - Add gitoid crate README, update crate desc. (#128)
 - Add 'cargo xtask' for custom tasks (#131)
 - Introduce gitoid crate features incl. std. (#148)
 - Added 'serde' feature to `gitoid` crate (#149)
-- Introduce `omnibor` FFI. (#160)
+- Update `gitoid` crate CHANGELOG.md
+- Release
 
 ## [gitoid-v0.5.0] - 2024-02-19
 
-### Added
-
-- Add top-level docs example. (#113)
-
 ### Changed
 
-- Windows test, FFI test, and commit msg CI (#106)
-- Simplify GitOid crate substantially. (#108)
-- Further simplify GitOID interface. (#109)
 - Add async constructors for GitOid. (#110)
 - Improve GitOid trait bounds (#111)
-- Minor cleanup of docs and trait defs. (#112)
 
 ## [gitoid-v0.4.0] - 2024-02-14
 
 ### Changed
 
-- Rewrite docs intro, reorg docs slightly (#94)
 - Improved gitoid_from_buffer, misc. fixups (#95)
 - First draft of README rewrite (#88)
-- Simplify GitOid trait bounds (#96)
-
-### Fixed
-
-- Fixed broken FFI code on Windows. (#97)
-- Windows FFI mistakenly using BufReader (#98)
 
 ## [gitoid-v0.3.0] - 2024-02-12
 
 ### Changed
 
-- Make GitOid::new_invalid pub(crate)
-- Improve clarity / reliability of FFI tests
 - Bump dependency versions to latest.
-- Make GitOid::new_invalid pub(crate)
-- Improve clarity / reliability of FFI tests
 - Bump dependency versions to latest.
-- Remove BufReader req for GitOid construction (#85)
 
-### Fixed
-
-- Add missing conditional compilation for unix imports
-- Hide C test executables
-- Add missing conditional compilation for unix imports
-- Hide C test executables
-- Moved, cleaned up cbindgen.toml
-
-[unreleased]: https://github.com/omnibor/omnibor-rs/compare/gitoid-v0.5.0..HEAD
+[gitoid-v0.6.0]: https://github.com/omnibor/omnibor-rs/compare/gitoid-v0.5.0..gitoid-v0.6.0
 [gitoid-v0.5.0]: https://github.com/omnibor/omnibor-rs/compare/gitoid-v0.4.0..gitoid-v0.5.0
 [gitoid-v0.4.0]: https://github.com/omnibor/omnibor-rs/compare/gitoid-v0.3.0..gitoid-v0.4.0
 [gitoid-v0.3.0]: https://github.com/omnibor/omnibor-rs/compare/v0.1.3..gitoid-v0.3.0
