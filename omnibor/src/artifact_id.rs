@@ -8,10 +8,6 @@ use gitoid::GitOid;
 #[cfg(feature = "serde")]
 use serde::de::Deserializer;
 #[cfg(feature = "serde")]
-use serde::de::Error as DeserializeError;
-#[cfg(feature = "serde")]
-use serde::de::Visitor;
-#[cfg(feature = "serde")]
 use serde::Deserialize;
 #[cfg(feature = "serde")]
 use serde::Serialize;
@@ -26,8 +22,6 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::io::Read;
 use std::io::Seek;
-#[cfg(feature = "serde")]
-use std::marker::PhantomData;
 #[cfg(feature = "serde")]
 use std::result::Result as StdResult;
 use std::str::FromStr;
@@ -87,7 +81,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// println!("Artifact ID: {}", id);
     /// ```
     pub fn id_bytes<B: AsRef<[u8]>>(content: B) -> ArtifactId<H> {
-        ArtifactId::from_gitoid(GitOid::from_bytes(content))
+        ArtifactId::from_gitoid(GitOid::id_bytes(content))
     }
 
     /// Construct an [`ArtifactId`] from a string.
@@ -109,7 +103,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// println!("Artifact ID: {}", id);
     /// ```
     pub fn id_str<S: AsRef<str>>(s: S) -> ArtifactId<H> {
-        ArtifactId::from_gitoid(GitOid::from_str(s))
+        ArtifactId::from_gitoid(GitOid::id_str(s))
     }
 
     /// Construct an [`ArtifactId`] from a synchronous reader.
@@ -149,7 +143,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// println!("Artifact ID: {}", id);
     /// ```
     pub fn id_reader<R: Read + Seek>(reader: R) -> Result<ArtifactId<H>> {
-        let gitoid = GitOid::from_reader(reader)?;
+        let gitoid = GitOid::id_reader(reader)?;
         Ok(ArtifactId::from_gitoid(gitoid))
     }
 
@@ -186,7 +180,7 @@ impl<H: SupportedHash> ArtifactId<H> {
         reader: R,
         expected_length: usize,
     ) -> Result<ArtifactId<H>> {
-        let gitoid = GitOid::from_reader_with_length(reader, expected_length)?;
+        let gitoid = GitOid::id_reader_with_length(reader, expected_length)?;
         Ok(ArtifactId::from_gitoid(gitoid))
     }
 
@@ -234,7 +228,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     pub async fn id_async_reader<R: AsyncRead + AsyncSeek + Unpin>(
         reader: R,
     ) -> Result<ArtifactId<H>> {
-        let gitoid = GitOid::from_async_reader(reader).await?;
+        let gitoid = GitOid::id_async_reader(reader).await?;
         Ok(ArtifactId::from_gitoid(gitoid))
     }
 
@@ -276,7 +270,7 @@ impl<H: SupportedHash> ArtifactId<H> {
         reader: R,
         expected_length: usize,
     ) -> Result<ArtifactId<H>> {
-        let gitoid = GitOid::from_async_reader_with_length(reader, expected_length).await?;
+        let gitoid = GitOid::id_async_reader_with_length(reader, expected_length).await?;
         Ok(ArtifactId::from_gitoid(gitoid))
     }
 
@@ -488,7 +482,7 @@ impl<H: SupportedHash> TryFrom<Url> for ArtifactId<H> {
     type Error = Error;
 
     fn try_from(url: Url) -> Result<ArtifactId<H>> {
-        let gitoid = GitOid::from_url(url)?;
+        let gitoid = GitOid::try_from_url(url)?;
         Ok(ArtifactId::from_gitoid(gitoid))
     }
 }
@@ -499,9 +493,7 @@ impl<H: SupportedHash> Serialize for ArtifactId<H> {
     where
         S: Serializer,
     {
-        // Serialize self as the URL string.
-        let self_as_url_str = self.url().to_string();
-        serializer.serialize_str(&self_as_url_str)
+        self.gitoid.serialize(serializer)
     }
 }
 
@@ -511,26 +503,7 @@ impl<'de, H: SupportedHash> Deserialize<'de> for ArtifactId<H> {
     where
         D: Deserializer<'de>,
     {
-        // Deserialize self from the URL string.
-        struct ArtifactIdVisitor<H: SupportedHash>(PhantomData<H>);
-
-        impl<'de, H: SupportedHash> Visitor<'de> for ArtifactIdVisitor<H> {
-            type Value = ArtifactId<H>;
-
-            fn expecting(&self, formatter: &mut Formatter<'_>) -> FmtResult {
-                formatter.write_str("an ArtifactId")
-            }
-
-            fn visit_str<E>(self, value: &str) -> StdResult<Self::Value, E>
-            where
-                E: DeserializeError,
-            {
-                let url = Url::parse(value).map_err(E::custom)?;
-                let id = ArtifactId::try_from_url(url).map_err(E::custom)?;
-                Ok(id)
-            }
-        }
-
-        deserializer.deserialize_str(ArtifactIdVisitor(PhantomData))
+        let gitoid = GitOid::<H::HashAlgorithm, Blob>::deserialize(deserializer)?;
+        Ok(ArtifactId::from_gitoid(gitoid))
     }
 }
