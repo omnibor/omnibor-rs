@@ -51,9 +51,10 @@ pub fn run(args: &ArgMatches) -> Result<()> {
 
     let mut pipeline = Pipeline::new([
         step!(CheckDependencies),
-        //step!(CheckGitReady),
-        //step!(CheckGitBranch),
+        step!(CheckGitReady),
+        step!(CheckGitBranch),
         step!(CheckChangelogVersionBump {
+            workspace_root: workspace_root.clone(),
             crate_version: pkg.version.clone(),
             krate,
             bump,
@@ -187,6 +188,7 @@ impl Step for CheckGitBranch {
 }
 
 struct CheckChangelogVersionBump {
+    workspace_root: PathBuf,
     crate_version: Version,
     krate: Crate,
     bump: Bump,
@@ -212,6 +214,7 @@ impl Step for CheckChangelogVersionBump {
         let config = self.config();
         let include = self.include();
         let current = &self.crate_version;
+        sh.change_dir(&self.workspace_root);
         let bumped = {
             let raw = cmd!(
                 sh,
