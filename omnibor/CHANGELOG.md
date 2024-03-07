@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [omnibor-v0.5.1] - 2024-03-07
+
+### Changed
+
+- Teach `cargo-dist` to build CLI (#170)
+
 ## [omnibor-v0.5.0] - 2024-03-07
 
 ### Changed
@@ -20,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optionally-implement serde for ArtifactId (#146)
 - Introduce `omnibor` FFI. (#160)
 - Bump `gitoid`: 0.5.0 -> 0.7.0 (#168)
+- Update `omnibor` crate CHANGELOG.md
+- Release
 
 ### Fixed
 
@@ -58,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix broken compilation of `omnibor` crate.
 - Missing prior version bump for OmniBOR in main
 
+[omnibor-v0.5.1]: https://github.com/omnibor/omnibor-rs/compare/omnibor-v0.5.0..omnibor-v0.5.1
 [omnibor-v0.5.0]: https://github.com/omnibor/omnibor-rs/compare/omnibor-v0.4.0..omnibor-v0.5.0
 [omnibor-v0.4.0]: https://github.com/omnibor/omnibor-rs/compare/omnibor-v0.3.0..omnibor-v0.4.0
 [omnibor-v0.3.0]: https://github.com/omnibor/omnibor-rs/compare/gitoid-v0.5.0..omnibor-v0.3.0
