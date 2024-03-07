@@ -283,7 +283,7 @@ impl Step for GenerateChangelog {
         sh.change_dir(&self.workspace_root);
         cmd!(
             sh,
-            "git cliff --config {config} --include-path {include} -o {output}"
+            "git cliff --config {config} --bump --include-path {include} -o {output}"
         )
         .run()?;
         Ok(())
