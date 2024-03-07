@@ -52,6 +52,12 @@ The OmniBOR Rust implementation is designed with the following goals in mind:
   matching of artifacts to identifiers or construction and analysis of artifact
   dependency graphs.
 
+## Minimum Supported Rust Version
+
+As the `gitoid` and `omnibor` packages are still under active development, we
+haven't yet committed to a minimum supported Rust version (MSRV), and instead
+recommend generally tracking Rust stable versions.
+
 ## Contributing
 
 Check out the [Contributing Guide][contributing].
