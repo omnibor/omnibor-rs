@@ -63,3 +63,12 @@ name = "omnibor"
 test = false
 bench = false
 required-features = ["build-binary"]
+
+# `cargo-dist` configuration.
+[package.metadata.dist]
+
+# Tell `cargo-dist` to use the `"build-binary"` feature when
+# building the OmniBOR CLI.
+#
+# See: https://opensource.axo.dev/cargo-dist/book/reference/config.html#features
+features = ["build-binary"]
