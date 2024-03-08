@@ -155,9 +155,7 @@ impl Msg {
             let status = Status::Error;
 
             match format {
-                Format::Plain | Format::Short => {
-                    Msg::plain(status, &format!("error: {}", error))
-                }
+                Format::Plain | Format::Short => Msg::plain(status, &format!("error: {}", error)),
                 Format::Json => Msg::json(status, json!({"error": error.to_string()})),
             }
         }

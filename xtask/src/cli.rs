@@ -29,6 +29,13 @@ pub fn args() -> ArgMatches {
                         .default_value("false")
                         .value_parser(value_parser!(bool))
                         .help("not a dry run, actually execute the release"),
+                )
+                .arg(
+                    arg!(--"allow-dirty")
+                        .required(false)
+                        .default_value("false")
+                        .value_parser(value_parser!(bool))
+                        .help("allow Git worktree to be dirty"),
                 ),
         )
         .get_matches()
@@ -48,6 +55,8 @@ pub enum Crate {
 }
 
 impl Crate {
+    /// Get the name of the crate, as it should be shown in the CLI
+    /// and as it exists on the filesystem.
     pub fn name(&self) -> &'static str {
         match self {
             Crate::GitOid => "gitoid",
