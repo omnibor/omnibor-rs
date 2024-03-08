@@ -33,6 +33,10 @@ pub fn run(args: &ArgMatches) -> Result<()> {
         .get_one("execute")
         .expect("--execute has a default value, so it should never be missing");
 
+    let allow_dirty: bool = *args
+        .get_one("allow-dirty")
+        .expect("--allow-dirty has a default value, so it should never be missing");
+
     log::info!(
         "running 'release', bumping the {} version number for crate '{}'",
         bump,
@@ -51,7 +55,7 @@ pub fn run(args: &ArgMatches) -> Result<()> {
 
     let mut pipeline = Pipeline::new([
         step!(CheckDependencies),
-        step!(CheckGitReady),
+        step!(CheckGitReady { allow_dirty }),
         step!(CheckGitBranch),
         step!(CheckChangelogVersionBump {
             workspace_root: workspace_root.clone(),
@@ -127,7 +131,9 @@ impl Step for CheckDependencies {
     }
 }
 
-struct CheckGitReady;
+struct CheckGitReady {
+    allow_dirty: bool,
+}
 
 impl Step for CheckGitReady {
     fn name(&self) -> &'static str {
@@ -145,9 +151,14 @@ impl Step for CheckGitReady {
             .run()
             .is_err()
         {
-            bail!(
-                "unstaged changes detected in the working tree; commit or stash before continuing"
-            );
+            let msg =
+                "unstaged changes detected in the working tree; commit or stash before continuing";
+
+            if self.allow_dirty.not() {
+                bail!(msg);
+            }
+
+            log::warn!("{}", msg);
         }
 
         // 3. Check for uncommitted changes in the index.
@@ -158,7 +169,14 @@ impl Step for CheckGitReady {
         .run()
         .is_err()
         {
-            bail!("uncommitted changes detected in the index; commit or stash before continuing");
+            let msg =
+                "uncommitted changes detected in the index; commit or stash before continuing";
+
+            if self.allow_dirty.not() {
+                bail!(msg);
+            }
+
+            log::warn!("{}", msg);
         }
 
         Ok(())
@@ -214,15 +232,22 @@ impl Step for CheckChangelogVersionBump {
         let config = self.config();
         let include = self.include();
         let current = &self.crate_version;
+
         sh.change_dir(&self.workspace_root);
+
         let bumped = {
             let raw = cmd!(
                 sh,
                 "git cliff --config {config} --include-path {include} --bumped-version"
             )
             .read()?;
-            let prefix = format!("{}-v", self.krate.name());
-            let stripped = raw.strip_prefix(&prefix).unwrap_or(&raw);
+
+            let version = raw
+                .rsplit('-')
+                .next()
+                .ok_or_else(|| anyhow!("expected a version number at the end"))?;
+
+            let stripped = version.strip_prefix('v').unwrap_or(version);
             Version::parse(stripped)?
         };
 
