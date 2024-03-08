@@ -35,8 +35,8 @@ pub async fn id_directory(
                     continue;
                 }
 
-                let mut file = open_async_file(&path).await?;
-                id_file(tx, &mut file, &path, format, hash).await?;
+                let mut file = open_async_file(path).await?;
+                id_file(tx, &mut file, path, format, hash).await?;
             }
         }
     }
@@ -52,7 +52,7 @@ pub async fn id_file(
     format: Format,
     hash: SelectedHash,
 ) -> Result<()> {
-    let url = hash_file(hash, file, &path).await?;
+    let url = hash_file(hash, file, path).await?;
     tx.send(PrinterCmd::id(path, &url, format)).await?;
     Ok(())
 }
@@ -60,7 +60,7 @@ pub async fn id_file(
 /// Hash the file and produce a `gitoid`-scheme URL.
 pub async fn hash_file(hash: SelectedHash, file: &mut AsyncFile, path: &Path) -> Result<Url> {
     match hash {
-        SelectedHash::Sha256 => sha256_id_async_file(file, &path).await.map(|id| id.url()),
+        SelectedHash::Sha256 => sha256_id_async_file(file, path).await.map(|id| id.url()),
     }
 }
 

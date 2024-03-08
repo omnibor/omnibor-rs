@@ -15,27 +15,12 @@ three things:
 > [!IMPORTANT]
 > The OmniBOR spec, and this Rust package, are still a work-in-progress.
 
-This package defines two crates:
-
-- __Library__: The `omnibor` library, suitable for integrating OmniBOR into
-  your own Rust projects.
-- __Binary__: The `omnibor` CLI, which provides convenient mechanisms for
-  producing and operating with OmniBOR identifiers and manifests.
-
-## Using the Library
+## Using
 
 Run the following to add the library to your own crate.
 
 ```sh
 $ cargo add omnibor
-```
-
-## Using the Binary
-
-Run the following:
-
-```sh
-$ cargo install --path omnibor --features="build-binary"`
 ```
 
 ## License

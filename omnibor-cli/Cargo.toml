@@ -1,0 +1,56 @@
+[package]
+
+name = "omnibor-cli"
+version = "0.5.1"
+
+description = "CLI for working with OmniBOR Identifiers and Manifests"
+repository = "https://github.com/omnibor/omnibor-rs"
+readme = "README.md"
+categories = ["cryptography", "development-tools"]
+keywords = ["gitbom", "omnibor", "sbom"]
+
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+
+# Surprisingly, setting this on the package-specific manifest for
+# `omnibor-cli` configures the default-run binary for the entire
+# workspace. This... should probably be fixed to be properly set
+# on the workspace-root manifest, but for now this works.
+default-run = "omnibor"
+
+# Tell Cargo that the binary name should be "omnibor",
+# not "omnibor-cli". Otherwise it'll default to the name of the package.
+[[bin]]
+
+name = "omnibor"
+path = "src/main.rs"
+
+[dependencies]
+
+omnibor = "0.5.1"
+anyhow = "1.0.80"
+async-walkdir = "1.0.0"
+futures-lite = "2.2.0"
+serde_json = "1.0.114"
+smart-default = "0.7.1"
+url = "2.5.0"
+
+[dependencies.clap]
+
+version = "4.5.1"
+features = ["derive"]
+
+[dependencies.tokio]
+
+version = "1.36.0"
+features = [
+    "fs",
+    "io-std",
+    "io-util",
+    "macros",
+    "rt",
+    "rt-multi-thread",
+    "sync",
+    "time",
+]

@@ -19,7 +19,7 @@ pub async fn run(tx: &Sender<PrinterCmd>, args: &FindArgs) -> Result<()> {
     let id = ArtifactId::<Sha256>::try_from_url(url.clone())?;
     let url = id.url();
 
-    let mut entries = WalkDir::new(&path);
+    let mut entries = WalkDir::new(path);
 
     loop {
         match entries.next().await {
@@ -32,11 +32,11 @@ pub async fn run(tx: &Sender<PrinterCmd>, args: &FindArgs) -> Result<()> {
                     continue;
                 }
 
-                let mut file = open_async_file(&path).await?;
-                let file_url = hash_file(SelectedHash::Sha256, &mut file, &path).await?;
+                let mut file = open_async_file(path).await?;
+                let file_url = hash_file(SelectedHash::Sha256, &mut file, path).await?;
 
                 if url == file_url {
-                    tx.send(PrinterCmd::find(&path, &url, *format)).await?;
+                    tx.send(PrinterCmd::find(path, &url, *format)).await?;
                 }
             }
         }

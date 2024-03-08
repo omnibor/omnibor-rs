@@ -131,7 +131,7 @@ impl Msg {
 
         match format {
             Format::Plain => Msg::plain(status, &format!("{} => {}", path, url)),
-            Format::Short => Msg::plain(status, &format!("{}", url)),
+            Format::Short => Msg::plain(status, &url.to_string()),
             Format::Json => Msg::json(status, json!({ "path": path, "id": url })),
         }
     }
@@ -144,7 +144,7 @@ impl Msg {
 
         match format {
             Format::Plain => Msg::plain(status, &format!("{} => {}", url, path)),
-            Format::Short => Msg::plain(status, &format!("{}", path)),
+            Format::Short => Msg::plain(status, &path.to_string()),
             Format::Json => Msg::json(status, json!({ "path": path, "id": url })),
         }
     }
@@ -156,7 +156,7 @@ impl Msg {
 
             match format {
                 Format::Plain | Format::Short => {
-                    Msg::plain(status, &format!("error: {}", error.to_string()))
+                    Msg::plain(status, &format!("error: {}", error))
                 }
                 Format::Json => Msg::json(status, json!({"error": error.to_string()})),
             }
