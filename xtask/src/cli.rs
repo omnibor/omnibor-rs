@@ -24,7 +24,7 @@ pub fn args() -> ArgMatches {
                         .help("the version to bump"),
                 )
                 .arg(
-                    arg!(--execute)
+                    arg!(-x - -execute)
                         .required(false)
                         .default_value("false")
                         .value_parser(value_parser!(bool))
@@ -42,6 +42,9 @@ pub enum Crate {
 
     /// The `omnibor` crate, found in the `omnibor` folder.
     OmniBor,
+
+    /// The `omnibor-cli` crate, found in the `omnibor-cli` folder.
+    OmniBorCli,
 }
 
 impl Crate {
@@ -49,6 +52,7 @@ impl Crate {
         match self {
             Crate::GitOid => "gitoid",
             Crate::OmniBor => "omnibor",
+            Crate::OmniBorCli => "omnibor-cli",
         }
     }
 }
@@ -63,7 +67,7 @@ impl Display for Crate {
 // into this `Crate` enum.
 impl ValueEnum for Crate {
     fn value_variants<'a>() -> &'a [Self] {
-        &[Crate::GitOid, Crate::OmniBor]
+        &[Crate::GitOid, Crate::OmniBor, Crate::OmniBorCli]
     }
 
     fn to_possible_value(&self) -> Option<PossibleValue> {

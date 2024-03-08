@@ -16,7 +16,7 @@ use std::str::FromStr;
 use url::Url;
 
 #[derive(Debug, Parser)]
-#[command(version)]
+#[command(name = "omnibor", version)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,

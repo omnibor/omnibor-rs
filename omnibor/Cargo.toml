@@ -1,74 +1,55 @@
 [package]
-categories = ["cryptography", "development-tools"]
-description = "Reproducible software identity and fine-grained build dependency tracking."
-keywords = ["gitbom", "omnibor", "sbom"]
+
 name = "omnibor"
-readme = "../README.md"
-repository = "https://github.com/omnibor/omnibor-rs"
 version = "0.5.1"
 
-homepage.workspace = true
-license.workspace = true
+description = "Reproducible software identity and fine-grained build dependency tracking."
+repository = "https://github.com/omnibor/omnibor-rs"
+readme = "../README.md"
+categories = ["cryptography", "development-tools"]
+keywords = ["gitbom", "omnibor", "sbom"]
+
 edition.workspace = true
+license.workspace = true
+homepage.workspace = true
 
 [dependencies]
 
-# Library dependencies
-
-gitoid = { version = "0.7.0", default-features = false, features = ["async", "hex", "serde", "sha256", "std", "url"] }
+# The async runtime we support.
 tokio = { version = "1.36.0", features = ["io-util"] }
+
+# Support conversion of ArtifactId's to and from `gitoid`-scheme URLs.
 url = "2.5.0"
+
+# Support serializing and deserializing.
 serde = { version = "1.0.197", optional = true }
 
-# Binary-only dependencies
-
-anyhow = { version = "1.0.80", optional = true }
-async-walkdir = { version = "1.0.0", optional = true }
-clap = { version = "4.5.1", features = ["derive"], optional = true }
-futures-lite = { version = "2.2.0", optional = true }
-serde_json = { version = "1.0.114", optional = true }
-smart-default = { version = "0.7.1", optional = true }
+[dependencies.gitoid]
+version = "0.7.0"
+default-features = false
+features = [
+    "async",
+    "hex",
+    "sha256",
+    "std",
+    "url"
+]
 
 [dev-dependencies]
+
+# This just adds the "fs" feature when running tests.
 tokio = { version = "1.36.0", features = ["io-util", "fs"] }
+
+# Helper for running tests with the Tokio runtime.
 tokio-test = "0.4.3"
+
 # Match the version used in the `gitoid` crate.
 digest = "0.10.7"
+
+# Helper for testing Serde implementations.
 serde_test = "1.0.176"
 
 [features]
 
 # Support serde serialization and deserialization
-serde = ["dep:serde"]
-
-# Used to build the `omnibor` CLI.
-build-binary = [
-    "dep:anyhow",
-    "dep:async-walkdir",
-    "dep:clap",
-    "dep:futures-lite",
-    "dep:serde_json",
-    "dep:smart-default",
-    "tokio/fs",
-    "tokio/io-std",
-    "tokio/macros",
-    "tokio/rt",
-    "tokio/sync",
-    "tokio/time",
-    "tokio/rt-multi-thread"
-]
-
-[[bin]]
-name = "omnibor"
-test = false
-bench = false
-required-features = ["build-binary"]
-
-# `cargo-dist` configuration.
-[package.metadata.dist]
-
-# Tell `cargo-dist` to use the `"build-binary"` feature when
-# building the OmniBOR CLI.
-#
-# See: https://opensource.axo.dev/cargo-dist/book/reference/config.html#features
-features = ["build-binary"]
+serde = ["dep:serde", "gitoid/serde"]
