@@ -66,6 +66,20 @@ remain owned by you, licensed for use in OmniBOR under the terms of the Apache
 
 Check out the full [Contributing Guide][contributing] to learn more!
 
+## Discussions & Support
+
+If you've encountered [specific bugs][bugs] or have specific
+[feature requests][features], we recommend opening issues in the
+[issue tracker][issues]!
+
+However, if you have more open-ended ideas, want to ask questions
+about OmniBOR or the OmniBOR Rust implementation, or want to get support
+debugging an issue you've encountered, we recommend opening a new
+[discussion][discussion].
+
+If you believe you've found a security vulnerability, please
+[report it to us][vuln].
+
 ## Security
 
 The project maintains an official [Security Policy][security] and accepts
@@ -106,3 +120,8 @@ license text in the [`LICENSE`][license] file.
 [dco]: https://developercertificate.org/
 [security]: https://github.com/omnibor/omnibor-rs/blob/main/SECURITY.md
 [coc]: https://github.com/omnibor/omnibor-rs/blob/main/CODE_OF_CONDUCT.md
+[bugs]: https://github.com/omnibor/omnibor-rs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=
+[features]: https://github.com/omnibor/omnibor-rs/issues/new?assignees=&labels=&projects=&template=feature_request.md&title=
+[issues]: https://github.com/omnibor/omnibor-rs/issues
+[discussion]: https://github.com/omnibor/omnibor-rs/discussions
+[vuln]: https://github.com/omnibor/omnibor-rs/security/advisories/new
