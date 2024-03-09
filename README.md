@@ -6,7 +6,7 @@
 
 <br>
 
-__Reproducible identifiers for software artifacts &amp; fine-grained build dependency tracking__
+__Reproducible identifiers &amp; fine-grained build dependency tracking for software artifacts.__
 
 [![Website](https://img.shields.io/badge/website-omnibor.io-blue)](https://omnibor.io) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/omnibor/omnibor-rs/blob/main/LICENSE)
 
