@@ -1,8 +1,12 @@
 <div align="center">
 
-![OmniBOR Logo](https://raw.githubusercontent.com/omnibor/omnibor-rs/main/assets/omnibor-logo.svg)
+<br>
 
-<span style="font-size: 1.333rem; font-weight: 600">Reproducible identifiers for software artifacts &amp; fine-grained build dependency tracking</span>
+<img alt="OmniBOR Logo" width="400rem" src="https://raw.githubusercontent.com/omnibor/omnibor-rs/main/assets/omnibor-logo.svg">
+
+<br>
+
+__Reproducible identifiers for software artifacts &amp; fine-grained build dependency tracking__
 
 [![Website](https://img.shields.io/badge/website-omnibor.io-blue)](https://omnibor.io) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/omnibor/omnibor-rs/blob/main/LICENSE)
 
@@ -40,12 +44,12 @@ Analysis."][cisa_report]
 
 ## What's in this Repository?
 
-| Crate Name    | Type                                                      | Purpose                                   |                         |                            |                       |                         | 
-|:--------------|:----------------------------------------------------------|:------------------------------------------|:------------------------|:---------------------------|:----------------------|:------------------------|
-| `omnibor`     | ![Library](https://img.shields.io/badge/Library-darkblue) | OmniBOR Identifiers and Manifests         | [README][omnibor_r]     | [Changelog][omnibor_c]     | [API Docs][omnibor_d] | [Crate][omnibor_cr]     |
-| `omnibor-cli` | ![Binary](https://img.shields.io/badge/Binary-darkgreen)  | CLI for OmniBOR Identifiers and Manifests | [README][omnibor_cli_r] | [Changelog][omnibor_cli_c] | N/A                   | [Crate][omnibor_cli_cr] |
-| `gitoid`      | ![Library](https://img.shields.io/badge/Library-darkblue) | Git Object Identifiers (GitOIDs)          | [README][gitoid_r]      | [Changelog][gitoid_c]      | [API Docs][gitoid_d]  | [Crate][gitoid_cr]      |
-| `xtask`       | ![Binary](https://img.shields.io/badge/Binary-darkgreen)  | OmniBOR Rust Workspace Automation         | [README][xtask_r]       | N/A                        | N/A                   | N/A                     |
+| Crate Name    | Type                                                      | Purpose                                   | Links                                                                                                           |
+|:--------------|:----------------------------------------------------------|:------------------------------------------|:----------------------------------------------------------------------------------------------------------------|
+| `omnibor`     | ![Library](https://img.shields.io/badge/Library-darkblue) | OmniBOR Identifiers and Manifests         | [README][omnibor_r] &middot; [Changelog][omnibor_c] &middot; [API Docs][omnibor_d] &middot; [Crate][omnibor_cr] |
+| `omnibor-cli` | ![Binary](https://img.shields.io/badge/Binary-darkgreen)  | CLI for OmniBOR Identifiers and Manifests | [README][omnibor_cli_r] &middot; [Changelog][omnibor_cli_c] &middot; [Crate][omnibor_cli_cr]                    |
+| `gitoid`      | ![Library](https://img.shields.io/badge/Library-darkblue) | Git Object Identifiers (GitOIDs)          | [README][gitoid_r] &middot; [Changelog][gitoid_c] &middot; [API Docs][gitoid_d] &middot; [Crate][gitoid_cr]     |
+| `xtask`       | ![Binary](https://img.shields.io/badge/Binary-darkgreen)  | OmniBOR Rust Workspace Automation         | [README][xtask_r]                                                                                               |
 
 ## Contributing
 
