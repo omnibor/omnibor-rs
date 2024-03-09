@@ -105,7 +105,12 @@ meaningful ways.
    the `sha1cd` algorithm. This is reflected in the `gitoid`-scheme URLs
    generated when using the `GitOid` type.
 
-# License
+## Minimum Supported Rust Version (MSRV)
+
+This crate does not maintain a Minimum Supported Rust Version, and generally
+tracks the latest Rust stable version.
+
+## License
 
 This crate is Apache 2.0 licensed.
 
