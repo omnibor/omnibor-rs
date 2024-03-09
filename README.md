@@ -1,10 +1,12 @@
-# OmniBOR Rust
+<div align="center">
 
-This repository contains two Rust crates. To use either crate, please review
-their respective `README.md` files:
+![OmniBOR Logo](https://raw.githubusercontent.com/omnibor/omnibor-rs/main/assets/omnibor-logo.svg)
 
-- [`gitoid`][gitoid_crate]: an implementation of GitOIDs ([View the `README.md`][gitoid_readme])
-- [`omnibor`][omnibor_crate]: an implementation of OmniBOR IDs and manifests ([View the `README.md`][omnibor_readme])
+<span style="font-size: 1.333rem; font-weight: 600">Reproducible identifiers for software artifacts &amp; fine-grained build dependency tracking</span>
+
+[![Website](https://img.shields.io/badge/website-omnibor.io-blue)](https://omnibor.io) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/omnibor/omnibor-rs/blob/main/LICENSE)
+
+</div>
 
 ## What is OmniBOR?
 
@@ -36,47 +38,67 @@ identified OmniBOR as a major candidate for software identities
 in its 2023 report ["Software Identification Ecosystem Option
 Analysis."][cisa_report]
 
-## Rust Implementation Design Goals
+## What's in this Repository?
 
-The OmniBOR Rust implementation is designed with the following goals in mind:
-
-- __Cross-language readiness__: The OmniBOR Rust implementation should be
-  built with solid Foreign Function Interface (FFI) support, so it can be
-  used as the basis for libraries in other languages.
-- __Multi-platform__: The OmniBOR Rust implementation should be ready for
-  use in as many contexts as possible, including embedded environments. This
-  means supporting use without an allocator to dynamically allocate memory,
-  and minimizing the size of any types resident in memory.
-- __Fast__: The OmniBOR Rust implementation should run as quickly as possible,
-  and be designed for high-performance use cases like rapid large scale
-  matching of artifacts to identifiers or construction and analysis of artifact
-  dependency graphs.
-
-## Minimum Supported Rust Version
-
-As the `gitoid` and `omnibor` packages are still under active development, we
-haven't yet committed to a minimum supported Rust version (MSRV), and instead
-recommend generally tracking Rust stable versions.
+| Crate Name    | Type                                                      | Purpose                                   |                         |                            |                       |                         | 
+|:--------------|:----------------------------------------------------------|:------------------------------------------|:------------------------|:---------------------------|:----------------------|:------------------------|
+| `omnibor`     | ![Library](https://img.shields.io/badge/Library-darkblue) | OmniBOR Identifiers and Manifests         | [README][omnibor_r]     | [Changelog][omnibor_c]     | [API Docs][omnibor_d] | [Crate][omnibor_cr]     |
+| `omnibor-cli` | ![Binary](https://img.shields.io/badge/Binary-darkgreen)  | CLI for OmniBOR Identifiers and Manifests | [README][omnibor_cli_r] | [Changelog][omnibor_cli_c] | N/A                   | [Crate][omnibor_cli_cr] |
+| `gitoid`      | ![Library](https://img.shields.io/badge/Library-darkblue) | Git Object Identifiers (GitOIDs)          | [README][gitoid_r]      | [Changelog][gitoid_c]      | [API Docs][gitoid_d]  | [Crate][gitoid_cr]      |
+| `xtask`       | ![Binary](https://img.shields.io/badge/Binary-darkgreen)  | OmniBOR Rust Workspace Automation         | [README][xtask_r]       | N/A                        | N/A                   | N/A                     |
 
 ## Contributing
 
-Check out the [Contributing Guide][contributing].
+__We happily accept contributions to any of the packages in this repository!__
+
+All contributed commits _must_ include a Developer Certificate of Origin
+sign-off (use the `--signoff` flag when running `git commit`). This is checked
+by Continuous Integration tests to make sure you don't miss it! You can
+[learn more on the DCO website][dco].
+
+Contributors do not sign any Contributor License Agreement. Your contributions
+remain owned by you, licensed for use in OmniBOR under the terms of the Apache
+2.0 license.
+
+Check out the full [Contributing Guide][contributing] to learn more!
+
+## Security
+
+The project maintains an official [Security Policy][security] and accepts
+security disclosures through GitHub.
+
+## Code of Conduct
+
+All discussions, issues, pull requests, and other communication spaces
+associated with this project require participants abide by the project's
+[Code of Conduct][coc] (Contributor Covenant 2.0).
 
 ## License
 
-The `omnibor` and `gitoid` crates are both Apache 2.0 licensed. You can read the
-full license text in the [`LICENSE`][license] file.
+All crates in this repository are Apache 2.0 licensed. You can read the full
+license text in the [`LICENSE`][license] file.
 
 [contributing]: CONTRIBUTING.md
 [cbindgen]: https://github.com/eqrion/cbindgen
 [cisa_report]: https://www.cisa.gov/sites/default/files/2023-10/Software-Identification-Ecosystem-Option-Analysis-508c.pdf
 [cpe]: https://nvd.nist.gov/products/cpe
 [gitoid]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
-[gitoid_crate]: https://crates.io/crates/gitoid
-[gitoid_readme]: https://github.com/omnibor/omnibor-rs/blob/main/gitoid/README.md
+[gitoid_cr]: https://crates.io/crates/gitoid
+[gitoid_r]: https://github.com/omnibor/omnibor-rs/blob/main/gitoid/README.md
+[gitoid_c]: https://github.com/omnibor/omnibor-rs/blob/main/gitoid/CHANGELOG.md
+[gitoid_d]: https://docs.rs/crate/gitoid/latest
 [license]: https://github.com/omnibor/omnibor-rs/blob/main/LICENSE
 [omnibor]: https://omnibor.io
-[omnibor_crate]: https://crates.io/crates/omnibor
-[omnibor_readme]: https://github.com/omnibor/omnibor-rs/blob/main/omnibor/README.md
+[omnibor_cr]: https://crates.io/crates/omnibor
+[omnibor_r]: https://github.com/omnibor/omnibor-rs/blob/main/omnibor/README.md
+[omnibor_c]: https://github.com/omnibor/omnibor-rs/blob/main/omnibor/CHANGELOG.md
+[omnibor_d]: https://docs.rs/crate/omnibor/latest
+[omnibor_cli_r]: https://github.com/omnibor/omnibor-rs/blob/main/omnibor-cli/README.md
+[omnibor_cli_c]: https://github.com/omnibor/omnibor-rs/blob/main/omnibor-cli/CHANGELOG.md
+[omnibor_cli_cr]: https://crates.io/crates/omnibor-cli
 [omnibor_spec]: https://github.com/omnibor/spec
 [purl]: https://github.com/package-url/purl-spec
+[xtask_r]: https://github.com/omnibor/omnibor-rs/blob/main/xtask/README.md
+[dco]: https://developercertificate.org/
+[security]: https://github.com/omnibor/omnibor-rs/blob/main/SECURITY.md
+[coc]: https://github.com/omnibor/omnibor-rs/blob/main/CODE_OF_CONDUCT.md

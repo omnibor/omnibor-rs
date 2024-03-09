@@ -5,7 +5,7 @@ version = "0.5.1"
 
 description = "Reproducible software identity and fine-grained build dependency tracking."
 repository = "https://github.com/omnibor/omnibor-rs"
-readme = "../README.md"
+readme = "README.md"
 categories = ["cryptography", "development-tools"]
 keywords = ["gitbom", "omnibor", "sbom"]
 

@@ -175,6 +175,11 @@ The `short` format is recommended for piping or redirecting into other commands.
 The `json` format is recommended for more structured contexts, and can be
 passed to `jq` to manipulate.
 
+## Minimum Supported Rust Version (MSRV)
+
+This crate does not maintain a Minimum Supported Rust Version, and generally
+tracks the latest Rust stable version.
+
 ## License
 
 The OmniBOR CLI source code is licensed under the Apache-2.0 license.
