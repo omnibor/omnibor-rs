@@ -5,21 +5,23 @@ use anyhow::Error;
 use anyhow::Result;
 use serde_json::json;
 use serde_json::Value as JsonValue;
-use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
 use std::future::Future;
 use std::panic;
 use std::path::Path;
 use std::result::Result as StdResult;
+use std::{fmt::Display, io::Write};
 use tokio::io::stderr;
 use tokio::io::stdout;
 use tokio::io::AsyncWriteExt as _;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
 use tokio::task::JoinError;
+use tracing::debug;
 use url::Url;
 
+/// The number of messages the print buffer can hold before blocking.
 const DEFAULT_BUFFER_SIZE: usize = 100;
 
 /// A handle to assist in interacting with the printer.
@@ -38,15 +40,30 @@ impl Printer {
 
         let printer = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
+                debug!(?msg);
+
                 match msg {
-                    PrinterCmd::End => break,
+                    // Closing the stream ensures it still drains if there are messages in flight.
+                    PrinterCmd::End => rx.close(),
                     PrinterCmd::Message(msg) => {
-                        // TODO(alilleybrinker): Handle this error.
-                        let _ = msg.print().await;
+                        let format = msg.format();
+                        let msg_clone = msg.clone();
+
+                        if let Err(err) = msg.print().await {
+                            // Fallback to only sync printing if the async printing failed.
+                            let err_msg = Msg::error(err, format);
+
+                            if let Err(err) = err_msg.sync_print() {
+                                panic!("failed to print sync error message: '{}'", err);
+                            }
+
+                            if let Err(err) = msg_clone.sync_print() {
+                                panic!("failed to print sync message: '{}'", err);
+                            }
+                        }
                     }
                 }
             }
-            rx.close();
         });
 
         Printer {
@@ -179,10 +196,31 @@ impl Msg {
         }
     }
 
+    /// Get the format of the message.
+    fn format(&self) -> Format {
+        match self.content {
+            Content::Json(_) => Format::Json,
+            Content::Plain(_) => Format::Plain,
+        }
+    }
+
     /// Print the Msg to the appropriate sink.
     async fn print(self) -> Result<()> {
         let to_output = self.content.to_string();
         self.write(to_output.as_bytes()).await?;
+        Ok(())
+    }
+
+    /// Print the contents of the message synchronously.
+    fn sync_print(self) -> Result<()> {
+        let to_output = self.content.to_string();
+        let bytes = to_output.as_bytes();
+
+        match self.status {
+            Status::Success => std::io::stdout().write_all(bytes)?,
+            Status::Error => std::io::stderr().write_all(bytes)?,
+        }
+
         Ok(())
     }
 
