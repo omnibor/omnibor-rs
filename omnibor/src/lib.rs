@@ -47,6 +47,7 @@ mod artifact_id;
 mod error;
 #[doc(hidden)]
 pub mod ffi;
+mod input_manifest;
 mod supported_hash;
 #[cfg(test)]
 mod test;
