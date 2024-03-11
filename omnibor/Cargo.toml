@@ -13,6 +13,23 @@ edition.workspace = true
 license.workspace = true
 homepage.workspace = true
 
+[lib]
+crate-type = [
+    # Let the Rust compiler choose a "recommended" lib type for use by Rust code.
+    "lib",
+
+    # A system-specific static library usable by non-Rust code.
+    # This is `*.a` on Linux, macOS, and Windows using the MinGW toolchain.
+    # This is `*.lib` on Windows using the MSVC toolchain.
+    "staticlib",
+
+    # A system-specific dynamic library usable by non-Rust code.
+    # This is a `*.so` file on Linux.
+    # This is a `*.dylib` file on macOS.
+    # This is a `*.dll` file on Windows.
+    "cdylib",
+]
+
 [dependencies]
 
 # The async runtime we support.
