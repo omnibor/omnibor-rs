@@ -47,7 +47,7 @@ For Powershell (Windows; requires `tar`, `Expand-Archive`, and `Net.Webclient`):
 > powershell -c "irm https://github.com/omnibor/omnibor-rs/releases/download/omnibor-cli-v0.6.0/omnibor-cli-installer.ps1 | iex"
 ```
 
-> ![NOTE]
+> [!NOTE]
 > Huge shoutout to the folks at [Axo] for making [`cargo-dist`], which makes
 > producing these binaries _extremely_ easy.
 
