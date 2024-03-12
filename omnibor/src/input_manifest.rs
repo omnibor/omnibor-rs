@@ -27,11 +27,13 @@ pub struct InputManifest<H: SupportedHash> {
 
 impl<H: SupportedHash> InputManifest<H> {
     /// Get the ID of the artifact this manifest is describing.
+    #[inline]
     pub fn target(&self) -> ArtifactId<H> {
         self.target
     }
 
     /// Get the relations inside an [`InputManifest`].
+    #[inline]
     pub fn relations(&self) -> &[Relation<H>] {
         &self.relations[..]
     }
@@ -42,7 +44,13 @@ impl<H: SupportedHash> Display for InputManifest<H> {
     // regardless of the host platform specification, so Clippy's recommendation
     // here would cause our code to violate the spec.
     #[allow(clippy::write_with_newline)]
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        // Per the spec, this prefix is present to substantially shorten
+        // the metadata info that would otherwise be attached to all IDs in
+        // a manifest if they were written in full form. Instead, only the
+        // hex-encoded hashes are recorded elsewhere, because all the metadata
+        // is identical in a manifest and only recorded once at the beginning.
         write!(f, "gitoid:{}:{}\n", Blob::NAME, H::HashAlgorithm::NAME)?;
 
         for relation in &self.relations {
@@ -82,17 +90,20 @@ pub struct Relation<H: SupportedHash> {
 
 impl<H: SupportedHash> Relation<H> {
     /// Get the kind of relation being described.
+    #[inline]
     pub fn kind(&self) -> RelationKind {
         self.kind
     }
 
     /// Get the ID of the artifact.
-    pub fn artifact_id(&self) -> ArtifactId<H> {
+    #[inline]
+    pub fn artifact(&self) -> ArtifactId<H> {
         self.artifact
     }
 
     /// Get the manifest ID, if present.
-    pub fn manifest_id(&self) -> Option<ArtifactId<H>> {
+    #[inline]
+    pub fn manifest(&self) -> Option<ArtifactId<H>> {
         self.manifest
     }
 }
@@ -108,6 +119,7 @@ pub enum RelationKind {
 }
 
 impl Display for RelationKind {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             RelationKind::InputFor => write!(f, "input"),
