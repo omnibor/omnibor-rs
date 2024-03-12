@@ -47,6 +47,7 @@ mod artifact_id;
 mod error;
 #[doc(hidden)]
 pub mod ffi;
+mod input_manifest;
 mod supported_hash;
 #[cfg(test)]
 mod test;
@@ -55,5 +56,8 @@ pub(crate) use crate::error::Result;
 
 pub use crate::artifact_id::ArtifactId;
 pub use crate::error::Error;
+pub use crate::input_manifest::InputManifest;
+pub use crate::input_manifest::Relation;
+pub use crate::input_manifest::RelationKind;
 pub use crate::supported_hash::Sha256;
 pub use crate::supported_hash::SupportedHash;
