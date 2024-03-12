@@ -81,6 +81,11 @@ pub struct Relation<H: SupportedHash> {
 }
 
 impl<H: SupportedHash> Relation<H> {
+    /// Get the kind of relation being described.
+    pub fn kind(&self) -> RelationKind {
+        self.kind
+    }
+
     /// Get the ID of the artifact.
     pub fn artifact_id(&self) -> ArtifactId<H> {
         self.artifact
@@ -93,7 +98,7 @@ impl<H: SupportedHash> Relation<H> {
 }
 
 /// Describes the relationship between a manifest's target artifact and other artifacts.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum RelationKind {
     /// Is a build input for the target artifact.
     InputFor,
