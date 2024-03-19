@@ -1,7 +1,11 @@
+# VS Code folder.
+.vscode
+
+# Cargo build target folder.
 /target
-.vscode/
+
+# The Lockfile specifying specific working dependency versions.
 Cargo.lock
-gitoid.h
-gitoid/test/c_test
-c-test.exe
-c-test
+
+# The output folder for Oranda.
+public/

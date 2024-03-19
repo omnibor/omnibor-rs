@@ -1,0 +1,25 @@
+{
+    "build": {
+        "dist_dir": "public/",
+        "static_dir": "assets/",
+        "path_prefix": "omnibor-rs"
+    },
+    "styles": {
+        "theme": "light"
+    },
+    "workspace": {
+        "name": "OmniBOR Rust",
+        "docs_path": "./README.md",
+        "members": [
+            {
+                "slug": "cli/",
+                "path": "./omnibor-cli/"
+            },
+            {
+                "slug": "lib/",
+                "path": "./omnibor/"
+            }
+        ],
+        "preferred_members": ["cli/", "lib/"]
+    }
+}

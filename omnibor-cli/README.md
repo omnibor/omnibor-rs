@@ -43,7 +43,7 @@ $ curl --proto '=https' --tlsv1.2 -LsSf "https://github.com/omnibor/omnibor-rs/r
 
 For Powershell (Windows; requires `tar`, `Expand-Archive`, and `Net.Webclient`):
 
-```powershell
+```sh
 > powershell -c "irm https://github.com/omnibor/omnibor-rs/releases/download/omnibor-cli-v0.6.0/omnibor-cli-installer.ps1 | iex"
 ```
 
