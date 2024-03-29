@@ -13,7 +13,7 @@ use serde::Deserialize;
 use serde::Serialize;
 #[cfg(feature = "serde")]
 use serde::Serializer;
-use std::cmp::Ordering;
+use std::{cmp::Ordering, path::PathBuf};
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -301,6 +301,11 @@ impl<H: SupportedHash> ArtifactId<H> {
         ArtifactId::try_from(url)
     }
 
+    /// Try to construct an [`ArtifactId`] from a filesystem-safe representation.
+    pub fn try_from_safe_name(s: &str) -> Result<ArtifactId<H>> {
+        ArtifactId::from_str(&s.replace('_', ":"))
+    }
+
     /// Get the [`Url`] representation of the [`ArtifactId`].
     ///
     /// This returns a `gitoid`-scheme URL for the [`ArtifactId`].
@@ -315,6 +320,17 @@ impl<H: SupportedHash> ArtifactId<H> {
     /// ```
     pub fn url(&self) -> Url {
         self.gitoid.url()
+    }
+
+    /// Get a filesystem-safe representation of the [`ArtifactId`].
+    /// 
+    /// This is a conservative method that tries to use _only_ characters
+    /// which can be expected to work broadly cross-platform.
+    /// 
+    /// What that means for us is that the `:` separator character is
+    /// replaced with `_`.
+    pub fn safe_name(&self) -> PathBuf {
+        self.gitoid.url().to_string().replace(':', "_").into()
     }
 
     /// Get the underlying bytes of the [`ArtifactId`] hash.
