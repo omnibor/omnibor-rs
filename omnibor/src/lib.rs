@@ -44,11 +44,13 @@
 pub(crate) mod sealed;
 
 mod artifact_id;
+mod embedding_mode;
 mod error;
 #[doc(hidden)]
 pub mod ffi;
 mod identifier;
 mod input_manifest;
+mod storage;
 mod supported_hash;
 #[cfg(test)]
 mod test;
@@ -56,11 +58,13 @@ mod test;
 pub(crate) use crate::error::Result;
 
 pub use crate::artifact_id::ArtifactId;
+pub use crate::embedding_mode::EmbeddingMode;
 pub use crate::error::Error;
 pub use crate::identifier::Identifier;
-pub use crate::identifier::IdentifierMode;
 pub use crate::input_manifest::InputManifest;
 pub use crate::input_manifest::Relation;
 pub use crate::input_manifest::RelationKind;
+pub use crate::storage::FileSystemStorage;
+pub use crate::storage::Storage;
 pub use crate::supported_hash::Sha256;
 pub use crate::supported_hash::SupportedHash;

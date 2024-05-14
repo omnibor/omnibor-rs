@@ -40,6 +40,9 @@ pub enum Error {
     #[error("missing manifest-for entry in manifest")]
     MissingManifestForRelation,
 
+    #[error("the transaction to make an input manifest was already closed")]
+    TransactionClosed,
+
     #[error("failed to read input manifest file")]
     FailedManifestRead(#[from] IoError),
 

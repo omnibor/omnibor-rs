@@ -49,10 +49,23 @@ pub struct InputManifest<H: SupportedHash> {
 }
 
 impl<H: SupportedHash> InputManifest<H> {
+    pub(crate) fn with_relations(relations: &[Relation<H>]) -> Self {
+        InputManifest {
+            target: None,
+            relations: relations.to_vec(),
+        }
+    }
+
     /// Get the ID of the artifact this manifest is describing.
     #[inline]
     pub fn target(&self) -> Option<ArtifactId<H>> {
         self.target
+    }
+
+    /// Set a new target.
+    pub fn set_target(&mut self, target: ArtifactId<H>) -> &mut Self {
+        self.target = Some(target);
+        self
     }
 
     /// Get the relations inside an [`InputManifest`].
@@ -63,7 +76,7 @@ impl<H: SupportedHash> InputManifest<H> {
 
     /// Construct an [`InputManifest`] from a file at a specified path.
     pub fn from_path(path: &Path) -> Result<Self> {
-        let file = BufReader::new(File::open(&path)?);
+        let file = BufReader::new(File::open(path)?);
         let mut lines = file.lines();
 
         let first_line = lines
@@ -111,6 +124,7 @@ impl<H: SupportedHash> InputManifest<H> {
     }
 
     /// Write the manifest out at the given path.
+    #[allow(clippy::write_with_newline)]
     pub fn write_at(&self, path: &Path) -> Result<()> {
         let mut f = File::create_new(path)?;
 
@@ -196,7 +210,7 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
 }
 
 /// A single input artifact represented in a [`InputManifest`].
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, PartialEq, Eq)]
 pub struct Relation<H: SupportedHash> {
     /// The kind of relation being represented.
     kind: RelationKind,
@@ -208,7 +222,29 @@ pub struct Relation<H: SupportedHash> {
     manifest: Option<ArtifactId<H>>,
 }
 
+impl<H: SupportedHash> Clone for Relation<H> {
+    fn clone(&self) -> Self {
+        Relation {
+            kind: self.kind,
+            artifact: self.artifact,
+            manifest: self.manifest,
+        }
+    }
+}
+
 impl<H: SupportedHash> Relation<H> {
+    pub(crate) fn new(
+        kind: RelationKind,
+        artifact: ArtifactId<H>,
+        manifest: Option<ArtifactId<H>>,
+    ) -> Relation<H> {
+        Relation {
+            kind,
+            artifact,
+            manifest,
+        }
+    }
+
     /// Get the kind of relation being described.
     #[inline]
     pub fn kind(&self) -> RelationKind {
