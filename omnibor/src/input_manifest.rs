@@ -5,9 +5,24 @@ use gitoid::{Blob, HashAlgorithm, ObjectType};
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     fs::File,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Write as _},
+    path::Path,
     str::FromStr,
 };
+
+/*
+Input Manifest builder...
+
+The user is creating an artifact.
+As the artifact is being created, we have a builder into which we log the artifact IDs (and detect any manifests if present)
+of everything used to make the artifact, along with the type of relation.
+When the artifact creation is done, we finalize the manifest, creating an `InputManifest` with no target.
+The Input Manifest doesn't refer to the artifact in its contents.
+Then we update the target if embedding mode is on.
+Then we write the input manifest to disk with the target in its file name.
+
+This is more than the builder pattern lol.
+*/
 
 /// A manifest describing the inputs used to build an artifact.
 ///
@@ -24,7 +39,10 @@ use std::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InputManifest<H: SupportedHash> {
     /// The artifact the manifest is describing.
-    target: ArtifactId<H>,
+    ///
+    /// A manifest without this is "detached" because we don't know
+    /// what artifact it's describing.
+    target: Option<ArtifactId<H>>,
 
     /// The relations recorded in the manifest.
     relations: Vec<Relation<H>>,
@@ -33,7 +51,7 @@ pub struct InputManifest<H: SupportedHash> {
 impl<H: SupportedHash> InputManifest<H> {
     /// Get the ID of the artifact this manifest is describing.
     #[inline]
-    pub fn target(&self) -> ArtifactId<H> {
+    pub fn target(&self) -> Option<ArtifactId<H>> {
         self.target
     }
 
@@ -43,9 +61,9 @@ impl<H: SupportedHash> InputManifest<H> {
         &self.relations[..]
     }
 
-    /// Construct an [`InputManifest`] from a file.
-    pub fn from_file(file: &File) -> Result<Self> {
-        let file = BufReader::new(file);
+    /// Construct an [`InputManifest`] from a file at a specified path.
+    pub fn from_path(path: &Path) -> Result<Self> {
+        let file = BufReader::new(File::open(&path)?);
         let mut lines = file.lines();
 
         let first_line = lines
@@ -77,22 +95,12 @@ impl<H: SupportedHash> InputManifest<H> {
             });
         }
 
-        // Then parse the "manifest-for" line.
-        let relation = parse_relation::<H>(
-            &lines
-                .next()
-                .ok_or_else(|| Error::MissingManifestForRelation)?
-                .map_err(Error::FailedManifestRead)?,
-        )?;
-
-        if relation.kind() != RelationKind::ManifestFor {
-            return Err(Error::MissingManifestForRelation);
-        }
-
-        let target = relation.artifact();
+        let target = path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .and_then(|s| ArtifactId::<H>::try_from_safe_name(s).ok());
 
         let mut relations = Vec::new();
-
         for line in lines {
             let line = line.map_err(Error::FailedManifestRead)?;
             let relation = parse_relation::<H>(&line)?;
@@ -100,6 +108,38 @@ impl<H: SupportedHash> InputManifest<H> {
         }
 
         Ok(InputManifest { target, relations })
+    }
+
+    /// Write the manifest out at the given path.
+    pub fn write_at(&self, path: &Path) -> Result<()> {
+        let mut f = File::create_new(path)?;
+
+        // Per the spec, this prefix is present to substantially shorten
+        // the metadata info that would otherwise be attached to all IDs in
+        // a manifest if they were written in full form. Instead, only the
+        // hex-encoded hashes are recorded elsewhere, because all the metadata
+        // is identical in a manifest and only recorded once at the beginning.
+        write!(f, "gitoid:{}:{}\n", Blob::NAME, H::HashAlgorithm::NAME)?;
+
+        for relation in &self.relations {
+            let aid = relation.artifact;
+
+            write!(
+                f,
+                "{} {} {}",
+                relation.kind,
+                aid.object_type(),
+                aid.as_hex()
+            )?;
+
+            if let Some(mid) = relation.manifest {
+                write!(f, " bom {}", mid.as_hex())?;
+            }
+
+            write!(f, "\n")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -155,51 +195,6 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
     })
 }
 
-impl<H: SupportedHash> Display for InputManifest<H> {
-    // The OmniBOR spec actually specifies using _only_ `\n` for newlines,
-    // regardless of the host platform specification, so Clippy's recommendation
-    // here would cause our code to violate the spec.
-    #[allow(clippy::write_with_newline)]
-    #[inline]
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        // Per the spec, this prefix is present to substantially shorten
-        // the metadata info that would otherwise be attached to all IDs in
-        // a manifest if they were written in full form. Instead, only the
-        // hex-encoded hashes are recorded elsewhere, because all the metadata
-        // is identical in a manifest and only recorded once at the beginning.
-        write!(f, "gitoid:{}:{}\n", Blob::NAME, H::HashAlgorithm::NAME)?;
-
-        // Write a single entry for the artifact being described.
-        write!(
-            f,
-            "{} {} {}",
-            RelationKind::ManifestFor,
-            self.target.object_type(),
-            self.target.as_hex()
-        )?;
-
-        for relation in &self.relations {
-            let aid = relation.artifact;
-
-            write!(
-                f,
-                "{} {} {}",
-                relation.kind,
-                aid.object_type(),
-                aid.as_hex()
-            )?;
-
-            if let Some(mid) = relation.manifest {
-                write!(f, " bom {}", mid.as_hex())?;
-            }
-
-            write!(f, "\n")?;
-        }
-
-        Ok(())
-    }
-}
-
 /// A single input artifact represented in a [`InputManifest`].
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Relation<H: SupportedHash> {
@@ -241,9 +236,6 @@ pub enum RelationKind {
 
     /// Is a tool used to build the target artifact.
     BuiltBy,
-
-    /// Is the artifact being described by this manifest.
-    ManifestFor,
 }
 
 impl Display for RelationKind {
@@ -252,7 +244,6 @@ impl Display for RelationKind {
         match self {
             RelationKind::InputFor => write!(f, "input"),
             RelationKind::BuiltBy => write!(f, "built-by"),
-            RelationKind::ManifestFor => write!(f, "manifest-for"),
         }
     }
 }
@@ -264,7 +255,6 @@ impl FromStr for RelationKind {
         match s {
             "input" => Ok(RelationKind::InputFor),
             "built-by" => Ok(RelationKind::BuiltBy),
-            "manifest-for" => Ok(RelationKind::ManifestFor),
             _ => Err(Error::InvalidRelationKind(s.to_owned())),
         }
     }
