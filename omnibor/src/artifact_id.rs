@@ -13,7 +13,6 @@ use serde::Deserialize;
 use serde::Serialize;
 #[cfg(feature = "serde")]
 use serde::Serializer;
-use std::{cmp::Ordering, path::PathBuf};
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -25,6 +24,7 @@ use std::io::Seek;
 #[cfg(feature = "serde")]
 use std::result::Result as StdResult;
 use std::str::FromStr;
+use std::{cmp::Ordering, path::PathBuf};
 use tokio::io::AsyncRead;
 use tokio::io::AsyncSeek;
 use url::Url;
@@ -323,10 +323,10 @@ impl<H: SupportedHash> ArtifactId<H> {
     }
 
     /// Get a filesystem-safe representation of the [`ArtifactId`].
-    /// 
+    ///
     /// This is a conservative method that tries to use _only_ characters
     /// which can be expected to work broadly cross-platform.
-    /// 
+    ///
     /// What that means for us is that the `:` separator character is
     /// replaced with `_`.
     pub fn safe_name(&self) -> PathBuf {

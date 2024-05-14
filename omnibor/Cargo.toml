@@ -40,6 +40,7 @@ url = "2.5.0"
 
 # Support serializing and deserializing.
 serde = { version = "1.0.197", optional = true }
+thiserror = "1.0.60"
 
 [dependencies.gitoid]
 version = "0.7.0"

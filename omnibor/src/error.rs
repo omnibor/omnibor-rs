@@ -1,51 +1,51 @@
 #[cfg(doc)]
 use crate::ArtifactId;
 use gitoid::Error as GitOidError;
-use std::error::Error as StdError;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::fmt::Result as FmtResult;
+use std::io::Error as IoError;
 use std::result::Result as StdResult;
 use url::ParseError as UrlError;
 
 pub type Result<T> = StdResult<T, Error>;
 
 /// Errors arising from [`ArtifactId`] use.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// An error arising from the underlying `gitoid` crate.
-    GitOid(GitOidError),
+    #[error("invalid relation kind in input manifest: '{0}'")]
+    InvalidRelationKind(String),
 
-    /// An error arising from URL parsing.
-    Url(UrlError),
-}
+    #[error("input manifest missing header line")]
+    ManifestMissingHeader,
 
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match self {
-            Error::GitOid(inner) => write!(f, "{}", inner),
-            Error::Url(inner) => write!(f, "{}", inner),
-        }
-    }
-}
+    #[error("missing 'gitoid' in manifest header")]
+    MissingGitOidInHeader,
 
-impl StdError for Error {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            Error::GitOid(inner) => Some(inner),
-            Error::Url(inner) => Some(inner),
-        }
-    }
-}
+    #[error("missing object type 'blob' in manifest header")]
+    MissingObjectTypeInHeader,
 
-impl From<GitOidError> for Error {
-    fn from(inner: GitOidError) -> Error {
-        Error::GitOid(inner)
-    }
-}
+    #[error("missing object type 'blob' in manifest relation")]
+    MissingObjectTypeInRelation,
 
-impl From<UrlError> for Error {
-    fn from(inner: UrlError) -> Self {
-        Error::Url(inner)
-    }
+    #[error("missing one or more header parts")]
+    MissingHeaderParts,
+
+    #[error("missing bom indicator in relation")]
+    MissingBomIndicatorInRelation,
+
+    #[error("missing one or more relation parts")]
+    MissingRelationParts,
+
+    #[error("wrong hash algorithm; expected '{expected}', got '{got}'")]
+    WrongHashAlgorithm { expected: &'static str, got: String },
+
+    #[error("missing manifest-for entry in manifest")]
+    MissingManifestForRelation,
+
+    #[error("failed to read input manifest file")]
+    FailedManifestRead(#[from] IoError),
+
+    #[error(transparent)]
+    GitOid(#[from] GitOidError),
+
+    #[error(transparent)]
+    Url(#[from] UrlError),
 }
