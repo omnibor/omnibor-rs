@@ -119,6 +119,8 @@ mod object_type;
 
 #[cfg(test)]
 mod tests;
+#[cfg(feature = "boring")]
+mod boring_sha;
 
 pub(crate) use crate::error::Result;
 

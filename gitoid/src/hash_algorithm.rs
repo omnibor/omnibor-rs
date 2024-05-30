@@ -10,6 +10,9 @@ use digest::block_buffer::generic_array::GenericArray;
 use digest::Digest;
 use digest::OutputSizeUser;
 
+#[cfg(feature="boring")]
+use crate::boring_sha::{BoringSha1, BoringSha256};
+
 /// Hash algorithms that can be used to make a [`GitOid`].
 ///
 /// This is a sealed trait to ensure it's only used for hash
@@ -75,7 +78,7 @@ pub struct Sha1 {
     _private: (),
 }
 
-#[cfg(feature = "sha1")]
+#[cfg(all(feature = "sha1", not(feature = "boring")))]
 impl_hash_algorithm!(Sha1, sha1::Sha1, "sha1");
 
 #[cfg(feature = "sha256")]
@@ -85,7 +88,7 @@ pub struct Sha256 {
     _private: (),
 }
 
-#[cfg(feature = "sha256")]
+#[cfg(all(feature = "sha256", not(feature = "boring")))]
 impl_hash_algorithm!(Sha256, sha2::Sha256, "sha256");
 
 #[cfg(feature = "sha1cd")]
@@ -97,3 +100,18 @@ pub struct Sha1Cd {
 
 #[cfg(feature = "sha1cd")]
 impl_hash_algorithm!(Sha1Cd, sha1collisiondetection::Sha1CD, "sha1cd");
+
+// #[cfg feature = "boring"]
+// fn boring_sha1<D: Digest>(output: &mut [u8]) {
+//     D::new();
+//     let mut hasher = boring::hash::Hasher::new(MessageDigest::sha1()).unwrap();
+//     hasher.update("hello world".as_bytes()).unwrap();
+//     let digest = hasher.finish().unwrap();
+//     output.copy_from_slice(digest.to_vec().as_slice())
+// }
+
+#[cfg(all(feature = "sha1", feature = "boring"))]
+impl_hash_algorithm!(Sha1, BoringSha1, "sha1");
+
+#[cfg(all(feature = "sha256", feature = "boring"))]
+impl_hash_algorithm!(Sha256, BoringSha256, "sha256");

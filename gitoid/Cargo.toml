@@ -33,12 +33,14 @@ hex = { version = "0.4.3", optional = true }
 serde = { version = "1.0.197", optional = true }
 tokio = { version = "1.36.0", features = ["io-util"], optional = true }
 url = { version = "2.4.1", optional = true }
+boring = { version = "4.6.0", optional = true }
 
 [dev-dependencies]
 
 # Need "rt" and "fs" additionally for tests.
 tokio = { version = "1.36.0", features = ["io-util", "fs", "rt", "rt-multi-thread"] }
 serde_test = "1.0.176"
+criterion = { version = "0.5.1" }
 
 [features]
 
@@ -93,3 +95,10 @@ std = [
 # This relies on `std` as the `url` crate isn't `no_std`-compatible.
 # This also relies on `hex` as the URL includes the hex-encoded hash.
 url = ["dep:url", "hex", "std"]
+
+# Enable the boring feature.
+boring = ["dep:boring", "sha1", "sha256"]
+
+[[bench]]
+name = "benchmark"
+harness = false
