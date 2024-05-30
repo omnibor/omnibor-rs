@@ -101,15 +101,6 @@ pub struct Sha1Cd {
 #[cfg(feature = "sha1cd")]
 impl_hash_algorithm!(Sha1Cd, sha1collisiondetection::Sha1CD, "sha1cd");
 
-// #[cfg feature = "boring"]
-// fn boring_sha1<D: Digest>(output: &mut [u8]) {
-//     D::new();
-//     let mut hasher = boring::hash::Hasher::new(MessageDigest::sha1()).unwrap();
-//     hasher.update("hello world".as_bytes()).unwrap();
-//     let digest = hasher.finish().unwrap();
-//     output.copy_from_slice(digest.to_vec().as_slice())
-// }
-
 #[cfg(all(feature = "sha1", feature = "boring"))]
 impl_hash_algorithm!(Sha1, BoringSha1, "sha1");
 
