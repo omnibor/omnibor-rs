@@ -51,7 +51,7 @@ criterion = { version = "0.5.1" }
 # - Hex: ability to print a GitOid with a hexadecimal hash representation.
 # - Url: ability to convert a GitOid to and from a gitoid-scheme URL.
 # - Serde: ability to serialize and deserialize a GitOid to and from a URL.
-default = ["async", "hex", "serde", "sha1", "sha1cd", "sha256", "std", "url"]
+default = ["async", "hex", "serde", "std", "url"]
 
 # Async support is optional. That said, it's currently _only_ with Tokio,
 # meaning you'd need to handle integrating with any other async runtime
@@ -77,6 +77,9 @@ serde = ["dep:serde", "url", "std"]
 sha1 = ["dep:sha1"]
 sha1cd = ["dep:sha1collisiondetection"]
 sha256 = ["dep:sha2"]
+
+# Enable the rustcrypto feature.
+rustcrypto = []
 
 # Get standard library support.
 #

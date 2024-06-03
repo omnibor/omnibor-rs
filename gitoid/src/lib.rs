@@ -105,10 +105,19 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(not(any(feature = "sha1", feature = "sha1cd", feature = "sha256")))]
+#[cfg(not(any(feature = "sha1", feature = "sha1cd", feature = "sha256", feature = "rustcrypto")))]
 compile_error!(
     r#"At least one hash algorithm feature must be active: "sha1", "sha1cd", or "sha256""#
 );
+
+#[cfg(all(feature = "sha1cd", feature = "boring", not(feature = "rustcrypto")))]
+compile_error!("The 'boring' feature does not support the 'sha1cd' algorithm. Please enable the 'rustcrypto' feature.");
+
+#[cfg(all(feature = "rustcrypto", not(any(feature = "sha1", feature = "sha1cd", feature = "sha256"))))]
+compile_error!("The 'rustcrypto' feature requires at least one of the following algorithms: 'sha1', 'sha1cd', or 'sha256'.");
+
+#[cfg(not(any(feature = "rustcrypto", feature = "boring")))]
+compile_error!("At least one of the 'rustcrypto' or 'boring' features must be enabled.");
 
 pub(crate) mod sealed;
 

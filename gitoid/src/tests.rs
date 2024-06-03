@@ -13,9 +13,11 @@ use url::Url;
 use {
     crate::Blob,
     crate::GitOid,
-    crate::Sha256,
     serde_test::{assert_tokens, Token},
 };
+
+#[cfg(feature = "sha256")]
+use crate::Sha256;
 
 #[cfg(all(feature = "sha1", feature = "hex"))]
 #[test]
@@ -203,7 +205,7 @@ fn try_url_roundtrip() {
     assert_eq!(url, output);
 }
 
-#[cfg(feature = "serde")]
+#[cfg(all(feature = "serde", feature = "sha256"))]
 #[test]
 fn valid_gitoid_ser_de() {
     let id = GitOid::<Sha256, Blob>::id_str("hello, world");
