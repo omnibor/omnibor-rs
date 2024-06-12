@@ -1,8 +1,8 @@
+#[cfg(doc)]
+use crate::hashes::Sha256;
+use crate::hashes::SupportedHash;
 use crate::Error;
 use crate::Result;
-#[cfg(doc)]
-use crate::Sha256;
-use crate::SupportedHash;
 use gitoid::Blob;
 use gitoid::GitOid;
 #[cfg(feature = "serde")]

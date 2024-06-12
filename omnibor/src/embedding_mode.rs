@@ -1,4 +1,6 @@
 use crate::sealed::Sealed;
+#[cfg(doc)]
+use crate::InputManifest;
 use std::marker::PhantomData;
 
 /// Helper struct for converting from type-level mode data to value-level.

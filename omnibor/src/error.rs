@@ -1,5 +1,7 @@
 #[cfg(doc)]
 use crate::ArtifactId;
+#[cfg(doc)]
+use crate::InputManifest;
 use gitoid::Error as GitOidError;
 use std::io::Error as IoError;
 use std::result::Result as StdResult;
@@ -7,7 +9,7 @@ use url::ParseError as UrlError;
 
 pub type Result<T> = StdResult<T, Error>;
 
-/// Errors arising from [`ArtifactId`] use.
+/// Errors arising from [`ArtifactId`] use or [`InputManifest`] interaction.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("invalid relation kind in input manifest: '{0}'")]
@@ -42,6 +44,9 @@ pub enum Error {
 
     #[error("the transaction to make an input manifest was already closed")]
     TransactionClosed,
+
+    #[error("unknown file type for manifest ID embedding")]
+    UnknownEmbeddingTarget,
 
     #[error("failed to read input manifest file")]
     FailedManifestRead(#[from] IoError),

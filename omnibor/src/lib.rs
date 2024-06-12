@@ -41,30 +41,49 @@
 //! [omnibor_spec]: https://github.com/omnibor/spec
 //! [purl]: https://github.com/package-url/purl-spec
 
+// Make this public within the crate to aid with writing sealed
+// traits, a pattern we use repeatedly.
 pub(crate) mod sealed;
 
+// This is hidden for now, as we are not yet ready to commit to any
+// stability guarantees for FFI.
+#[doc(hidden)]
+pub mod ffi;
+
+// Keep modules private and just re-export the symbols we care about.
 mod artifact_id;
 mod embedding_mode;
 mod error;
-#[doc(hidden)]
-pub mod ffi;
-mod identifier;
 mod input_manifest;
-mod storage;
+mod input_manifest_builder;
+pub mod storage;
 mod supported_hash;
+
 #[cfg(test)]
 mod test;
 
+// Only make this public within the crate, for convenience
+// elsewhere since we always expect to be using our own `Error`
+// type anyway.
 pub(crate) use crate::error::Result;
 
+/// Defines whether data for an [`InputManifest`] is embedded in the artifact itself.
+pub mod embedding {
+    pub use crate::embedding_mode::Embed;
+    pub use crate::embedding_mode::EmbeddingMode;
+    pub use crate::embedding_mode::NoEmbed;
+}
+
+/// Defines the hash algorithms supported for [`ArtifactId`]s.
+pub mod hashes {
+    pub use crate::supported_hash::Sha256;
+    pub use crate::supported_hash::SupportedHash;
+}
+
 pub use crate::artifact_id::ArtifactId;
-pub use crate::embedding_mode::EmbeddingMode;
 pub use crate::error::Error;
-pub use crate::identifier::Identifier;
 pub use crate::input_manifest::InputManifest;
-pub use crate::input_manifest::Relation;
 pub use crate::input_manifest::RelationKind;
-pub use crate::storage::FileSystemStorage;
-pub use crate::storage::Storage;
-pub use crate::supported_hash::Sha256;
-pub use crate::supported_hash::SupportedHash;
+pub use crate::input_manifest_builder::InputManifestBuilder;
+
+pub(crate) use crate::input_manifest::Relation;

@@ -1,4 +1,6 @@
-use crate::{ArtifactId, InputManifest, Result, SupportedHash};
+//! Defines how manifests are stored and accessed.
+
+use crate::{hashes::SupportedHash, ArtifactId, InputManifest, Result};
 
 /// Represents the interface for storing and querying manifests.
 pub trait Storage {
@@ -15,9 +17,7 @@ pub trait Storage {
     fn get_manifest_id_for_artifact<H: SupportedHash>(
         &self,
         _aid: ArtifactId<H>,
-    ) -> Option<ArtifactId<H>> {
-        todo!()
-    }
+    ) -> Option<ArtifactId<H>>;
 
     /// Write a manifest to the storage.
     fn write_manifest<H: SupportedHash>(

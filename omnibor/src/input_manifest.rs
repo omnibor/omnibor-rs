@@ -1,9 +1,9 @@
 //! [`InputManifest`] type that represents build inputs for an artifact.
 
-use crate::{ArtifactId, Error, Result, SupportedHash};
+use crate::{hashes::SupportedHash, ArtifactId, Error, Result};
 use gitoid::{Blob, HashAlgorithm, ObjectType};
 use std::{
-    fmt::{Display, Formatter, Result as FmtResult},
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
     fs::File,
     io::{BufRead, BufReader, Write as _},
     path::Path,
@@ -57,13 +57,27 @@ impl<H: SupportedHash> InputManifest<H> {
     }
 
     /// Get the ID of the artifact this manifest is describing.
+    ///
+    /// If the manifest does not have a target, it is a "detached" manifest.
+    ///
+    /// Detached manifests may still be usable if the target artifact was
+    /// created in embedding mode, in which case it will carry the [`ArtifactId`]
+    /// of its own input manifest in its contents.
     #[inline]
     pub fn target(&self) -> Option<ArtifactId<H>> {
         self.target
     }
 
+    /// Identify if the manifest is a "detached" manifest.
+    ///
+    /// "Detached" manifests are ones without a target [`ArtifactId`].
+    pub fn is_detached(&self) -> bool {
+        self.target.is_none()
+    }
+
     /// Set a new target.
-    pub fn set_target(&mut self, target: ArtifactId<H>) -> &mut Self {
+    #[allow(unused)]
+    pub(crate) fn set_target(&mut self, target: ArtifactId<H>) -> &mut Self {
         self.target = Some(target);
         self
     }
@@ -210,7 +224,7 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
 }
 
 /// A single input artifact represented in a [`InputManifest`].
-#[derive(Debug, Copy, PartialEq, Eq)]
+#[derive(Copy, PartialEq, Eq)]
 pub struct Relation<H: SupportedHash> {
     /// The kind of relation being represented.
     kind: RelationKind,
@@ -220,6 +234,22 @@ pub struct Relation<H: SupportedHash> {
 
     /// The ID of the manifest, if a manifest is present.
     manifest: Option<ArtifactId<H>>,
+}
+
+// We implement this ourselves instead of deriving it because
+// the auto-derive logic will only conditionally derive it based
+// on whether the `H` type parameter implements `Debug`, which
+// isn't actually relevant in this case because we don't _really_
+// store a value of type-`H`, we just use it for type-level
+// programming.
+impl<H: SupportedHash> Debug for Relation<H> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        f.debug_struct("Relation")
+            .field("kind", &self.kind)
+            .field("artifact", &self.artifact)
+            .field("manifest", &self.manifest)
+            .finish()
+    }
 }
 
 impl<H: SupportedHash> Clone for Relation<H> {
@@ -264,7 +294,7 @@ impl<H: SupportedHash> Relation<H> {
     }
 }
 
-/// Describes the relationship between a manifest's target artifact and other artifacts.
+/// Describes the relationship between an [`InputManifest`]'s target artifact and other artifacts.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum RelationKind {
     /// Is a build input for the target artifact.
