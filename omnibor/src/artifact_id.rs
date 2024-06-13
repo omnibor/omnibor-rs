@@ -13,6 +13,7 @@ use serde::Deserialize;
 use serde::Serialize;
 #[cfg(feature = "serde")]
 use serde::Serializer;
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -21,10 +22,10 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::io::Read;
 use std::io::Seek;
+use std::path::PathBuf;
 #[cfg(feature = "serde")]
 use std::result::Result as StdResult;
 use std::str::FromStr;
-use std::{cmp::Ordering, path::PathBuf};
 use tokio::io::AsyncRead;
 use tokio::io::AsyncSeek;
 use url::Url;

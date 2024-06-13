@@ -1,7 +1,13 @@
 //! Defines how manifests are stored and accessed.
 
-use crate::{hashes::SupportedHash, supported_hash::Sha256, ArtifactId, InputManifest, Result};
-use std::{mem::size_of, slice::from_raw_parts};
+use crate::hashes::SupportedHash;
+use crate::supported_hash::Sha256;
+use crate::ArtifactId;
+use crate::InputManifest;
+use crate::Result;
+use std::fmt::Debug;
+use std::mem::size_of;
+use std::slice::from_raw_parts;
 
 /// Represents the interface for storing and querying manifests.
 pub trait Storage<H: SupportedHash> {
@@ -60,41 +66,73 @@ impl<H: SupportedHash> Storage<H> for FileSystemStorage {
 /// In-memory storage for [`InputManifest`]s.
 #[derive(Debug)]
 pub struct InMemoryStorage {
-    sha256_manifests: Vec<(ArtifactId<Sha256>, InputManifest<Sha256>)>,
+    sha256_manifests: Vec<ManifestEntry<Sha256>>,
+}
+
+struct ManifestEntry<H: SupportedHash> {
+    aid: ArtifactId<H>,
+    manifest: InputManifest<H>,
+}
+
+impl<H: SupportedHash> Debug for ManifestEntry<H> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ManifestEntry")
+            .field("aid", &self.aid)
+            .field("manifest", &self.manifest)
+            .finish()
+    }
+}
+
+impl<H: SupportedHash> Clone for ManifestEntry<H> {
+    fn clone(&self) -> Self {
+        ManifestEntry {
+            aid: self.aid,
+            manifest: self.manifest.clone(),
+        }
+    }
+}
+
+impl InMemoryStorage {
+    fn match_by_target_aid(
+        &self,
+        target_aid: ArtifactId<Sha256>,
+    ) -> Option<&ManifestEntry<Sha256>> {
+        self.sha256_manifests
+            .iter()
+            .find(|entry| entry.manifest.target() == Some(target_aid))
+    }
 }
 
 impl Storage<Sha256> for InMemoryStorage {
     fn has_manifest_for_artifact(&self, target_aid: ArtifactId<Sha256>) -> bool {
-        self.sha256_manifests
-            .iter()
-            .any(|manifest| manifest.1.target() == Some(target_aid))
+        self.match_by_target_aid(target_aid).is_some()
     }
 
     fn get_manifest_for_artifact(
         &self,
         target_aid: ArtifactId<Sha256>,
     ) -> Option<InputManifest<Sha256>> {
-        self.sha256_manifests
-            .iter()
-            .find(|manifest| manifest.1.target() == Some(target_aid))
-            .cloned()
-            .map(|pair| pair.1)
+        self.match_by_target_aid(target_aid)
+            .map(|entry| entry.manifest.clone())
     }
 
     fn get_manifest_id_for_artifact(
         &self,
         target_aid: ArtifactId<Sha256>,
     ) -> Option<ArtifactId<Sha256>> {
-        self.sha256_manifests
-            .iter()
-            .find(|manifest| manifest.1.target() == Some(target_aid))
-            .and_then(|manifest| manifest.1.target())
+        self.match_by_target_aid(target_aid)
+            .and_then(|entry| entry.manifest.target())
     }
 
     fn write_manifest(&mut self, manifest: &InputManifest<Sha256>) -> Result<ArtifactId<Sha256>> {
         let content = get_bytes(manifest);
         let manifest_aid = ArtifactId::<Sha256>::id_bytes(content);
-        self.sha256_manifests.push((manifest_aid, manifest.clone()));
+
+        self.sha256_manifests.push(ManifestEntry {
+            aid: manifest_aid,
+            manifest: manifest.clone(),
+        });
+
         Ok(manifest_aid)
     }
 
@@ -105,8 +143,9 @@ impl Storage<Sha256> for InMemoryStorage {
     ) -> Result<()> {
         self.sha256_manifests
             .iter_mut()
-            .find(|manifest| manifest.0 == manifest_aid)
-            .map(|manifest| manifest.1.set_target(target_aid));
+            .find(|entry| entry.aid == manifest_aid)
+            .map(|entry| entry.manifest.set_target(target_aid));
+
         Ok(())
     }
 }

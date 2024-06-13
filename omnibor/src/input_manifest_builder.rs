@@ -1,16 +1,24 @@
-use crate::{
-    embedding::EmbeddingMode,
-    embedding_mode::{Embed, GetMode, Mode, NoEmbed},
-    hashes::SupportedHash,
-    storage::{FileSystemStorage, Storage},
-    ArtifactId, Error, InputManifest, Relation, RelationKind, Result,
-};
-use std::{
-    fmt::{Debug, Formatter, Result as FmtResult},
-    fs::{File, OpenOptions},
-    marker::PhantomData,
-    path::Path,
-};
+use crate::embedding::EmbeddingMode;
+use crate::embedding_mode::Embed;
+use crate::embedding_mode::GetMode;
+use crate::embedding_mode::Mode;
+use crate::embedding_mode::NoEmbed;
+use crate::hashes::SupportedHash;
+use crate::storage::FileSystemStorage;
+use crate::storage::Storage;
+use crate::ArtifactId;
+use crate::Error;
+use crate::InputManifest;
+use crate::Relation;
+use crate::RelationKind;
+use crate::Result;
+use std::fmt::Debug;
+use std::fmt::Formatter;
+use std::fmt::Result as FmtResult;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::marker::PhantomData;
+use std::path::Path;
 
 /// An [`InputManifest`] builder.
 pub struct InputManifestBuilder<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> {

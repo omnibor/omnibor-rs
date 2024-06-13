@@ -1,14 +1,22 @@
 //! [`InputManifest`] type that represents build inputs for an artifact.
 
-use crate::{hashes::SupportedHash, ArtifactId, Error, Result};
-use gitoid::{Blob, HashAlgorithm, ObjectType};
-use std::{
-    fmt::{Debug, Display, Formatter, Result as FmtResult},
-    fs::File,
-    io::{BufRead, BufReader, Write as _},
-    path::Path,
-    str::FromStr,
-};
+use crate::hashes::SupportedHash;
+use crate::ArtifactId;
+use crate::Error;
+use crate::Result;
+use gitoid::Blob;
+use gitoid::HashAlgorithm;
+use gitoid::ObjectType;
+use std::fmt::Debug;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::Result as FmtResult;
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Write as _;
+use std::path::Path;
+use std::str::FromStr;
 
 /*
 Input Manifest builder...
