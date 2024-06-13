@@ -240,7 +240,7 @@ enum TargetType {
 
 impl TargetType {
     fn infer(_path: &Path, _file: &File) -> Self {
-        todo!()
+        todo!("inferring target file type is not yet implemented")
     }
 }
 

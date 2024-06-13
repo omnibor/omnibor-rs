@@ -35,20 +35,20 @@ pub struct FileSystemStorage;
 
 impl<H: SupportedHash> Storage<H> for FileSystemStorage {
     fn has_manifest_for_artifact(&self, _aid: ArtifactId<H>) -> bool {
-        todo!()
+        todo!("file system storage is not yet implemented")
     }
 
     fn get_manifest_for_artifact(&self, _aid: ArtifactId<H>) -> Option<InputManifest<H>> {
-        todo!()
+        todo!("file system storage is not yet implemented")
     }
 
     fn get_manifest_id_for_artifact(&self, _aid: ArtifactId<H>) -> Option<ArtifactId<H>> {
-        todo!()
+        todo!("file system storage is not yet implemented")
     }
 
     /// Write a manifest to the storage.
     fn write_manifest(&mut self, _manifest: &InputManifest<H>) -> Result<ArtifactId<H>> {
-        todo!()
+        todo!("file system storage is not yet implemented")
     }
 
     /// Update the manifest file to reflect the safe_name version of the target ID.
@@ -57,46 +57,23 @@ impl<H: SupportedHash> Storage<H> for FileSystemStorage {
         _manifest_aid: ArtifactId<H>,
         _target_aid: ArtifactId<H>,
     ) -> Result<()> {
-        todo!()
+        todo!("file system storage is not yet implemented")
     }
 }
 
 /// In-memory storage for [`InputManifest`]s.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct InMemoryStorage {
     sha256_manifests: Vec<ManifestEntry<Sha256>>,
 }
 
-struct ManifestEntry<H: SupportedHash> {
-    aid: ArtifactId<H>,
-    manifest: InputManifest<H>,
-}
-
-impl<H: SupportedHash> Debug for ManifestEntry<H> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ManifestEntry")
-            .field("aid", &self.aid)
-            .field("manifest", &self.manifest)
-            .finish()
-    }
-}
-
-impl<H: SupportedHash> Clone for ManifestEntry<H> {
-    fn clone(&self) -> Self {
-        ManifestEntry {
-            aid: self.aid,
-            manifest: self.manifest.clone(),
-        }
-    }
-}
-
 impl InMemoryStorage {
+    /// Construct a new `InMemoryStorage` instance.
     pub fn new() -> Self {
-        InMemoryStorage {
-            sha256_manifests: Vec::new(),
-        }
+        InMemoryStorage::default()
     }
 
+    /// Find the manifest entry that matches the target [`ArtifactId`]
     fn match_by_target_aid(
         &self,
         target_aid: ArtifactId<Sha256>,
@@ -165,5 +142,32 @@ impl Storage<Sha256> for InMemoryStorage {
             .map(|entry| entry.manifest.set_target(target_aid));
 
         Ok(())
+    }
+}
+
+/// An entry in the in-memory manifest storage.
+struct ManifestEntry<H: SupportedHash> {
+    /// The [`ArtifactId`] of the manifest.
+    aid: ArtifactId<H>,
+
+    /// The manifest itself.
+    manifest: InputManifest<H>,
+}
+
+impl<H: SupportedHash> Debug for ManifestEntry<H> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ManifestEntry")
+            .field("aid", &self.aid)
+            .field("manifest", &self.manifest)
+            .finish()
+    }
+}
+
+impl<H: SupportedHash> Clone for ManifestEntry<H> {
+    fn clone(&self) -> Self {
+        ManifestEntry {
+            aid: self.aid,
+            manifest: self.manifest.clone(),
+        }
     }
 }
