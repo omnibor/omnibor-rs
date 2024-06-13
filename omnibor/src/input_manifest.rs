@@ -36,7 +36,7 @@ This is more than the builder pattern lol.
 ///
 /// Relations may additionally refer to the [`InputManifest`] of the
 /// related artifact.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct InputManifest<H: SupportedHash> {
     /// The artifact the manifest is describing.
     ///
@@ -168,6 +168,24 @@ impl<H: SupportedHash> InputManifest<H> {
         }
 
         Ok(())
+    }
+}
+
+impl<H: SupportedHash> Debug for InputManifest<H> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        f.debug_struct("InputManifest")
+            .field("target", &self.target)
+            .field("relations", &self.relations)
+            .finish()
+    }
+}
+
+impl<H: SupportedHash> Clone for InputManifest<H> {
+    fn clone(&self) -> Self {
+        InputManifest {
+            target: self.target,
+            relations: self.relations.clone(),
+        }
     }
 }
 

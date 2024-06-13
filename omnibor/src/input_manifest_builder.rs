@@ -13,7 +13,7 @@ use std::{
 };
 
 /// An [`InputManifest`] builder.
-pub struct InputManifestBuilder<H: SupportedHash, M: EmbeddingMode, S: Storage> {
+pub struct InputManifestBuilder<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> {
     /// The relations to be written to a new manifest by this transaction.
     relations: Vec<Relation<H>>,
 
@@ -30,7 +30,7 @@ impl<H: SupportedHash, M: EmbeddingMode> Default for InputManifestBuilder<H, M, 
     }
 }
 
-impl<H: SupportedHash, S: Storage> Debug for InputManifestBuilder<H, Embed, S> {
+impl<H: SupportedHash, S: Storage<H>> Debug for InputManifestBuilder<H, Embed, S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("InputManifestBuilder")
             .field("mode", &GetMode::<Embed>::mode())
@@ -39,7 +39,7 @@ impl<H: SupportedHash, S: Storage> Debug for InputManifestBuilder<H, Embed, S> {
     }
 }
 
-impl<H: SupportedHash, S: Storage> Debug for InputManifestBuilder<H, NoEmbed, S> {
+impl<H: SupportedHash, S: Storage<H>> Debug for InputManifestBuilder<H, NoEmbed, S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("InputManifestBuilder")
             .field("mode", &GetMode::<NoEmbed>::mode())
@@ -55,7 +55,7 @@ impl<H: SupportedHash, M: EmbeddingMode> InputManifestBuilder<H, M, FileSystemSt
     }
 }
 
-impl<H: SupportedHash, M: EmbeddingMode, S: Storage> InputManifestBuilder<H, M, S> {
+impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, M, S> {
     /// Construct a new [`InputManifestBuilder`] with a specific type of storage.
     pub fn with_storage(storage: S) -> Self {
         Self {
@@ -92,7 +92,7 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage> InputManifestBuilder<H, M, 
         let mut manifest = InputManifest::with_relations(&self.relations);
 
         // Write the manifest to storage.
-        let manifest_aid = self.storage.write_manifest(None, &manifest)?;
+        let manifest_aid = self.storage.write_manifest(&manifest)?;
 
         // Get the ArtifactID of the target, possibly embedding the
         // manifest ArtifactID into the target first.
@@ -123,14 +123,14 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage> InputManifestBuilder<H, M, 
     }
 }
 
-impl<H: SupportedHash, S: Storage> InputManifestBuilder<H, NoEmbed, S> {
+impl<H: SupportedHash, S: Storage<H>> InputManifestBuilder<H, NoEmbed, S> {
     /// Complete the transaction without updating the target artifact.
     pub fn finish(&mut self, target: &Path) -> Result<TransactionIds<H>> {
         Self::finish_with_optional_embedding(self, target, GetMode::<NoEmbed>::mode())
     }
 }
 
-impl<H: SupportedHash, S: Storage> InputManifestBuilder<H, Embed, S> {
+impl<H: SupportedHash, S: Storage<H>> InputManifestBuilder<H, Embed, S> {
     /// Complete the transaction, updating the target artifact.
     pub fn finish_and_embed(&mut self, target: &Path) -> Result<TransactionIds<H>> {
         Self::finish_with_optional_embedding(self, target, GetMode::<Embed>::mode())
@@ -190,7 +190,7 @@ fn embed_in_elf_file<H: SupportedHash>(
     _file: &mut File,
     _manifest_aid: ArtifactId<H>,
 ) -> Result<ArtifactId<H>> {
-    todo!()
+    todo!("embedding mode for ELF files is not yet implemented")
 }
 
 fn embed_in_text_file_with_prefix_comment<H: SupportedHash>(
@@ -199,7 +199,7 @@ fn embed_in_text_file_with_prefix_comment<H: SupportedHash>(
     _manifest_aid: ArtifactId<H>,
     _prefix: &str,
 ) -> Result<ArtifactId<H>> {
-    todo!()
+    todo!("embedding mode for text files is not yet implemented")
 }
 
 fn embed_in_text_file_with_wrapped_comment<H: SupportedHash>(
@@ -209,9 +209,10 @@ fn embed_in_text_file_with_wrapped_comment<H: SupportedHash>(
     _prefix: &str,
     _suffix: &str,
 ) -> Result<ArtifactId<H>> {
-    todo!()
+    todo!("embedding mode for text files is not yet implemented")
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 enum TargetType {
     KnownBinaryType(BinaryType),
@@ -225,11 +226,13 @@ impl TargetType {
     }
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 enum BinaryType {
     ElfFile,
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 enum TextType {
     PrefixComments { prefix: String },
