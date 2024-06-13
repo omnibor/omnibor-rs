@@ -217,7 +217,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// # use tokio::fs::File;
     /// # tokio_test::block_on(async {
     /// let mut file = File::open("test/data/hello_world.txt").await.unwrap();
@@ -258,7 +258,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// # use tokio::fs::File;
     /// # tokio_test::block_on(async {
     /// let mut file = File::open("test/data/hello_world.txt").await.unwrap();
@@ -291,7 +291,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// # use url::Url;
     /// let url = Url::parse("gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03").unwrap();
     /// let id: ArtifactId<Sha256> = ArtifactId::try_from_url(url).unwrap();
@@ -314,7 +314,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID URL: {}", id.url());
     /// ```
@@ -342,7 +342,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID bytes: {:?}", id.as_bytes());
     /// ```
@@ -360,7 +360,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID bytes as hex: {}", id.as_hex());
     /// ```
@@ -376,7 +376,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID hash algorithm: {}", id.hash_algorithm());
     /// ```
@@ -393,7 +393,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID object type: {}", id.object_type());
     /// ```
@@ -411,7 +411,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID hash length in bytes: {}", id.hash_len());
     /// ```
