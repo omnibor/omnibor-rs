@@ -77,7 +77,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::id_bytes(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     /// println!("Artifact ID: {}", id);
     /// ```
@@ -99,7 +99,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::id_str("hello, world");
     /// println!("Artifact ID: {}", id);
     /// ```
@@ -137,7 +137,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// # use std::fs::File;
     /// let file = File::open("test/data/hello_world.txt").unwrap();
     /// let id: ArtifactId<Sha256> = ArtifactId::id_reader(&file).unwrap();
@@ -171,7 +171,7 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// ```rust
     /// # use omnibor::ArtifactId;
-    /// # use omnibor::Sha256;
+    /// # use omnibor::hashes::Sha256;
     /// # use std::fs::File;
     /// let file = File::open("test/data/hello_world.txt").unwrap();
     /// let id: ArtifactId<Sha256> = ArtifactId::id_reader_with_length(&file, 11).unwrap();

@@ -23,7 +23,7 @@ pub trait Storage<H: SupportedHash> {
     /// Write a manifest to the storage.
     fn write_manifest(&mut self, manifest: &InputManifest<H>) -> Result<ArtifactId<H>>;
 
-    /// Update the manifest file to reflect the safe_name version of the target ID.
+    /// Update the manifest file to reflect the target ID.
     fn update_target_for_manifest(
         &mut self,
         manifest_aid: ArtifactId<H>,
