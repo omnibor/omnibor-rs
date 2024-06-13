@@ -5,27 +5,27 @@
 //! [OmniBOR][omnibor] is a draft specification which defines two key concepts:
 //!
 //! - __Artifact Identifiers__: independently-reproducible identifiers for
-//!   software artifacts.
+//!   software artifacts. Use [`ArtifactId`] for these.
 //! - __Artifact Input Manifests__: record the IDs of every input used in the
-//!   build process for an artifact.
+//!   build process for an artifact. Use [`InputManifest`] for these.
 //!
 //! Artifact IDs enable _anyone_ to identify and cross-reference information for
 //! software artifacts without a central authority. Unlike [pURL][purl] or [CPE][cpe],
 //! OmniBOR Artifact IDs don't rely on a third-party, they are _inherent
 //! identifiers_ determined only by an artifact itself. They're based on
-//! [Git's Object IDs (GitOIDs)][gitoid] in both construction and choice of
+//! [Git Object Identifiers (GitOIDs)][gitoid] in both construction and choice of
 //! cryptographic hash functions.
 //!
 //! Artifact Input Manifests allow consumers to reconstruct Artifact Dependency
-//! Graphs that give _fine-grained_ visibility into how artifacts in your
+//! Graphs that give _fine-grained_ visibility into how artifacts in their
 //! software supply chain were made. With these graphs, consumers could
 //! in the future identify the presence of exact files associated with known
 //! vulnerabilities, side-stepping the complexities of matching version numbers
-//! across platforms and patching practicies.
+//! across platforms and patching practices.
 //!
 //! [__You can view the OmniBOR specification here.__][omnibor_spec]
 //!
-//! The United States Cybersecurity & Infrastructure Security Agency (CISA),
+//! The United States Cybersecurity & Infrastructure Security Agency (CISA)
 //! identified OmniBOR as a major candidate for software identities
 //! in its 2023 report ["Software Identification Ecosystem Option
 //! Analysis."][cisa_report]

@@ -10,13 +10,13 @@ use std::fmt::Debug;
 /// Represents the interface for storing and querying manifests.
 pub trait Storage<H: SupportedHash> {
     /// Check if we have the manifest for a specific artifact.
-    fn has_manifest_for_artifact(&self, aid: ArtifactId<H>) -> bool;
+    fn has_manifest_for_artifact(&self, target_aid: ArtifactId<H>) -> bool;
 
     /// Get the manifest for a specific artifact.
-    fn get_manifest_for_artifact(&self, aid: ArtifactId<H>) -> Option<InputManifest<H>>;
+    fn get_manifest_for_artifact(&self, target_aid: ArtifactId<H>) -> Option<InputManifest<H>>;
 
     /// Get the ID of the manifest for the artifact.
-    fn get_manifest_id_for_artifact(&self, _aid: ArtifactId<H>) -> Option<ArtifactId<H>>;
+    fn get_manifest_id_for_artifact(&self, target_aid: ArtifactId<H>) -> Option<ArtifactId<H>>;
 
     /// Write a manifest to the storage.
     fn write_manifest(&mut self, manifest: &InputManifest<H>) -> Result<ArtifactId<H>>;
@@ -27,6 +27,9 @@ pub trait Storage<H: SupportedHash> {
         manifest_aid: ArtifactId<H>,
         target_aid: ArtifactId<H>,
     ) -> Result<()>;
+
+    /// Get all manifests from the storage.
+    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>>;
 }
 
 /// File system storage for [`InputManifest`]s.
@@ -46,12 +49,10 @@ impl<H: SupportedHash> Storage<H> for FileSystemStorage {
         todo!("file system storage is not yet implemented")
     }
 
-    /// Write a manifest to the storage.
     fn write_manifest(&mut self, _manifest: &InputManifest<H>) -> Result<ArtifactId<H>> {
         todo!("file system storage is not yet implemented")
     }
 
-    /// Update the manifest file to reflect the safe_name version of the target ID.
     fn update_target_for_manifest(
         &mut self,
         _manifest_aid: ArtifactId<H>,
@@ -59,11 +60,21 @@ impl<H: SupportedHash> Storage<H> for FileSystemStorage {
     ) -> Result<()> {
         todo!("file system storage is not yet implemented")
     }
+
+    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>> {
+        todo!("file system storage is not yet implemented")
+    }
 }
 
 /// In-memory storage for [`InputManifest`]s.
+///
+/// Note that this "storage" doesn't persist anything. We use it for testing, and it
+/// may be useful in other applications where you only care about producing and using
+/// manifests in the short-term, and not in persisting them to a disk or some other
+/// durable location.
 #[derive(Debug, Default)]
 pub struct InMemoryStorage {
+    /// Stored SHA-256 [`InputManifest`]s.
     sha256_manifests: Vec<ManifestEntry<Sha256>>,
 }
 
@@ -106,25 +117,10 @@ impl Storage<Sha256> for InMemoryStorage {
     }
 
     fn write_manifest(&mut self, manifest: &InputManifest<Sha256>) -> Result<ArtifactId<Sha256>> {
-        // Create an in-memory buffer we can treat like a file.
-        // It's capped at 50 KiB, which _should_ be plenty, and it's thrown away once the
-        // function call is done.
-        //
-        // We do this because the in-memory representation of the `InputManifest` is not guaranteed
-        // by Rust, but the written-out format of it is something _we_ guarantee, so we can rely on
-        // it here.
-        //
-        // We also truncate the slice to only the non-zero bytes to avoid considering the total
-        // capacity of the buffer when producing the hash.
-        let manifest_aid = {
-            let mut bytes = [0; 50_000];
-            manifest.write_to(&mut bytes[..])?;
-            let len = bytes.iter().take_while(|b| **b != 0).count();
-            ArtifactId::<Sha256>::id_bytes(&bytes[..len])
-        };
+        let manifest_aid = ArtifactId::<Sha256>::id_bytes(manifest.as_bytes()?);
 
         self.sha256_manifests.push(ManifestEntry {
-            aid: manifest_aid,
+            manifest_aid,
             manifest: manifest.clone(),
         });
 
@@ -138,17 +134,25 @@ impl Storage<Sha256> for InMemoryStorage {
     ) -> Result<()> {
         self.sha256_manifests
             .iter_mut()
-            .find(|entry| entry.aid == manifest_aid)
+            .find(|entry| entry.manifest_aid == manifest_aid)
             .map(|entry| entry.manifest.set_target(target_aid));
 
         Ok(())
+    }
+
+    fn get_manifests(&self) -> Result<Vec<InputManifest<Sha256>>> {
+        Ok(self
+            .sha256_manifests
+            .iter()
+            .map(|entry| entry.manifest.clone())
+            .collect())
     }
 }
 
 /// An entry in the in-memory manifest storage.
 struct ManifestEntry<H: SupportedHash> {
     /// The [`ArtifactId`] of the manifest.
-    aid: ArtifactId<H>,
+    manifest_aid: ArtifactId<H>,
 
     /// The manifest itself.
     manifest: InputManifest<H>,
@@ -157,7 +161,7 @@ struct ManifestEntry<H: SupportedHash> {
 impl<H: SupportedHash> Debug for ManifestEntry<H> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ManifestEntry")
-            .field("aid", &self.aid)
+            .field("manifest_aid", &self.manifest_aid)
             .field("manifest", &self.manifest)
             .finish()
     }
@@ -166,7 +170,7 @@ impl<H: SupportedHash> Debug for ManifestEntry<H> {
 impl<H: SupportedHash> Clone for ManifestEntry<H> {
     fn clone(&self) -> Self {
         ManifestEntry {
-            aid: self.aid,
+            manifest_aid: self.manifest_aid,
             manifest: self.manifest.clone(),
         }
     }

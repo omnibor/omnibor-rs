@@ -18,20 +18,6 @@ use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
 
-/*
-Input Manifest builder...
-
-The user is creating an artifact.
-As the artifact is being created, we have a builder into which we log the artifact IDs (and detect any manifests if present)
-of everything used to make the artifact, along with the type of relation.
-When the artifact creation is done, we finalize the manifest, creating an `InputManifest` with no target.
-The Input Manifest doesn't refer to the artifact in its contents.
-Then we update the target if embedding mode is on.
-Then we write the input manifest to disk with the target in its file name.
-
-This is more than the builder pattern lol.
-*/
-
 /// A manifest describing the inputs used to build an artifact.
 ///
 /// The manifest is constructed with a specific target artifact in mind.
@@ -147,19 +133,21 @@ impl<H: SupportedHash> InputManifest<H> {
 
     /// Write the manifest out at the given path.
     #[allow(clippy::write_with_newline)]
-    pub fn write_to<W: Write>(&self, mut writer: W) -> Result<()> {
+    pub fn as_bytes(&self) -> Result<Vec<u8>> {
+        let mut bytes = vec![];
+
         // Per the spec, this prefix is present to substantially shorten
         // the metadata info that would otherwise be attached to all IDs in
         // a manifest if they were written in full form. Instead, only the
         // hex-encoded hashes are recorded elsewhere, because all the metadata
         // is identical in a manifest and only recorded once at the beginning.
-        write!(writer, "gitoid:{}:{}\n", Blob::NAME, H::HashAlgorithm::NAME)?;
+        write!(bytes, "gitoid:{}:{}\n", Blob::NAME, H::HashAlgorithm::NAME)?;
 
         for relation in &self.relations {
             let aid = relation.artifact;
 
             write!(
-                writer,
+                bytes,
                 "{} {} {}",
                 relation.kind,
                 aid.object_type(),
@@ -167,13 +155,13 @@ impl<H: SupportedHash> InputManifest<H> {
             )?;
 
             if let Some(mid) = relation.manifest {
-                write!(writer, " bom {}", mid.as_hex())?;
+                write!(bytes, " bom {}", mid.as_hex())?;
             }
 
-            write!(writer, "\n")?;
+            write!(bytes, "\n")?;
         }
 
-        Ok(())
+        Ok(bytes)
     }
 }
 
@@ -220,23 +208,21 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
         aid_hex
     ))?;
 
-    let manifest = {
-        if let (Some(bom_indicator), Some(manifest_aid_hex)) = (bom_indicator, manifest_aid_hex) {
+    let manifest = match (bom_indicator, manifest_aid_hex) {
+        (None, None) | (Some(_), None) | (None, Some(_)) => None,
+        (Some(bom_indicator), Some(manifest_aid_hex)) => {
             if *bom_indicator != "bom" {
                 return Err(Error::MissingBomIndicatorInRelation);
             }
 
-            match ArtifactId::<H>::from_str(&format!(
+            let gitoid_url = &format!(
                 "gitoid:{}:{}:{}",
                 object_type,
                 H::HashAlgorithm::NAME,
                 manifest_aid_hex
-            )) {
-                Ok(aid) => Some(aid),
-                Err(_) => None,
-            }
-        } else {
-            None
+            );
+
+            ArtifactId::<H>::from_str(gitoid_url).ok()
         }
     };
 

@@ -1,8 +1,5 @@
 use crate::embedding::EmbeddingMode;
-use crate::embedding_mode::Embed;
-use crate::embedding_mode::GetMode;
 use crate::embedding_mode::Mode;
-use crate::embedding_mode::NoEmbed;
 use crate::hashes::SupportedHash;
 use crate::storage::FileSystemStorage;
 use crate::storage::Storage;
@@ -38,19 +35,10 @@ impl<H: SupportedHash, M: EmbeddingMode> Default for InputManifestBuilder<H, M, 
     }
 }
 
-impl<H: SupportedHash, S: Storage<H>> Debug for InputManifestBuilder<H, Embed, S> {
+impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> Debug for InputManifestBuilder<H, M, S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("InputManifestBuilder")
-            .field("mode", &GetMode::<Embed>::mode())
-            .field("relations", &self.relations)
-            .finish_non_exhaustive()
-    }
-}
-
-impl<H: SupportedHash, S: Storage<H>> Debug for InputManifestBuilder<H, NoEmbed, S> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        f.debug_struct("InputManifestBuilder")
-            .field("mode", &GetMode::<NoEmbed>::mode())
+            .field("mode", &M::mode())
             .field("relations", &self.relations)
             .finish_non_exhaustive()
     }
@@ -84,6 +72,11 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
         self.relations.push(Relation::new(kind, artifact, manifest));
 
         Ok(self)
+    }
+
+    /// Complete the transaction without updating the target artifact.
+    pub fn finish(&mut self, target: &Path) -> Result<TransactionIds<H>> {
+        Self::finish_with_optional_embedding(self, target, M::mode())
     }
 
     /// Complete creation of a new [`InputManifest`], possibly embedding in the target.
@@ -128,20 +121,6 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
             manifest_aid,
             manifest,
         })
-    }
-}
-
-impl<H: SupportedHash, S: Storage<H>> InputManifestBuilder<H, NoEmbed, S> {
-    /// Complete the transaction without updating the target artifact.
-    pub fn finish(&mut self, target: &Path) -> Result<TransactionIds<H>> {
-        Self::finish_with_optional_embedding(self, target, GetMode::<NoEmbed>::mode())
-    }
-}
-
-impl<H: SupportedHash, S: Storage<H>> InputManifestBuilder<H, Embed, S> {
-    /// Complete the transaction, updating the target artifact.
-    pub fn finish_and_embed(&mut self, target: &Path) -> Result<TransactionIds<H>> {
-        Self::finish_with_optional_embedding(self, target, GetMode::<Embed>::mode())
     }
 }
 
@@ -260,6 +239,7 @@ enum TextType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::embedding_mode::NoEmbed;
     use crate::hashes::Sha256;
     use crate::storage::InMemoryStorage;
     use pathbuf::pathbuf;

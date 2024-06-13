@@ -3,23 +3,11 @@ use crate::sealed::Sealed;
 use crate::InputManifest;
 use std::marker::PhantomData;
 
-/// Helper struct for converting from type-level mode data to value-level.
-pub(crate) struct GetMode<M: EmbeddingMode>(PhantomData<M>);
-
-impl GetMode<Embed> {
-    pub(crate) fn mode() -> Mode {
-        Mode::Embed
-    }
-}
-
-impl GetMode<NoEmbed> {
-    pub(crate) fn mode() -> Mode {
-        Mode::NoEmbed
-    }
-}
-
 /// The embedding mode to use when making new [`InputManifest`]s.
-pub trait EmbeddingMode: Sealed {}
+pub trait EmbeddingMode: Sealed {
+    #[doc(hidden)]
+    fn mode() -> Mode;
+}
 
 /// Indicates that embedding mode should be used.
 pub struct Embed {
@@ -27,7 +15,11 @@ pub struct Embed {
 }
 
 impl Sealed for Embed {}
-impl EmbeddingMode for Embed {}
+impl EmbeddingMode for Embed {
+    fn mode() -> Mode {
+        Mode::Embed
+    }
+}
 
 /// Indicates that non-embedding mode should be used.
 pub struct NoEmbed {
@@ -35,11 +27,16 @@ pub struct NoEmbed {
 }
 
 impl Sealed for NoEmbed {}
-impl EmbeddingMode for NoEmbed {}
+impl EmbeddingMode for NoEmbed {
+    fn mode() -> Mode {
+        Mode::NoEmbed
+    }
+}
 
 /// The mode to run the [`Identifier`] in.
+#[doc(hidden)]
 #[derive(Debug)]
-pub(crate) enum Mode {
+pub enum Mode {
     /// Embed the identifier for a manifest into the artifact.
     Embed,
 
