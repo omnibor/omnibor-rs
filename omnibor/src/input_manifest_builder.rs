@@ -106,7 +106,7 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
         // manifest ArtifactID into the target first.
         let target_aid = match embed_mode {
             Mode::Embed => {
-                let mut file = OpenOptions::new().read(true).open(target)?;
+                let mut file = OpenOptions::new().read(true).write(true).open(target)?;
                 embed_manifest_in_target(target, &mut file, manifest_aid)?;
                 ArtifactId::id_reader(file)?
             }
