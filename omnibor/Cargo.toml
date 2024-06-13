@@ -66,6 +66,7 @@ digest = "0.10.7"
 
 # Helper for testing Serde implementations.
 serde_test = "1.0.176"
+pathbuf = "1.0.0"
 
 [features]
 

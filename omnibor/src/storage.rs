@@ -6,8 +6,6 @@ use crate::ArtifactId;
 use crate::InputManifest;
 use crate::Result;
 use std::fmt::Debug;
-use std::mem::size_of;
-use std::slice::from_raw_parts;
 
 /// Represents the interface for storing and querying manifests.
 pub trait Storage<H: SupportedHash> {
@@ -93,6 +91,12 @@ impl<H: SupportedHash> Clone for ManifestEntry<H> {
 }
 
 impl InMemoryStorage {
+    pub fn new() -> Self {
+        InMemoryStorage {
+            sha256_manifests: Vec::new(),
+        }
+    }
+
     fn match_by_target_aid(
         &self,
         target_aid: ArtifactId<Sha256>,
@@ -125,8 +129,22 @@ impl Storage<Sha256> for InMemoryStorage {
     }
 
     fn write_manifest(&mut self, manifest: &InputManifest<Sha256>) -> Result<ArtifactId<Sha256>> {
-        let content = get_bytes(manifest);
-        let manifest_aid = ArtifactId::<Sha256>::id_bytes(content);
+        // Create an in-memory buffer we can treat like a file.
+        // It's capped at 50 KiB, which _should_ be plenty, and it's thrown away once the
+        // function call is done.
+        //
+        // We do this because the in-memory representation of the `InputManifest` is not guaranteed
+        // by Rust, but the written-out format of it is something _we_ guarantee, so we can rely on
+        // it here.
+        //
+        // We also truncate the slice to only the non-zero bytes to avoid considering the total
+        // capacity of the buffer when producing the hash.
+        let manifest_aid = {
+            let mut bytes = [0; 50_000];
+            manifest.write_to(&mut bytes[..])?;
+            let len = bytes.iter().take_while(|b| **b != 0).count();
+            ArtifactId::<Sha256>::id_bytes(&bytes[..len])
+        };
 
         self.sha256_manifests.push(ManifestEntry {
             aid: manifest_aid,
@@ -148,9 +166,4 @@ impl Storage<Sha256> for InMemoryStorage {
 
         Ok(())
     }
-}
-
-/// Get the byte representation of a value in memory.
-fn get_bytes<T>(input: &T) -> &[u8] {
-    unsafe { from_raw_parts(input as *const _ as *const u8, size_of::<T>()) }
 }

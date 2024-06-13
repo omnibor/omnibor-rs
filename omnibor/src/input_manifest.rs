@@ -14,7 +14,7 @@ use std::fmt::Result as FmtResult;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::Write as _;
+use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -147,21 +147,19 @@ impl<H: SupportedHash> InputManifest<H> {
 
     /// Write the manifest out at the given path.
     #[allow(clippy::write_with_newline)]
-    pub fn write_at(&self, path: &Path) -> Result<()> {
-        let mut f = File::create_new(path)?;
-
+    pub fn write_to<W: Write>(&self, mut writer: W) -> Result<()> {
         // Per the spec, this prefix is present to substantially shorten
         // the metadata info that would otherwise be attached to all IDs in
         // a manifest if they were written in full form. Instead, only the
         // hex-encoded hashes are recorded elsewhere, because all the metadata
         // is identical in a manifest and only recorded once at the beginning.
-        write!(f, "gitoid:{}:{}\n", Blob::NAME, H::HashAlgorithm::NAME)?;
+        write!(writer, "gitoid:{}:{}\n", Blob::NAME, H::HashAlgorithm::NAME)?;
 
         for relation in &self.relations {
             let aid = relation.artifact;
 
             write!(
-                f,
+                writer,
                 "{} {} {}",
                 relation.kind,
                 aid.object_type(),
@@ -169,10 +167,10 @@ impl<H: SupportedHash> InputManifest<H> {
             )?;
 
             if let Some(mid) = relation.manifest {
-                write!(f, " bom {}", mid.as_hex())?;
+                write!(writer, " bom {}", mid.as_hex())?;
             }
 
-            write!(f, "\n")?;
+            write!(writer, "\n")?;
         }
 
         Ok(())
@@ -324,7 +322,7 @@ impl<H: SupportedHash> Relation<H> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum RelationKind {
     /// Is a build input for the target artifact.
-    InputFor,
+    Input,
 
     /// Is a tool used to build the target artifact.
     BuiltBy,
@@ -334,7 +332,7 @@ impl Display for RelationKind {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
-            RelationKind::InputFor => write!(f, "input"),
+            RelationKind::Input => write!(f, "input"),
             RelationKind::BuiltBy => write!(f, "built-by"),
         }
     }
@@ -345,7 +343,7 @@ impl FromStr for RelationKind {
 
     fn from_str(s: &str) -> Result<Self> {
         match s {
-            "input" => Ok(RelationKind::InputFor),
+            "input" => Ok(RelationKind::Input),
             "built-by" => Ok(RelationKind::BuiltBy),
             _ => Err(Error::InvalidRelationKind(s.to_owned())),
         }

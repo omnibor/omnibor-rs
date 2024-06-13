@@ -73,8 +73,8 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
         }
     }
 
-    /// Add an artifact to the transaction.
-    pub fn add_artifact(
+    /// Add a relation to an artifact to the transaction.
+    pub fn add_relation(
         &mut self,
         kind: RelationKind,
         artifact: ArtifactId<H>,
@@ -154,6 +154,16 @@ pub struct TransactionIds<H: SupportedHash> {
 
     /// The manifest.
     manifest: InputManifest<H>,
+}
+
+impl<H: SupportedHash> Debug for TransactionIds<H> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        f.debug_struct("TransactionIds")
+            .field("target_aid", &self.target_aid)
+            .field("manifest_aid", &self.manifest_aid)
+            .field("manifest", &self.manifest)
+            .finish()
+    }
 }
 
 impl<H: SupportedHash> TransactionIds<H> {
@@ -245,4 +255,60 @@ enum BinaryType {
 enum TextType {
     PrefixComments { prefix: String },
     WrappedComments { prefix: String, suffix: String },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::hashes::Sha256;
+    use crate::storage::InMemoryStorage;
+    use pathbuf::pathbuf;
+    use std::str::FromStr;
+
+    type Builder<S> = InputManifestBuilder<Sha256, NoEmbed, S>;
+
+    #[test]
+    fn in_memory_builder_works() -> Result<()> {
+        let target = pathbuf![
+            env!("CARGO_MANIFEST_DIR"),
+            "test",
+            "data",
+            "hello_world.txt"
+        ];
+
+        let first_input_aid = ArtifactId::id_str("test_1");
+        let second_input_aid = ArtifactId::id_str("test_2");
+
+        let expected_target_aid = ArtifactId::from_str(
+            "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
+        )?;
+
+        let expected_manifest_aid = ArtifactId::from_str(
+            "gitoid:blob:sha256:750eab1a134c7a5b04bc1e72695c1bc88e6bcc44db957738e00edcd36f401121",
+        )?;
+
+        let ids = Builder::with_storage(InMemoryStorage::new())
+            .add_relation(RelationKind::Input, first_input_aid)?
+            .add_relation(RelationKind::Input, second_input_aid)?
+            .finish(&target)?;
+
+        // Check the ArtifactIDs of the target and the manifest.
+        assert_eq!(ids.target_aid, expected_target_aid);
+        assert_eq!(ids.manifest_aid, expected_manifest_aid);
+
+        // Check the first relation in the manifest.
+        let first_relation = &ids.manifest.relations()[0];
+        assert_eq!(first_relation.artifact(), first_input_aid);
+        assert_eq!(first_relation.kind(), RelationKind::Input);
+
+        // Check the second relation in the manifest.
+        let second_relation = &ids.manifest.relations()[1];
+        assert_eq!(second_relation.artifact(), second_input_aid);
+        assert_eq!(second_relation.kind(), RelationKind::Input);
+
+        // Make sure we update the target in the manifest.
+        assert_eq!(ids.manifest.target(), Some(ids.target_aid));
+
+        Ok(())
+    }
 }
