@@ -15,11 +15,44 @@ pub enum Error {
     #[error("no storage root found; provide one or set the 'OMNIBOR_DIR' environment variable")]
     NoStorageRoot,
 
-    #[error("produced an invalid path to a manifest in the object store")]
-    InvalidObjectStorePath,
+    #[error("unable to access file system storage root '{0}'; please check permissions")]
+    CantAccessRoot(String, #[source] IoError),
+
+    #[error("object store '{0}' is not a directory")]
+    ObjectStoreNotDir(String),
+
+    #[error("'{0}' is not a valid object store path")]
+    InvalidObjectStorePath(String),
+
+    #[error("object store '{0}' is not empty")]
+    ObjectStoreDirNotEmpty(String),
+
+    #[error("can't create object store '{0}'")]
+    CantCreateObjectStoreDir(String, #[source] IoError),
+
+    #[error("can't write manifest directory '{0}'")]
+    CantWriteManifestDir(String, #[source] IoError),
+
+    #[error("can't open target index file '{0}'")]
+    CantOpenTargetIndex(String, #[source] IoError),
+
+    #[error("can't open target index temp file for upsert '{0}'")]
+    CantOpenTargetIndexTemp(String, #[source] IoError),
+
+    #[error("can't delete target index temp file for upsert '{0}'")]
+    CantDeleteTargetIndexTemp(String, #[source] IoError),
+
+    #[error("can't write manifest file '{0}'")]
+    CantWriteManifest(String, #[source] IoError),
 
     #[error("the target index file has been corrupted and can't be parsed")]
     CorruptedTargetIndex,
+
+    #[error("the target index file has been corrupted and can't be parsed")]
+    CorruptedTargetIndexIoReason(#[source] IoError),
+
+    #[error("the target index file has been corrupted and can't be parsed")]
+    CorruptedTargetIndexOmniBorReason(#[source] Box<Error>),
 
     #[error("missing manifest_aid or target_aid from target index upsert operation")]
     InvalidTargetIndexUpsert,

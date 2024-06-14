@@ -296,7 +296,8 @@ mod tests {
     #[test]
     fn file_system_builder_works() {
         let storage_root = pathbuf![env!("CARGO_MANIFEST_DIR"), "test", "fs_storage"];
-        let storage = FileSystemStorage::new(&storage_root).unwrap();
-        basic_builder_test(storage);
+        let mut storage = FileSystemStorage::new(&storage_root).unwrap();
+        basic_builder_test(&mut storage);
+        storage.cleanup().unwrap();
     }
 }

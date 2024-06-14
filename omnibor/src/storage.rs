@@ -56,6 +56,42 @@ pub trait Storage<H: SupportedHash> {
     fn get_manifests(&self) -> Result<Vec<InputManifest<H>>>;
 }
 
+impl<H: SupportedHash, S: Storage<H>> Storage<H> for &mut S {
+    fn has_manifest_for_artifact(&self, target_aid: ArtifactId<H>) -> bool {
+        (**self).has_manifest_for_artifact(target_aid)
+    }
+
+    fn get_manifest_for_artifact(
+        &self,
+        target_aid: ArtifactId<H>,
+    ) -> Result<Option<InputManifest<H>>> {
+        (**self).get_manifest_for_artifact(target_aid)
+    }
+
+    fn get_manifest_id_for_artifact(
+        &self,
+        target_aid: ArtifactId<H>,
+    ) -> Result<Option<ArtifactId<H>>> {
+        (**self).get_manifest_id_for_artifact(target_aid)
+    }
+
+    fn write_manifest(&mut self, manifest: &InputManifest<H>) -> Result<ArtifactId<H>> {
+        (**self).write_manifest(manifest)
+    }
+
+    fn update_target_for_manifest(
+        &mut self,
+        manifest_aid: ArtifactId<H>,
+        target_aid: ArtifactId<H>,
+    ) -> Result<()> {
+        (**self).update_target_for_manifest(manifest_aid, target_aid)
+    }
+
+    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>> {
+        (**self).get_manifests()
+    }
+}
+
 /// File system storage for [`InputManifest`]s.
 #[derive(Debug)]
 pub struct FileSystemStorage {
@@ -68,17 +104,19 @@ impl FileSystemStorage {
         let root = root.as_ref().to_owned();
 
         if root.exists() {
-            let meta = fs::metadata(&root)?;
+            let meta = fs::metadata(&root)
+                .map_err(|e| Error::CantAccessRoot(root.display().to_string(), e))?;
 
             if meta.is_dir().not() {
-                return Err(Error::InvalidObjectStorePath);
+                return Err(Error::ObjectStoreNotDir(root.display().to_string()));
             }
 
             if root.read_dir()?.next().is_some() {
-                return Err(Error::InvalidObjectStorePath);
+                return Err(Error::ObjectStoreDirNotEmpty(root.display().to_string()));
             }
         } else {
-            create_dir_all(&root)?;
+            create_dir_all(&root)
+                .map_err(|e| Error::CantCreateObjectStoreDir(root.display().to_string(), e))?;
         }
 
         Ok(FileSystemStorage { root })
@@ -92,6 +130,16 @@ impl FileSystemStorage {
             .map(|root| FileSystemStorage {
                 root: PathBuf::from(root),
             })
+    }
+
+    /// Fully delete the contents of the root dir.
+    ///
+    /// This is just used for tests to ensure idempotency.
+    #[cfg(test)]
+    pub fn cleanup(self) -> Result<()> {
+        fs::remove_dir_all(&self.root)?;
+        fs::create_dir_all(&self.root)?;
+        Ok(())
     }
 
     /// Get the path to the manifest store.
@@ -170,10 +218,15 @@ impl<H: SupportedHash> Storage<H> for FileSystemStorage {
     fn write_manifest(&mut self, manifest: &InputManifest<H>) -> Result<ArtifactId<H>> {
         let manifest_aid = ArtifactId::<H>::id_manifest(manifest)?;
         let path = self.manifest_path(manifest_aid);
-        let parent_dirs = path.parent().ok_or_else(|| Error::InvalidObjectStorePath)?;
+        let parent_dirs = path
+            .parent()
+            .ok_or_else(|| Error::InvalidObjectStorePath(path.display().to_string()))?;
 
-        create_dir_all(parent_dirs)?;
-        write(path, manifest.as_bytes()?)?;
+        create_dir_all(parent_dirs)
+            .map_err(|e| Error::CantWriteManifestDir(parent_dirs.display().to_string(), e))?;
+
+        write(&path, manifest.as_bytes()?)
+            .map_err(|e| Error::CantWriteManifest(path.display().to_string(), e))?;
 
         Ok(manifest_aid)
     }
@@ -256,11 +309,13 @@ impl TargetIndex {
 
     /// Find an entry for a specific manifest [`ArtifactId`].
     fn find<H: SupportedHash>(&self, manifest_aid: ArtifactId<H>) -> Result<Option<ArtifactId<H>>> {
-        let file = File::open(&self.path)?;
+        let file = File::open(&self.path)
+            .map_err(|e| Error::CantOpenTargetIndex(self.path.display().to_string(), e))?;
+
         let reader = BufReader::new(&file);
 
         for line in reader.lines() {
-            let line = line?;
+            let line = line.map_err(Error::CorruptedTargetIndexIoReason)?;
 
             let (line_manifest_aid, line_target_aid) = match line.split_once(' ') {
                 Some(pair) => pair,
@@ -328,20 +383,23 @@ impl<H: SupportedHash> TargetIndexUpsert<H> {
         let manifest_aid = self.manifest_aid.ok_or(Error::InvalidTargetIndexUpsert)?;
         let target_aid = self.target_aid.ok_or(Error::InvalidTargetIndexUpsert)?;
 
+        let file = File::open(self.target_file())
+            .map_err(|e| Error::CantOpenTargetIndex(self.target_file().display().to_string(), e))?;
+
         // Read the current target index from disk.
         let mut target_index = HashMap::new();
-        let file = File::open(self.target_file())?;
+
         for line in BufReader::new(file).lines() {
-            let line = line?;
+            let line = line.map_err(Error::CorruptedTargetIndexIoReason)?;
 
             let (line_manifest_aid, line_target_aid) =
                 line.split_once(' ').ok_or(Error::CorruptedTargetIndex)?;
 
-            let line_manifest_aid =
-                ArtifactId::from_str(line_manifest_aid).map_err(|_| Error::CorruptedTargetIndex)?;
+            let line_manifest_aid = ArtifactId::from_str(line_manifest_aid)
+                .map_err(|e| Error::CorruptedTargetIndexOmniBorReason(Box::new(e)))?;
 
-            let line_target_aid =
-                ArtifactId::from_str(line_target_aid).map_err(|_| Error::CorruptedTargetIndex)?;
+            let line_target_aid = ArtifactId::from_str(line_target_aid)
+                .map_err(|e| Error::CorruptedTargetIndexOmniBorReason(Box::new(e)))?;
 
             target_index.insert(line_manifest_aid, line_target_aid);
         }
@@ -353,23 +411,27 @@ impl<H: SupportedHash> TargetIndexUpsert<H> {
             .or_insert(target_aid);
 
         // Write out updated index to a tempfile.
-        let mut tempfile = File::create(self.tempfile())?;
+        let mut tempfile = File::create(self.tempfile()).map_err(|e| {
+            Error::CantOpenTargetIndexTemp(self.tempfile().display().to_string(), e)
+        })?;
+
         let mut writer = BufWriter::new(&mut tempfile);
         for (manifest_aid, target_aid) in target_index {
             if let Err(e) = writeln!(writer, "{} {}", manifest_aid, target_aid) {
-                fs::remove_file(self.tempfile())?;
+                fs::remove_file(self.tempfile()).map_err(|e| {
+                    Error::CantDeleteTargetIndexTemp(self.tempfile().display().to_string(), e)
+                })?;
                 return Err(e.into());
             }
         }
 
         // Replace the prior index with the new one.
         if let Err(e) = fs::rename(self.tempfile(), self.target_file()) {
-            fs::remove_dir(self.tempfile())?;
+            fs::remove_dir(self.tempfile()).map_err(|e| {
+                Error::CantDeleteTargetIndexTemp(self.tempfile().display().to_string(), e)
+            })?;
             return Err(e.into());
         }
-
-        // Delete the tempfile.
-        fs::remove_file(self.tempfile())?;
 
         Ok(())
     }
@@ -497,7 +559,8 @@ mod tests {
 
     #[test]
     fn correct_aid_storage_path() {
-        let storage = FileSystemStorage::new(".").unwrap();
+        let root = pathbuf![env!("CARGO_MANIFEST_DIR"), "test", "fs_storage"];
+        let storage = FileSystemStorage::new(&root).unwrap();
 
         let aid = ArtifactId::<Sha256>::from_str(
             "gitoid:blob:sha256:9d09789f20162dca6d80d2d884f46af22c824f6409d4f447332d079a2d1e364f",
@@ -505,9 +568,9 @@ mod tests {
         .unwrap();
 
         let path = storage.manifest_path(aid);
+        let path = path.strip_prefix(&root).unwrap();
         let expected = pathbuf![
-            ".",
-            "objects",
+            "manifests",
             "gitoid_blob_sha256",
             "9d",
             "09789f20162dca6d80d2d884f46af22c824f6409d4f447332d079a2d1e364f"
