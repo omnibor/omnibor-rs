@@ -116,11 +116,6 @@ impl<H: SupportedHash> InputManifest<H> {
             });
         }
 
-        let target = path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .and_then(|s| ArtifactId::<H>::try_from_safe_name(s).ok());
-
         let mut relations = Vec::new();
         for line in lines {
             let line = line.map_err(Error::FailedManifestRead)?;
@@ -128,7 +123,10 @@ impl<H: SupportedHash> InputManifest<H> {
             relations.push(relation);
         }
 
-        Ok(InputManifest { target, relations })
+        Ok(InputManifest {
+            target: None,
+            relations,
+        })
     }
 
     /// Write the manifest out at the given path.
@@ -146,13 +144,7 @@ impl<H: SupportedHash> InputManifest<H> {
         for relation in &self.relations {
             let aid = relation.artifact;
 
-            write!(
-                bytes,
-                "{} {} {}",
-                relation.kind,
-                aid.object_type(),
-                aid.as_hex()
-            )?;
+            write!(bytes, "{} {}", relation.kind, aid.as_hex())?;
 
             if let Some(mid) = relation.manifest {
                 write!(bytes, " bom {}", mid.as_hex())?;
@@ -192,18 +184,14 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
     }
 
     // Panic Safety: we've already checked the length.
-    let (kind, object_type, aid_hex, bom_indicator, manifest_aid_hex) =
-        (parts[0], parts[1], parts[2], parts.get(3), parts.get(4));
-
-    if object_type != "blob" {
-        return Err(Error::MissingObjectTypeInRelation);
-    }
+    let (kind, aid_hex, bom_indicator, manifest_aid_hex) =
+        (parts[0], parts[1], parts.get(2), parts.get(3));
 
     let kind = RelationKind::from_str(kind)?;
 
     let artifact = ArtifactId::<H>::from_str(&format!(
         "gitoid:{}:{}:{}",
-        object_type,
+        Blob::NAME,
         H::HashAlgorithm::NAME,
         aid_hex
     ))?;
@@ -217,7 +205,7 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
 
             let gitoid_url = &format!(
                 "gitoid:{}:{}:{}",
-                object_type,
+                Blob::NAME,
                 H::HashAlgorithm::NAME,
                 manifest_aid_hex
             );

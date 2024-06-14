@@ -67,10 +67,18 @@ impl FileSystemStorage {
     pub fn new(root: impl AsRef<Path>) -> Result<FileSystemStorage> {
         let root = root.as_ref().to_owned();
 
-        // Make sure it's a directory and we have permissions for it.
-        let meta = fs::metadata(&root)?;
-        if meta.is_dir().not() {
-            return Err(Error::InvalidObjectStorePath);
+        if root.exists() {
+            let meta = fs::metadata(&root)?;
+
+            if meta.is_dir().not() {
+                return Err(Error::InvalidObjectStorePath);
+            }
+
+            if root.read_dir()?.next().is_some() {
+                return Err(Error::InvalidObjectStorePath);
+            }
+        } else {
+            create_dir_all(&root)?;
         }
 
         Ok(FileSystemStorage { root })
@@ -97,7 +105,7 @@ impl FileSystemStorage {
     }
 
     /// Open the target index file
-    fn target_index(&self) -> TargetIndex {
+    fn target_index(&self) -> Result<TargetIndex> {
         TargetIndex::new(self.target_file_path())
     }
 
@@ -118,7 +126,7 @@ impl FileSystemStorage {
             .filter(|entry| entry.file_name().to_str().is_some())
             .filter_map(|entry| {
                 let manifest_aid = artifact_id_from_dir_entry(&entry)?;
-                let target_aid = self.target_index().find(manifest_aid).ok().flatten();
+                let target_aid = self.target_index().ok()?.find(manifest_aid).ok().flatten();
                 let manifest_path = entry.path().to_owned();
 
                 Some(ManifestsEntry {
@@ -175,7 +183,7 @@ impl<H: SupportedHash> Storage<H> for FileSystemStorage {
         manifest_aid: ArtifactId<H>,
         target_aid: ArtifactId<H>,
     ) -> Result<()> {
-        self.target_index()
+        self.target_index()?
             .upsert()
             .manifest_aid(manifest_aid)
             .target_aid(target_aid)
@@ -234,10 +242,16 @@ struct TargetIndex {
 
 impl TargetIndex {
     /// Create a new [`TargetIndex`]
-    fn new(path: impl AsRef<Path>) -> Self {
-        TargetIndex {
-            path: path.as_ref().to_owned(),
+    fn new(path: impl AsRef<Path>) -> Result<Self> {
+        let path = path.as_ref();
+
+        if path.exists().not() {
+            File::create_new(path)?;
         }
+
+        Ok(TargetIndex {
+            path: path.to_owned(),
+        })
     }
 
     /// Find an entry for a specific manifest [`ArtifactId`].
@@ -342,7 +356,7 @@ impl<H: SupportedHash> TargetIndexUpsert<H> {
         let mut tempfile = File::create(self.tempfile())?;
         let mut writer = BufWriter::new(&mut tempfile);
         for (manifest_aid, target_aid) in target_index {
-            if let Err(e) = write!(writer, "{} {}", manifest_aid, target_aid) {
+            if let Err(e) = writeln!(writer, "{} {}", manifest_aid, target_aid) {
                 fs::remove_file(self.tempfile())?;
                 return Err(e.into());
             }

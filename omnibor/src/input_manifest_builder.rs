@@ -235,14 +235,12 @@ mod tests {
     use super::*;
     use crate::embedding_mode::NoEmbed;
     use crate::hashes::Sha256;
-    use crate::storage::InMemoryStorage;
+    use crate::storage::{FileSystemStorage, InMemoryStorage};
     use pathbuf::pathbuf;
     use std::str::FromStr;
 
-    type Builder<S> = InputManifestBuilder<Sha256, NoEmbed, S>;
-
-    #[test]
-    fn in_memory_builder_works() -> Result<()> {
+    /// A basic builder test that creates a single manifest and validates it.
+    fn basic_builder_test(storage: impl Storage<Sha256>) {
         let target = pathbuf![
             env!("CARGO_MANIFEST_DIR"),
             "test",
@@ -255,16 +253,21 @@ mod tests {
 
         let expected_target_aid = ArtifactId::from_str(
             "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
-        )?;
+        )
+        .unwrap();
 
         let expected_manifest_aid = ArtifactId::from_str(
-            "gitoid:blob:sha256:9d09789f20162dca6d80d2d884f46af22c824f6409d4f447332d079a2d1e364f",
-        )?;
+            "gitoid:blob:sha256:2915dcbb3be71eb375246f716c4a851f0229e356747fe0e853158169c1f58ac7",
+        )
+        .unwrap();
 
-        let ids = Builder::with_storage(InMemoryStorage::new())
-            .add_relation(RelationKind::Input, first_input_aid)?
-            .add_relation(RelationKind::Input, second_input_aid)?
-            .finish(&target)?;
+        let ids = InputManifestBuilder::<Sha256, NoEmbed, _>::with_storage(storage)
+            .add_relation(RelationKind::Input, first_input_aid)
+            .unwrap()
+            .add_relation(RelationKind::Input, second_input_aid)
+            .unwrap()
+            .finish(&target)
+            .unwrap();
 
         // Check the ArtifactIDs of the target and the manifest.
         assert_eq!(ids.target_aid, expected_target_aid);
@@ -282,7 +285,18 @@ mod tests {
 
         // Make sure we update the target in the manifest.
         assert_eq!(ids.manifest.target(), Some(ids.target_aid));
+    }
 
-        Ok(())
+    #[test]
+    fn in_memory_builder_works() {
+        let storage = InMemoryStorage::new();
+        basic_builder_test(storage);
+    }
+
+    #[test]
+    fn file_system_builder_works() {
+        let storage_root = pathbuf![env!("CARGO_MANIFEST_DIR"), "test", "fs_storage"];
+        let storage = FileSystemStorage::new(&storage_root).unwrap();
+        basic_builder_test(storage);
     }
 }
