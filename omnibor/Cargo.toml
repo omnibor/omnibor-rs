@@ -44,6 +44,12 @@ serde = { version = "1.0.197", optional = true }
 # Make it easier to define our error type.
 thiserror = "1.0.60"
 
+# Make it easier to build paths.
+pathbuf = "1.0.0"
+
+# Walk through directories. Used for file system storage.
+walkdir = "2.5.0"
+
 [dependencies.gitoid]
 version = "0.7.0"
 default-features = false

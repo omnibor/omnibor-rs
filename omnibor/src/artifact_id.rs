@@ -2,6 +2,7 @@
 use crate::hashes::Sha256;
 use crate::hashes::SupportedHash;
 use crate::Error;
+use crate::InputManifest;
 use crate::Result;
 use gitoid::Blob;
 use gitoid::GitOid;
@@ -273,6 +274,11 @@ impl<H: SupportedHash> ArtifactId<H> {
     ) -> Result<ArtifactId<H>> {
         let gitoid = GitOid::id_async_reader_with_length(reader, expected_length).await?;
         Ok(ArtifactId::from_gitoid(gitoid))
+    }
+
+    /// Construct an [`ArtifactId`] for an [`InputManifest`].
+    pub fn id_manifest(manifest: &InputManifest<H>) -> Result<Self> {
+        Ok(ArtifactId::id_bytes(manifest.as_bytes()?))
     }
 
     /// Construct an [`ArtifactId`] from a `gitoid`-scheme [`Url`].

@@ -71,9 +71,8 @@ impl<H: SupportedHash> InputManifest<H> {
     }
 
     /// Set a new target.
-    #[allow(unused)]
-    pub(crate) fn set_target(&mut self, target: ArtifactId<H>) -> &mut Self {
-        self.target = Some(target);
+    pub(crate) fn set_target(&mut self, target: Option<ArtifactId<H>>) -> &mut Self {
+        self.target = target;
         self
     }
 
@@ -285,7 +284,7 @@ impl<H: SupportedHash> Eq for Relation<H> {}
 
 impl<H: SupportedHash> PartialOrd for Relation<H> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 

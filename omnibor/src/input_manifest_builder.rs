@@ -1,7 +1,6 @@
 use crate::embedding::EmbeddingMode;
 use crate::embedding_mode::Mode;
 use crate::hashes::SupportedHash;
-use crate::storage::FileSystemStorage;
 use crate::storage::Storage;
 use crate::ArtifactId;
 use crate::Error;
@@ -31,25 +30,12 @@ pub struct InputManifestBuilder<H: SupportedHash, M: EmbeddingMode, S: Storage<H
     storage: S,
 }
 
-impl<H: SupportedHash, M: EmbeddingMode> Default for InputManifestBuilder<H, M, FileSystemStorage> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> Debug for InputManifestBuilder<H, M, S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("InputManifestBuilder")
             .field("mode", &M::mode())
             .field("relations", &self.relations)
             .finish_non_exhaustive()
-    }
-}
-
-impl<H: SupportedHash, M: EmbeddingMode> InputManifestBuilder<H, M, FileSystemStorage> {
-    /// Construct a new [`InputManifestBuilder`] with filesystem storage.
-    pub fn new() -> Self {
-        Self::with_storage(FileSystemStorage)
     }
 }
 
@@ -71,7 +57,7 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
     ) -> Result<&mut Self> {
         let artifact = artifact.into_artifact_id()?;
 
-        let manifest = self.storage.get_manifest_id_for_artifact(artifact);
+        let manifest = self.storage.get_manifest_id_for_artifact(artifact)?;
 
         self.relations
             .insert(Relation::new(kind, artifact, manifest));
@@ -119,7 +105,7 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
             .update_target_for_manifest(manifest_aid, target_aid)?;
 
         // Update the manifest in memory with the target ArtifactID.
-        manifest.set_target(target_aid);
+        manifest.set_target(Some(target_aid));
 
         // Clear out the set of relations so you can reuse the builder.
         self.relations.clear();

@@ -12,6 +12,18 @@ pub type Result<T> = StdResult<T, Error>;
 /// Errors arising from [`ArtifactId`] use or [`InputManifest`] interaction.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("no storage root found; provide one or set the 'OMNIBOR_DIR' environment variable")]
+    NoStorageRoot,
+
+    #[error("produced an invalid path to a manifest in the object store")]
+    InvalidObjectStorePath,
+
+    #[error("the target index file has been corrupted and can't be parsed")]
+    CorruptedTargetIndex,
+
+    #[error("missing manifest_aid or target_aid from target index upsert operation")]
+    InvalidTargetIndexUpsert,
+
     #[error("invalid relation kind in input manifest: '{0}'")]
     InvalidRelationKind(String),
 
