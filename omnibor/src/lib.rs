@@ -84,8 +84,7 @@ pub mod hashes {
 pub use crate::artifact_id::ArtifactId;
 pub use crate::error::Error;
 pub use crate::input_manifest::InputManifest;
+pub use crate::input_manifest::Relation;
 pub use crate::input_manifest::RelationKind;
 pub use crate::input_manifest_builder::InputManifestBuilder;
 pub use crate::into_artifact_id::IntoArtifactId;
-
-pub(crate) use crate::input_manifest::Relation;
