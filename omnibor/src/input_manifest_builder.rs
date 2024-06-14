@@ -9,6 +9,7 @@ use crate::InputManifest;
 use crate::Relation;
 use crate::RelationKind;
 use crate::Result;
+use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
@@ -20,7 +21,7 @@ use std::path::Path;
 /// An [`InputManifest`] builder.
 pub struct InputManifestBuilder<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> {
     /// The relations to be written to a new manifest by this transaction.
-    relations: Vec<Relation<H>>,
+    relations: BTreeSet<Relation<H>>,
 
     /// Indicates whether manifests should be embedded in the artifact or not.
     mode: PhantomData<M>,
@@ -55,7 +56,7 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
     /// Construct a new [`InputManifestBuilder`] with a specific type of storage.
     pub fn with_storage(storage: S) -> Self {
         Self {
-            relations: Vec::new(),
+            relations: BTreeSet::new(),
             mode: PhantomData,
             storage,
         }
@@ -69,7 +70,8 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
     ) -> Result<&mut Self> {
         let manifest = self.storage.get_manifest_id_for_artifact(artifact);
 
-        self.relations.push(Relation::new(kind, artifact, manifest));
+        self.relations
+            .insert(Relation::new(kind, artifact, manifest));
 
         Ok(self)
     }
@@ -90,7 +92,7 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
         embed_mode: Mode,
     ) -> Result<TransactionIds<H>> {
         // Construct a new input manifest.
-        let mut manifest = InputManifest::with_relations(&self.relations);
+        let mut manifest = InputManifest::with_relations(self.relations.iter().cloned());
 
         // Write the manifest to storage.
         let manifest_aid = self.storage.write_manifest(&manifest)?;
@@ -115,6 +117,9 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
 
         // Update the manifest in memory with the target ArtifactID.
         manifest.set_target(target_aid);
+
+        // Clear out the set of relations so you can reuse the builder.
+        self.relations.clear();
 
         Ok(TransactionIds {
             target_aid,
@@ -264,7 +269,7 @@ mod tests {
         )?;
 
         let expected_manifest_aid = ArtifactId::from_str(
-            "gitoid:blob:sha256:750eab1a134c7a5b04bc1e72695c1bc88e6bcc44db957738e00edcd36f401121",
+            "gitoid:blob:sha256:9d09789f20162dca6d80d2d884f46af22c824f6409d4f447332d079a2d1e364f",
         )?;
 
         let ids = Builder::with_storage(InMemoryStorage::new())
@@ -278,12 +283,12 @@ mod tests {
 
         // Check the first relation in the manifest.
         let first_relation = &ids.manifest.relations()[0];
-        assert_eq!(first_relation.artifact(), first_input_aid);
+        assert_eq!(first_relation.artifact(), second_input_aid);
         assert_eq!(first_relation.kind(), RelationKind::Input);
 
         // Check the second relation in the manifest.
         let second_relation = &ids.manifest.relations()[1];
-        assert_eq!(second_relation.artifact(), second_input_aid);
+        assert_eq!(second_relation.artifact(), first_input_aid);
         assert_eq!(second_relation.kind(), RelationKind::Input);
 
         // Make sure we update the target in the manifest.

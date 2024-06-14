@@ -7,6 +7,7 @@ use crate::Result;
 use gitoid::Blob;
 use gitoid::HashAlgorithm;
 use gitoid::ObjectType;
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -43,10 +44,10 @@ pub struct InputManifest<H: SupportedHash> {
 }
 
 impl<H: SupportedHash> InputManifest<H> {
-    pub(crate) fn with_relations(relations: &[Relation<H>]) -> Self {
+    pub(crate) fn with_relations(relations: impl Iterator<Item = Relation<H>>) -> Self {
         InputManifest {
             target: None,
-            relations: relations.to_vec(),
+            relations: relations.collect(),
         }
     }
 
@@ -234,7 +235,7 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
 }
 
 /// A single input artifact represented in a [`InputManifest`].
-#[derive(Copy, PartialEq, Eq)]
+#[derive(Copy)]
 pub struct Relation<H: SupportedHash> {
     /// The kind of relation being represented.
     kind: RelationKind,
@@ -272,6 +273,30 @@ impl<H: SupportedHash> Clone for Relation<H> {
     }
 }
 
+impl<H: SupportedHash> PartialEq for Relation<H> {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind.eq(&other.kind)
+            && self.artifact.eq(&other.artifact)
+            && self.manifest.eq(&other.manifest)
+    }
+}
+
+impl<H: SupportedHash> Eq for Relation<H> {}
+
+impl<H: SupportedHash> PartialOrd for Relation<H> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+impl<H: SupportedHash> Ord for Relation<H> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.kind
+            .cmp(&other.kind)
+            .then_with(|| self.artifact.cmp(&other.artifact))
+    }
+}
+
 impl<H: SupportedHash> Relation<H> {
     pub(crate) fn new(
         kind: RelationKind,
@@ -305,7 +330,7 @@ impl<H: SupportedHash> Relation<H> {
 }
 
 /// Describes the relationship between an [`InputManifest`]'s target artifact and other artifacts.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RelationKind {
     /// Is a build input for the target artifact.
     Input,
