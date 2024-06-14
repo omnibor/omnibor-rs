@@ -6,6 +6,7 @@ use crate::storage::Storage;
 use crate::ArtifactId;
 use crate::Error;
 use crate::InputManifest;
+use crate::IntoArtifactId;
 use crate::Relation;
 use crate::RelationKind;
 use crate::Result;
@@ -66,8 +67,10 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
     pub fn add_relation(
         &mut self,
         kind: RelationKind,
-        artifact: ArtifactId<H>,
+        artifact: impl IntoArtifactId<H>,
     ) -> Result<&mut Self> {
+        let artifact = artifact.into_artifact_id()?;
+
         let manifest = self.storage.get_manifest_id_for_artifact(artifact);
 
         self.relations
