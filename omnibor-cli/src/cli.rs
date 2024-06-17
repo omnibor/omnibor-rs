@@ -109,7 +109,7 @@ pub enum Command {
     /// Actions related to Artifact Identifiers.
     Artifact(ArtifactArgs),
 
-    /// Actions related to Artifact Input Manifests.
+    /// Actions related to Input Manifests.
     Manifest(ManifestArgs),
 }
 
