@@ -21,9 +21,6 @@ use tokio::task::JoinError;
 use tracing::debug;
 use url::Url;
 
-/// The number of messages the print buffer can hold before blocking.
-const DEFAULT_BUFFER_SIZE: usize = 100;
-
 /// A handle to assist in interacting with the printer.
 pub struct Printer {
     /// The transmitter to send message to the task.
@@ -35,8 +32,8 @@ pub struct Printer {
 
 impl Printer {
     /// Launch the print queue task, give back sender and future for it.
-    pub fn launch(buffer_size: Option<usize>) -> Printer {
-        let (tx, mut rx) = mpsc::channel::<PrinterCmd>(buffer_size.unwrap_or(DEFAULT_BUFFER_SIZE));
+    pub fn launch(buffer_size: usize) -> Printer {
+        let (tx, mut rx) = mpsc::channel::<PrinterCmd>(buffer_size);
 
         let printer = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {

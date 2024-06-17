@@ -1,41 +1,114 @@
 //! Defines the Command Line Interface.
 
-use anyhow::anyhow;
-use anyhow::Error;
-use anyhow::Result;
-use clap::Args;
-use clap::Parser;
-use clap::Subcommand;
-use smart_default::SmartDefault;
+use omnibor::hashes::Sha256;
+use omnibor::ArtifactId;
+use refurb::Update;
 use std::default::Default;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::fmt::Result as FmtResult;
 use std::path::PathBuf;
 use std::str::FromStr;
-use url::Url;
 
-#[derive(Debug, Parser)]
-#[command(name = "omnibor", version)]
-pub struct Cli {
+#[derive(Debug, Default, clap::Parser, Update)]
+#[command(
+    name = "omnibor",
+    about,
+    version,
+    propagate_version = true,
+    arg_required_else_help = true,
+    subcommand_required = true
+)]
+pub struct Config {
+    /// How many print messages to buffer at once
+    #[arg(
+        short = 'b',
+        long = "buffer",
+        default_value = "100",
+        global = true,
+        help_heading = "Performance Tuning Flags",
+        long_help = "How many print messages to buffer at once. Can also be set with the `OMNIBOR_BUFFER` environment variable"
+    )]
+    buffer: Option<usize>,
+
+    /// Output format
+    #[arg(
+        short = 'f',
+        long = "format",
+        global = true,
+        help_heading = "Output Flags",
+        long_help = "Output format. Can also be set with the `OMNIBOR_FORMAT` environment variable"
+    )]
+    format: Option<Format>,
+
+    /// Hash algorithm to use when parsing Artifact IDs
+    #[arg(
+        short = 'H',
+        long = "hash",
+        global = true,
+        help_heading = "Input Flags",
+        long_help = "Hash algorithm to use when parsing Artifact IDs. Can also be set with the `OMNIBOR_HASH` environment variable"
+    )]
+    hash: Option<SelectedHash>,
+
+    /// Directory to store manifests.
+    #[arg(
+        short = 'd',
+        long = "dir",
+        global = true,
+        help_heading = "Storage Flags",
+        long_help = "Directory to store manifests. Can also be set with the `OMNIBOR_DIR` environment variable"
+    )]
+    dir: Option<PathBuf>,
+
     #[command(subcommand)]
-    pub command: Command,
-
-    /// How many print messages to buffer at one time, tunes printing perf
-    #[arg(short = 'b', long = "buffer")]
-    pub buffer: Option<usize>,
+    command: Option<Command>,
 }
 
-impl Cli {
-    pub fn format(&self) -> Format {
-        match &self.command {
-            Command::Id(args) => args.format,
-            Command::Find(args) => args.format,
+impl Config {
+    /// Load configuration from the environment and CLI args.
+    pub fn load() -> Config {
+        let mut config = Config::default();
+        config.update(&Config::from_env());
+        config.update(&Config::from_args());
+        config
+    }
+
+    /// Load configuration from the environment.
+    fn from_env() -> Config {
+        Config {
+            buffer: env_var_by_key("buffer"),
+            format: env_var_by_key("format"),
+            hash: env_var_by_key("hash"),
+            dir: env_var_by_key("dir"),
+            command: None,
         }
+    }
+
+    /// Load configuration from CLI args.
+    fn from_args() -> Config {
+        <Config as clap::Parser>::parse()
+    }
+
+    /// Get the configured buffer size.
+    pub fn buffer(&self) -> usize {
+        self.buffer.unwrap()
+    }
+
+    /// Get the selected format.
+    pub fn format(&self) -> Format {
+        self.format.unwrap_or_default()
+    }
+
+    /// Get the selected hash algorithm.
+    pub fn hash(&self) -> SelectedHash {
+        self.hash.unwrap_or_default()
+    }
+
+    /// Get the selected subcommand.
+    pub fn command(&self) -> &Command {
+        self.command.as_ref().unwrap()
     }
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Clone, clap::Subcommand)]
 pub enum Command {
     /// For files, prints their Artifact ID. For directories, recursively prints IDs for all files under it.
     Id(IdArgs),
@@ -44,85 +117,66 @@ pub enum Command {
     Find(FindArgs),
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, Clone, clap::Args)]
 pub struct IdArgs {
     /// Path to identify
+    #[arg(short = 'p', long = "path", help_heading = "Input Flags")]
     pub path: PathBuf,
-
-    /// Output format (can be "plain", "short", or "json")
-    #[arg(short = 'f', long = "format", default_value_t)]
-    pub format: Format,
-
-    /// Hash algorithm (can be "sha256")
-    #[arg(short = 'H', long = "hash", default_value_t)]
-    pub hash: SelectedHash,
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, Clone, clap::Args)]
 pub struct FindArgs {
-    /// `gitoid` URL to match
-    pub url: Url,
+    /// Artifact ID to match
+    #[arg(short = 'a', long = "aid", help_heading = "Input Flags")]
+    pub aid: ArtifactId<Sha256>,
 
     /// The root path to search under
+    #[arg(short = 'p', long = "path", help_heading = "Input Flags")]
     pub path: PathBuf,
-
-    /// Output format (can be "plain", "short", or "json")
-    #[arg(short = 'f', long = "format", default_value_t)]
-    pub format: Format,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, SmartDefault)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, clap::ValueEnum)]
 pub enum Format {
+    /// A human-readable plaintext format
     #[default]
     Plain,
+    /// JSON format
     Json,
+    /// Shortest possible format (ideal for piping to other commands)
     Short,
 }
 
-impl Display for Format {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Format::Plain => write!(f, "plain"),
-            Format::Json => write!(f, "json"),
-            Format::Short => write!(f, "short"),
-        }
-    }
-}
-
 impl FromStr for Format {
-    type Err = Error;
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<Format> {
-        match s {
-            "plain" => Ok(Format::Plain),
-            "json" => Ok(Format::Json),
-            "short" => Ok(Format::Short),
-            _ => Err(anyhow!("unknown format '{}'", s)),
-        }
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let ignore_case = true;
+        <Self as clap::ValueEnum>::from_str(s, ignore_case)
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, SmartDefault)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, clap::ValueEnum)]
 pub enum SelectedHash {
+    /// SHA-256 hash
     #[default]
     Sha256,
 }
 
-impl Display for SelectedHash {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            SelectedHash::Sha256 => write!(f, "sha256"),
-        }
+impl FromStr for SelectedHash {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let ignore_case = true;
+        <Self as clap::ValueEnum>::from_str(s, ignore_case)
     }
 }
 
-impl FromStr for SelectedHash {
-    type Err = Error;
+/// Get an environment variable with the given key.
+fn env_var_by_key<T: FromStr>(name: &'static str) -> Option<T> {
+    let key = format!("OMNIBOR_{}", name.to_uppercase());
 
-    fn from_str(s: &str) -> Result<SelectedHash> {
-        match s {
-            "sha256" => Ok(SelectedHash::Sha256),
-            _ => Err(anyhow!("unknown hash algorithm '{}'", s)),
-        }
+    match std::env::var(&key) {
+        Ok(val) => val.parse().ok(),
+        Err(_) => None,
     }
 }
