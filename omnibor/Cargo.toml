@@ -41,16 +41,19 @@ url = "2.5.0"
 # Support serializing and deserializing.
 serde = { version = "1.0.197", optional = true }
 
+# Make it easier to define our error type.
+thiserror = "1.0.60"
+
+# Make it easier to build paths.
+pathbuf = "1.0.0"
+
+# Walk through directories. Used for file system storage.
+walkdir = "2.5.0"
+
 [dependencies.gitoid]
 version = "0.7.0"
 default-features = false
-features = [
-    "async",
-    "hex",
-    "sha256",
-    "std",
-    "url"
-]
+features = ["async", "hex", "sha256", "std", "url"]
 
 [dev-dependencies]
 
@@ -65,6 +68,9 @@ digest = "0.10.7"
 
 # Helper for testing Serde implementations.
 serde_test = "1.0.176"
+
+# Make it easier to build paths for testing.
+pathbuf = "1.0.0"
 
 [features]
 

@@ -1,51 +1,104 @@
 #[cfg(doc)]
 use crate::ArtifactId;
+#[cfg(doc)]
+use crate::InputManifest;
 use gitoid::Error as GitOidError;
-use std::error::Error as StdError;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::fmt::Result as FmtResult;
+use std::io::Error as IoError;
 use std::result::Result as StdResult;
 use url::ParseError as UrlError;
 
 pub type Result<T> = StdResult<T, Error>;
 
-/// Errors arising from [`ArtifactId`] use.
-#[derive(Debug)]
+/// Errors arising from [`ArtifactId`] use or [`InputManifest`] interaction.
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// An error arising from the underlying `gitoid` crate.
-    GitOid(GitOidError),
+    #[error("no storage root found; provide one or set the 'OMNIBOR_DIR' environment variable")]
+    NoStorageRoot,
 
-    /// An error arising from URL parsing.
-    Url(UrlError),
-}
+    #[error("unable to access file system storage root '{0}'; please check permissions")]
+    CantAccessRoot(String, #[source] IoError),
 
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match self {
-            Error::GitOid(inner) => write!(f, "{}", inner),
-            Error::Url(inner) => write!(f, "{}", inner),
-        }
-    }
-}
+    #[error("object store '{0}' is not a directory")]
+    ObjectStoreNotDir(String),
 
-impl StdError for Error {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            Error::GitOid(inner) => Some(inner),
-            Error::Url(inner) => Some(inner),
-        }
-    }
-}
+    #[error("'{0}' is not a valid object store path")]
+    InvalidObjectStorePath(String),
 
-impl From<GitOidError> for Error {
-    fn from(inner: GitOidError) -> Error {
-        Error::GitOid(inner)
-    }
-}
+    #[error("object store '{0}' is not empty")]
+    ObjectStoreDirNotEmpty(String),
 
-impl From<UrlError> for Error {
-    fn from(inner: UrlError) -> Self {
-        Error::Url(inner)
-    }
+    #[error("can't create object store '{0}'")]
+    CantCreateObjectStoreDir(String, #[source] IoError),
+
+    #[error("can't write manifest directory '{0}'")]
+    CantWriteManifestDir(String, #[source] IoError),
+
+    #[error("can't open target index file '{0}'")]
+    CantOpenTargetIndex(String, #[source] IoError),
+
+    #[error("can't open target index temp file for upsert '{0}'")]
+    CantOpenTargetIndexTemp(String, #[source] IoError),
+
+    #[error("can't delete target index temp file for upsert '{0}'")]
+    CantDeleteTargetIndexTemp(String, #[source] IoError),
+
+    #[error("can't write manifest file '{0}'")]
+    CantWriteManifest(String, #[source] IoError),
+
+    #[error("the target index file has been corrupted and can't be parsed")]
+    CorruptedTargetIndex,
+
+    #[error("the target index file has been corrupted and can't be parsed")]
+    CorruptedTargetIndexIoReason(#[source] IoError),
+
+    #[error("the target index file has been corrupted and can't be parsed")]
+    CorruptedTargetIndexOmniBorReason(#[source] Box<Error>),
+
+    #[error("missing manifest_aid or target_aid from target index upsert operation")]
+    InvalidTargetIndexUpsert,
+
+    #[error("invalid relation kind in input manifest: '{0}'")]
+    InvalidRelationKind(String),
+
+    #[error("input manifest missing header line")]
+    ManifestMissingHeader,
+
+    #[error("missing 'gitoid' in manifest header")]
+    MissingGitOidInHeader,
+
+    #[error("missing object type 'blob' in manifest header")]
+    MissingObjectTypeInHeader,
+
+    #[error("missing object type 'blob' in manifest relation")]
+    MissingObjectTypeInRelation,
+
+    #[error("missing one or more header parts")]
+    MissingHeaderParts,
+
+    #[error("missing bom indicator in relation")]
+    MissingBomIndicatorInRelation,
+
+    #[error("missing one or more relation parts")]
+    MissingRelationParts,
+
+    #[error("wrong hash algorithm; expected '{expected}', got '{got}'")]
+    WrongHashAlgorithm { expected: &'static str, got: String },
+
+    #[error("missing manifest-for entry in manifest")]
+    MissingManifestForRelation,
+
+    #[error("the transaction to make an input manifest was already closed")]
+    TransactionClosed,
+
+    #[error("unknown file type for manifest ID embedding")]
+    UnknownEmbeddingTarget,
+
+    #[error("failed to read input manifest file")]
+    FailedManifestRead(#[from] IoError),
+
+    #[error(transparent)]
+    GitOid(#[from] GitOidError),
+
+    #[error(transparent)]
+    Url(#[from] UrlError),
 }

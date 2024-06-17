@@ -1,8 +1,8 @@
 //! Tests against the OmniBOR crate as a whole.
 
+use crate::hashes::Sha256;
+use crate::hashes::SupportedHash;
 use crate::ArtifactId;
-use crate::Sha256;
-use crate::SupportedHash;
 use digest::OutputSizeUser;
 use gitoid::HashAlgorithm;
 use std::mem::size_of;
