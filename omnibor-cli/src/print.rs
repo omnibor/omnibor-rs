@@ -124,6 +124,10 @@ impl PrinterCmd {
     pub fn error<E: Into<Error>>(error: E, format: Format) -> PrinterCmd {
         PrinterCmd::Message(Msg::error(error, format))
     }
+
+    pub fn root_dir(dir: Option<&Path>, format: Format) -> PrinterCmd {
+        PrinterCmd::Message(Msg::root_dir(dir, format))
+    }
 }
 
 /// An individual message to be printed.
@@ -160,6 +164,20 @@ impl Msg {
             Format::Plain => Msg::plain(status, &format!("{} => {}", url, path)),
             Format::Short => Msg::plain(status, &path.to_string()),
             Format::Json => Msg::json(status, json!({ "path": path, "id": url })),
+        }
+    }
+
+    pub fn root_dir(dir: Option<&Path>, format: Format) -> Self {
+        let status = Status::Success;
+        let dir = match dir {
+            Some(path) => path.display().to_string(),
+            None => String::from("no OmniBOR root directory provided"),
+        };
+
+        match format {
+            Format::Plain => Msg::plain(status, &format!("root_dir: {}", dir)),
+            Format::Short => Msg::plain(status, &dir.to_string()),
+            Format::Json => Msg::json(status, json!({ "root_dir": dir })),
         }
     }
 

@@ -1,6 +1,7 @@
 mod artifact_find;
 mod artifact_id;
 mod cli;
+mod debug_config;
 mod fs;
 mod manifest_add;
 mod manifest_create;
@@ -60,6 +61,9 @@ async fn run(tx: &Sender<PrinterCmd>, config: &Config) -> Result<()> {
             ManifestCommand::Add(ref args) => manifest_add::run(tx, config, args).await?,
             ManifestCommand::Remove(ref args) => manifest_remove::run(tx, config, args).await?,
             ManifestCommand::Create(ref args) => manifest_create::run(tx, config, args).await?,
+        },
+        Command::Debug(ref args) => match args.command() {
+            cli::DebugCommand::Config => debug_config::run(tx, config).await?,
         },
     }
 

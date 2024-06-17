@@ -8,6 +8,8 @@ use omnibor::ArtifactId;
 use omnibor::IntoArtifactId;
 use pathbuf::pathbuf;
 use std::default::Default;
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -111,6 +113,9 @@ pub enum Command {
 
     /// Actions related to Input Manifests.
     Manifest(ManifestArgs),
+
+    /// Actions to help debug the OmniBOR CLI.
+    Debug(DebugArgs),
 }
 
 #[derive(Debug, clap::Args)]
@@ -195,6 +200,23 @@ pub struct ManifestCreateArgs {
     pub target: PathBuf,
 }
 
+#[derive(Debug, clap::Args)]
+pub struct DebugArgs {
+    #[clap(subcommand)]
+    command: Option<DebugCommand>,
+}
+
+impl DebugArgs {
+    pub fn command(&self) -> DebugCommand {
+        self.command.as_ref().unwrap().clone()
+    }
+}
+
+#[derive(Debug, Clone, clap::Subcommand)]
+pub enum DebugCommand {
+    Config,
+}
+
 #[derive(Debug, Clone)]
 pub enum IdentifiableArg {
     /// An Artifact ID
@@ -235,6 +257,16 @@ pub enum Format {
     Short,
 }
 
+impl Display for Format {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Format::Plain => write!(f, "plain"),
+            Format::Json => write!(f, "json"),
+            Format::Short => write!(f, "short"),
+        }
+    }
+}
+
 impl FromStr for Format {
     type Err = String;
 
@@ -249,6 +281,14 @@ pub enum SelectedHash {
     /// SHA-256 hash
     #[default]
     Sha256,
+}
+
+impl Display for SelectedHash {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SelectedHash::Sha256 => write!(f, "sha256"),
+        }
+    }
 }
 
 impl FromStr for SelectedHash {
