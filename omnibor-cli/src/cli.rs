@@ -93,7 +93,7 @@ impl Config {
     pub fn dir(&self) -> Option<&Path> {
         self.dir.as_deref().or_else(|| {
             DEFAULT_DIR
-                .get_or_init(|| dirs::cache_dir().map(|cache_dir| pathbuf![&cache_dir, "omnibor"]))
+                .get_or_init(|| dirs::data_dir().map(|cache_dir| pathbuf![&cache_dir, "omnibor"]))
                 .as_deref()
         })
     }
