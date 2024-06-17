@@ -1,7 +1,7 @@
+mod artifact_find;
+mod artifact_id;
 mod cli;
-mod find;
 mod fs;
-mod id;
 mod manifest_add;
 mod manifest_create;
 mod manifest_remove;
@@ -14,6 +14,7 @@ use crate::print::Printer;
 use crate::print::PrinterCmd;
 use anyhow::Result;
 use clap::Parser as _;
+use cli::ArtifactCommand;
 use std::process::ExitCode;
 use tokio::sync::mpsc::Sender;
 use tracing_subscriber::filter::EnvFilter;
@@ -24,24 +25,21 @@ const LOG_VAR: &str = "OMNIBOR_LOG";
 #[tokio::main]
 async fn main() -> ExitCode {
     init_log();
-
     let config = Config::parse();
-
+    let printer = Printer::launch(config.buffer());
     tracing::trace!("config: {:#?}", config);
 
-    let printer = Printer::launch(config.buffer());
-
-    let exit_code = match run(printer.tx(), &config).await {
-        Ok(_) => ExitCode::SUCCESS,
+    match run(printer.tx(), &config).await {
+        Ok(_) => {
+            printer.join().await;
+            ExitCode::SUCCESS
+        }
         Err(e) => {
             printer.send(PrinterCmd::error(e, config.format())).await;
+            printer.join().await;
             ExitCode::FAILURE
         }
-    };
-
-    printer.join().await;
-
-    exit_code
+    }
 }
 
 // Initialize the logging / tracing.
@@ -54,8 +52,10 @@ fn init_log() {
 /// Select and run the chosen command.
 async fn run(tx: &Sender<PrinterCmd>, config: &Config) -> Result<()> {
     match config.command() {
-        Command::Id(ref args) => id::run(tx, config, args).await?,
-        Command::Find(ref args) => find::run(tx, config, args).await?,
+        Command::Artifact(ref args) => match args.command() {
+            ArtifactCommand::Id(ref args) => artifact_id::run(tx, config, args).await?,
+            ArtifactCommand::Find(ref args) => artifact_find::run(tx, config, args).await?,
+        },
         Command::Manifest(ref args) => match args.command() {
             ManifestCommand::Add(ref args) => manifest_add::run(tx, config, args).await?,
             ManifestCommand::Remove(ref args) => manifest_remove::run(tx, config, args).await?,

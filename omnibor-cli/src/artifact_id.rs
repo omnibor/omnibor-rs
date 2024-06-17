@@ -1,4 +1,4 @@
-//! The `id` command, which identifies files.
+//! The `artifact id` command, which identifies files.
 
 use crate::cli::Config;
 use crate::cli::IdArgs;
@@ -7,7 +7,7 @@ use crate::print::PrinterCmd;
 use anyhow::Result;
 use tokio::sync::mpsc::Sender;
 
-/// Run the `id` subcommand.
+/// Run the `artifact id` subcommand.
 pub async fn run(tx: &Sender<PrinterCmd>, config: &Config, args: &IdArgs) -> Result<()> {
     let mut file = open_async_file(&args.path).await?;
 

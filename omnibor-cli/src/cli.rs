@@ -35,7 +35,7 @@ pub struct Config {
         default_value = "100",
         global = true,
         env = "OMNIBOR_BUFFER",
-        help_heading = "Performance Tuning Flags"
+        help_heading = "General Flags"
     )]
     buffer: Option<usize>,
 
@@ -45,7 +45,7 @@ pub struct Config {
         long = "format",
         global = true,
         env = "OMNIBOR_FORMAT",
-        help_heading = "Output Flags"
+        help_heading = "General Flags"
     )]
     format: Option<Format>,
 
@@ -55,7 +55,7 @@ pub struct Config {
         long = "hash",
         global = true,
         env = "OMNIBOR_HASH",
-        help_heading = "Input Flags"
+        help_heading = "General Flags"
     )]
     hash: Option<SelectedHash>,
 
@@ -65,7 +65,7 @@ pub struct Config {
         long = "dir",
         global = true,
         env = "OMNIBOR_DIR",
-        help_heading = "Storage Flags"
+        help_heading = "General Flags"
     )]
     dir: Option<PathBuf>,
 
@@ -106,31 +106,49 @@ impl Config {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum Command {
-    /// For files, prints their Artifact ID. For directories, recursively prints IDs for all files under it.
-    Id(IdArgs),
-
-    /// Find file matching an Artifact ID.
-    Find(FindArgs),
+    /// Actions related to Artifact Identifiers.
+    Artifact(ArtifactArgs),
 
     /// Actions related to Artifact Input Manifests.
     Manifest(ManifestArgs),
 }
 
 #[derive(Debug, clap::Args)]
+pub struct ArtifactArgs {
+    #[clap(subcommand)]
+    command: Option<ArtifactCommand>,
+}
+
+impl ArtifactArgs {
+    pub fn command(&self) -> ArtifactCommand {
+        self.command.clone().unwrap()
+    }
+}
+
+#[derive(Debug, Clone, clap::Subcommand)]
+pub enum ArtifactCommand {
+    /// For files, prints their Artifact ID. For directories, recursively prints IDs for all files under it.
+    Id(IdArgs),
+
+    /// Find file matching an Artifact ID.
+    Find(FindArgs),
+}
+
+#[derive(Debug, Clone, clap::Args)]
 pub struct IdArgs {
     /// Path to identify
-    #[arg(short = 'p', long = "path", help_heading = "Input Flags")]
+    #[arg(short = 'p', long = "path", help_heading = "Important Flags")]
     pub path: PathBuf,
 }
 
-#[derive(Debug, clap::Args)]
+#[derive(Debug, Clone, clap::Args)]
 pub struct FindArgs {
     /// Artifact ID to match
-    #[arg(short = 'a', long = "aid", help_heading = "Input Flags")]
+    #[arg(short = 'a', long = "aid", help_heading = "Important Flags")]
     pub aid: ArtifactId<Sha256>,
 
     /// The root path to search under
-    #[arg(short = 'p', long = "path", help_heading = "Input Flags")]
+    #[arg(short = 'p', long = "path", help_heading = "Important Flags")]
     pub path: PathBuf,
 }
 
@@ -165,15 +183,15 @@ pub struct ManifestRemoveArgs {}
 #[derive(Debug, clap::Args)]
 pub struct ManifestCreateArgs {
     /// Inputs to record in the manifest
-    #[arg(short = 'i', long = "input", help_heading = "Input Flags")]
+    #[arg(short = 'i', long = "input", help_heading = "Important Flags")]
     pub inputs: Vec<IdentifiableArg>,
 
     /// The tool that built the target artifact
-    #[arg(short = 'B', long = "built-by", help_heading = "Input Flags")]
+    #[arg(short = 'B', long = "built-by", help_heading = "Important Flags")]
     pub built_by: Option<IdentifiableArg>,
 
     /// The target the manifest is describing
-    #[arg(short = 't', long = "target", help_heading = "Input Flags")]
+    #[arg(short = 't', long = "target", help_heading = "Important Flags")]
     pub target: PathBuf,
 }
 

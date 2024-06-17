@@ -1,4 +1,4 @@
-//! The `find` command, which finds files by ID.
+//! The `artifact find` command, which finds files by ID.
 
 use crate::cli::Config;
 use crate::cli::FindArgs;
@@ -10,7 +10,7 @@ use async_walkdir::WalkDir;
 use futures_lite::stream::StreamExt as _;
 use tokio::sync::mpsc::Sender;
 
-/// Run the `find` subcommand.
+/// Run the `artifact find` subcommand.
 pub async fn run(tx: &Sender<PrinterCmd>, config: &Config, args: &FindArgs) -> Result<()> {
     let FindArgs { aid, path } = args;
 
