@@ -110,10 +110,6 @@ impl FileSystemStorage {
             if meta.is_dir().not() {
                 return Err(Error::ObjectStoreNotDir(root.display().to_string()));
             }
-
-            if root.read_dir()?.next().is_some() {
-                return Err(Error::ObjectStoreDirNotEmpty(root.display().to_string()));
-            }
         } else {
             create_dir_all(&root)
                 .map_err(|e| Error::CantCreateObjectStoreDir(root.display().to_string(), e))?;

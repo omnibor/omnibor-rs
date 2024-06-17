@@ -2,13 +2,18 @@ mod cli;
 mod find;
 mod fs;
 mod id;
+mod manifest_add;
+mod manifest_create;
+mod manifest_remove;
 mod print;
 
 use crate::cli::Command;
 use crate::cli::Config;
+use crate::cli::ManifestCommand;
 use crate::print::Printer;
 use crate::print::PrinterCmd;
 use anyhow::Result;
+use clap::Parser as _;
 use std::process::ExitCode;
 use tokio::sync::mpsc::Sender;
 use tracing_subscriber::filter::EnvFilter;
@@ -20,7 +25,10 @@ const LOG_VAR: &str = "OMNIBOR_LOG";
 async fn main() -> ExitCode {
     init_log();
 
-    let config = Config::load();
+    let config = Config::parse();
+
+    tracing::trace!("config: {:#?}", config);
+
     let printer = Printer::launch(config.buffer());
 
     let exit_code = match run(printer.tx(), &config).await {
@@ -48,6 +56,11 @@ async fn run(tx: &Sender<PrinterCmd>, config: &Config) -> Result<()> {
     match config.command() {
         Command::Id(ref args) => id::run(tx, config, args).await?,
         Command::Find(ref args) => find::run(tx, config, args).await?,
+        Command::Manifest(ref args) => match args.command() {
+            ManifestCommand::Add(ref args) => manifest_add::run(tx, config, args).await?,
+            ManifestCommand::Remove(ref args) => manifest_remove::run(tx, config, args).await?,
+            ManifestCommand::Create(ref args) => manifest_create::run(tx, config, args).await?,
+        },
     }
 
     // Ensure we always send the "End" printer command.

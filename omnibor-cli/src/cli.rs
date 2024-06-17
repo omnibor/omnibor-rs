@@ -1,13 +1,24 @@
 //! Defines the Command Line Interface.
 
+#![allow(unused)]
+
+use anyhow::anyhow;
 use omnibor::hashes::Sha256;
 use omnibor::ArtifactId;
-use refurb::Update;
+use omnibor::IntoArtifactId;
+use pathbuf::pathbuf;
 use std::default::Default;
+use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::OnceLock;
 
-#[derive(Debug, Default, clap::Parser, Update)]
+// The default root directory for OmniBOR.
+// We use a `static` here to make sure we can safely give out
+// references to it.
+static DEFAULT_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
+
+#[derive(Debug, Default, clap::Parser)]
 #[command(
     name = "omnibor",
     about,
@@ -23,8 +34,8 @@ pub struct Config {
         long = "buffer",
         default_value = "100",
         global = true,
-        help_heading = "Performance Tuning Flags",
-        long_help = "How many print messages to buffer at once. Can also be set with the `OMNIBOR_BUFFER` environment variable"
+        env = "OMNIBOR_BUFFER",
+        help_heading = "Performance Tuning Flags"
     )]
     buffer: Option<usize>,
 
@@ -33,8 +44,8 @@ pub struct Config {
         short = 'f',
         long = "format",
         global = true,
-        help_heading = "Output Flags",
-        long_help = "Output format. Can also be set with the `OMNIBOR_FORMAT` environment variable"
+        env = "OMNIBOR_FORMAT",
+        help_heading = "Output Flags"
     )]
     format: Option<Format>,
 
@@ -43,8 +54,8 @@ pub struct Config {
         short = 'H',
         long = "hash",
         global = true,
-        help_heading = "Input Flags",
-        long_help = "Hash algorithm to use when parsing Artifact IDs. Can also be set with the `OMNIBOR_HASH` environment variable"
+        env = "OMNIBOR_HASH",
+        help_heading = "Input Flags"
     )]
     hash: Option<SelectedHash>,
 
@@ -53,8 +64,8 @@ pub struct Config {
         short = 'd',
         long = "dir",
         global = true,
-        help_heading = "Storage Flags",
-        long_help = "Directory to store manifests. Can also be set with the `OMNIBOR_DIR` environment variable"
+        env = "OMNIBOR_DIR",
+        help_heading = "Storage Flags"
     )]
     dir: Option<PathBuf>,
 
@@ -63,30 +74,6 @@ pub struct Config {
 }
 
 impl Config {
-    /// Load configuration from the environment and CLI args.
-    pub fn load() -> Config {
-        let mut config = Config::default();
-        config.update(&Config::from_env());
-        config.update(&Config::from_args());
-        config
-    }
-
-    /// Load configuration from the environment.
-    fn from_env() -> Config {
-        Config {
-            buffer: env_var_by_key("buffer"),
-            format: env_var_by_key("format"),
-            hash: env_var_by_key("hash"),
-            dir: env_var_by_key("dir"),
-            command: None,
-        }
-    }
-
-    /// Load configuration from CLI args.
-    fn from_args() -> Config {
-        <Config as clap::Parser>::parse()
-    }
-
     /// Get the configured buffer size.
     pub fn buffer(&self) -> usize {
         self.buffer.unwrap()
@@ -102,29 +89,41 @@ impl Config {
         self.hash.unwrap_or_default()
     }
 
+    /// Get the chosen OmniBOR root directory.
+    pub fn dir(&self) -> Option<&Path> {
+        self.dir.as_deref().or_else(|| {
+            DEFAULT_DIR
+                .get_or_init(|| dirs::cache_dir().map(|cache_dir| pathbuf![&cache_dir, "omnibor"]))
+                .as_deref()
+        })
+    }
+
     /// Get the selected subcommand.
     pub fn command(&self) -> &Command {
         self.command.as_ref().unwrap()
     }
 }
 
-#[derive(Debug, Clone, clap::Subcommand)]
+#[derive(Debug, clap::Subcommand)]
 pub enum Command {
     /// For files, prints their Artifact ID. For directories, recursively prints IDs for all files under it.
     Id(IdArgs),
 
     /// Find file matching an Artifact ID.
     Find(FindArgs),
+
+    /// Actions related to Artifact Input Manifests.
+    Manifest(ManifestArgs),
 }
 
-#[derive(Debug, Clone, clap::Args)]
+#[derive(Debug, clap::Args)]
 pub struct IdArgs {
     /// Path to identify
     #[arg(short = 'p', long = "path", help_heading = "Input Flags")]
     pub path: PathBuf,
 }
 
-#[derive(Debug, Clone, clap::Args)]
+#[derive(Debug, clap::Args)]
 pub struct FindArgs {
     /// Artifact ID to match
     #[arg(short = 'a', long = "aid", help_heading = "Input Flags")]
@@ -133,6 +132,78 @@ pub struct FindArgs {
     /// The root path to search under
     #[arg(short = 'p', long = "path", help_heading = "Input Flags")]
     pub path: PathBuf,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct ManifestArgs {
+    #[clap(subcommand)]
+    command: ManifestCommand,
+}
+
+impl ManifestArgs {
+    pub fn command(&self) -> &ManifestCommand {
+        &self.command
+    }
+}
+
+#[derive(Debug, clap::Subcommand)]
+pub enum ManifestCommand {
+    /// Add a new manifest to the store.
+    Add(ManifestAddArgs),
+    /// Remove a manifest from the store.
+    Remove(ManifestRemoveArgs),
+    /// Create a new manifest and add it to the store
+    Create(ManifestCreateArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct ManifestAddArgs {}
+
+#[derive(Debug, clap::Args)]
+pub struct ManifestRemoveArgs {}
+
+#[derive(Debug, clap::Args)]
+pub struct ManifestCreateArgs {
+    /// Inputs to record in the manifest
+    #[arg(short = 'i', long = "input", help_heading = "Input Flags")]
+    pub inputs: Vec<IdentifiableArg>,
+
+    /// The tool that built the target artifact
+    #[arg(short = 'B', long = "built-by", help_heading = "Input Flags")]
+    pub built_by: Option<IdentifiableArg>,
+
+    /// The target the manifest is describing
+    #[arg(short = 't', long = "target", help_heading = "Input Flags")]
+    pub target: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub enum IdentifiableArg {
+    /// An Artifact ID
+    ArtifactId(ArtifactId<Sha256>),
+    /// A path to a file
+    Path(PathBuf),
+}
+
+impl FromStr for IdentifiableArg {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match (ArtifactId::from_str(s), PathBuf::from_str(s)) {
+            (Ok(aid), _) => Ok(IdentifiableArg::ArtifactId(aid)),
+            (_, Ok(path)) => Ok(IdentifiableArg::Path(path)),
+            (Err(_), Err(_)) => Err(anyhow!("input not recognized as Artifact ID or file path")),
+        }
+    }
+}
+
+impl IntoArtifactId<Sha256> for IdentifiableArg {
+    fn into_artifact_id(self) -> Result<ArtifactId<Sha256>, omnibor::Error> {
+        match self {
+            IdentifiableArg::ArtifactId(aid) => Ok(aid),
+            IdentifiableArg::Path(path) => path.into_artifact_id(),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default, clap::ValueEnum)]
@@ -168,15 +239,5 @@ impl FromStr for SelectedHash {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let ignore_case = true;
         <Self as clap::ValueEnum>::from_str(s, ignore_case)
-    }
-}
-
-/// Get an environment variable with the given key.
-fn env_var_by_key<T: FromStr>(name: &'static str) -> Option<T> {
-    let key = format!("OMNIBOR_{}", name.to_uppercase());
-
-    match std::env::var(&key) {
-        Ok(val) => val.parse().ok(),
-        Err(_) => None,
     }
 }
