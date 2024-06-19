@@ -10,9 +10,6 @@ use digest::block_buffer::generic_array::GenericArray;
 use digest::Digest;
 use digest::OutputSizeUser;
 
-#[cfg(feature="boring")]
-use crate::boring_sha::{BoringSha1, BoringSha256};
-
 /// Hash algorithms that can be used to make a [`GitOid`].
 ///
 /// This is a sealed trait to ensure it's only used for hash
@@ -46,6 +43,8 @@ pub trait HashAlgorithm: Sealed {
     fn new() -> Self::Alg;
 }
 
+#[doc(hidden)]
+#[macro_export]
 #[allow(unused_macros)]
 macro_rules! impl_hash_algorithm {
     ( $type:ident, $alg_ty:ty, $name:literal ) => {
@@ -70,40 +69,3 @@ macro_rules! impl_hash_algorithm {
         }
     };
 }
-
-#[cfg(feature = "sha1")]
-/// SHA-1 algorithm,
-pub struct Sha1 {
-    #[doc(hidden)]
-    _private: (),
-}
-
-#[cfg(all(feature = "sha1", feature = "rustcrypto", not(feature = "boring")))]
-impl_hash_algorithm!(Sha1, sha1::Sha1, "sha1");
-
-#[cfg(feature = "sha256")]
-/// SHA-256 algorithm.
-pub struct Sha256 {
-    #[doc(hidden)]
-    _private: (),
-}
-
-#[cfg(all(feature = "sha1cd", feature = "rustcrypto"))]
-/// SHA-1Cd (collision detection) algorithm.
-pub struct Sha1Cd {
-    #[doc(hidden)]
-    _private: (),
-}
-
-// SHA-1Cd currently has only one implementation, so we don't gate.
-#[cfg(all(feature = "sha1cd", feature="rustcrypto"))]
-impl_hash_algorithm!(Sha1Cd, sha1collisiondetection::Sha1CD, "sha1cd");
-
-#[cfg(all(feature = "sha1", feature = "boring"))]
-impl_hash_algorithm!(Sha1, BoringSha1, "sha1");
-
-#[cfg(all(feature = "sha256", feature = "rustcrypto", not(feature = "boring")))]
-impl_hash_algorithm!(Sha256, sha2::Sha256, "sha256");
-
-#[cfg(all(feature = "sha256", feature = "boring"))]
-impl_hash_algorithm!(Sha256, BoringSha256, "sha256");

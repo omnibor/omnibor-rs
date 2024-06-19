@@ -105,43 +105,47 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(not(any(feature = "sha1", feature = "sha1cd", feature = "sha256", feature = "rustcrypto")))]
+#[cfg(not(any(
+    feature = "sha1",
+    feature = "sha1cd",
+    feature = "sha256",
+    feature = "rustcrypto"
+)))]
 compile_error!(
     r#"At least one hash algorithm feature must be active: "sha1", "sha1cd", or "sha256""#
 );
 
-#[cfg(all(feature = "sha1cd", feature = "boring", not(feature = "rustcrypto")))]
-compile_error!("The 'boring' feature does not support the 'sha1cd' algorithm. Please enable the 'rustcrypto' feature.");
+#[cfg(all(feature = "sha1cd", feature = "boringssl", not(feature = "rustcrypto")))]
+compile_error!(r#"The "boringssl" feature does not support the "sha1cd" algorithm"#);
 
-#[cfg(all(feature = "rustcrypto", not(any(feature = "sha1", feature = "sha1cd", feature = "sha256"))))]
-compile_error!("The 'rustcrypto' feature requires at least one of the following algorithms: 'sha1', 'sha1cd', or 'sha256'.");
+#[cfg(all(
+    feature = "rustcrypto",
+    not(any(feature = "sha1", feature = "sha1cd", feature = "sha256"))
+))]
+compile_error!(
+    r#"The "rustcrypto" feature requires at least one of the following algorithms: "sha1", "sha1cd", or "sha256""#
+);
 
-#[cfg(not(any(feature = "rustcrypto", feature = "boring")))]
-compile_error!("At least one of the 'rustcrypto' or 'boring' features must be enabled.");
+#[cfg(not(any(feature = "rustcrypto", feature = "boringssl")))]
+compile_error!(r#"At least one of the "rustcrypto" or "boringssl" features must be enabled"#);
 
-pub(crate) mod sealed;
-
+mod backend;
 mod error;
 mod gitoid;
 mod hash_algorithm;
 mod object_type;
-
+pub(crate) mod sealed;
 #[cfg(test)]
 mod tests;
-#[cfg(feature = "boring")]
-mod boring_sha;
 
-pub(crate) use crate::error::Result;
-
+#[cfg(feature = "boringssl")]
+pub use crate::backend::boringssl;
+#[cfg(feature = "rustcrypto")]
+pub use crate::backend::rustcrypto;
 pub use crate::error::Error;
+pub(crate) use crate::error::Result;
 pub use crate::gitoid::GitOid;
 pub use crate::hash_algorithm::HashAlgorithm;
-#[cfg(feature = "sha1")]
-pub use crate::hash_algorithm::Sha1;
-#[cfg(feature = "sha1cd")]
-pub use crate::hash_algorithm::Sha1Cd;
-#[cfg(feature = "sha256")]
-pub use crate::hash_algorithm::Sha256;
 pub use crate::object_type::Blob;
 pub use crate::object_type::Commit;
 pub use crate::object_type::ObjectType;
