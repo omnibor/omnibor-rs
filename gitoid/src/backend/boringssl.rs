@@ -15,13 +15,14 @@ use digest::OutputSizeUser;
 use digest::Update;
 
 #[cfg(feature = "sha1")]
-/// SHA-1 algorithm,
+/// SHA-1 algorithm
 pub struct Sha256 {
     #[doc(hidden)]
     _private: (),
 }
 
 /// Boring SHA-256 implementation.
+#[doc(hidden)]
 pub struct BoringSha256 {
     hash: sha::Sha256,
 }
@@ -62,13 +63,14 @@ impl Default for BoringSha256 {
 }
 
 #[cfg(feature = "sha1")]
-/// SHA-1 algorithm,
+/// SHA-1 algorithm
 pub struct Sha1 {
     #[doc(hidden)]
     _private: (),
 }
 
 /// Boring SHA-1 implementation.
+#[doc(hidden)]
 pub struct BoringSha1 {
     hash: sha::Sha1,
 }
