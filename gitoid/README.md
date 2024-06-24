@@ -105,6 +105,26 @@ meaningful ways.
    the `sha1cd` algorithm. This is reflected in the `gitoid`-scheme URLs
    generated when using the `GitOid` type.
 
+## Boring Feature
+
+The `gitoid` crate supports using the BoringSSL cryptographic library for SHA-1
+and SHA-256 hashing through the `boring` feature. This can be useful for
+environments where BoringSSL is preferred or required for compliance reasons.
+
+### Enabling the Boring Feature
+
+To enable the `boring` feature, add the following to your `Cargo.toml`:
+
+```toml
+[dependencies]
+gitoid = { version = "0.7.1", features = ["boring"] }
+```
+
+When the `boring` feature is enabled, the crate will use BoringSSL's
+implementations of SHA-1 and SHA-256 instead of the default RustCrypto
+implementations. Note that `sha1cd` is not supported by the `boring` feature
+and will fall back to using the RustCrypto implementation.
+
 ## Minimum Supported Rust Version (MSRV)
 
 This crate does not maintain a Minimum Supported Rust Version, and generally

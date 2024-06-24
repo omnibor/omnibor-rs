@@ -23,7 +23,9 @@ edition.workspace = true
 # so we know we always get the crate.
 digest = { version = "0.10.7" }
 sha1 = { version = "0.10.6", default-features = false, optional = true }
-sha1collisiondetection = { version = "0.3.3", default-features = false, features = ["digest-trait"], optional = true }
+sha1collisiondetection = { version = "0.3.3", default-features = false, features = [
+    "digest-trait",
+], optional = true }
 sha2 = { version = "0.10.8", default-features = false, optional = true }
 
 # std-requiring dependencies.
@@ -33,12 +35,19 @@ hex = { version = "0.4.3", optional = true }
 serde = { version = "1.0.197", optional = true }
 tokio = { version = "1.36.0", features = ["io-util"], optional = true }
 url = { version = "2.4.1", optional = true }
+boring = { version = "4.6.0", optional = true }
 
 [dev-dependencies]
 
 # Need "rt" and "fs" additionally for tests.
-tokio = { version = "1.36.0", features = ["io-util", "fs", "rt", "rt-multi-thread"] }
+tokio = { version = "1.36.0", features = [
+    "io-util",
+    "fs",
+    "rt",
+    "rt-multi-thread",
+] }
 serde_test = "1.0.176"
+criterion = { version = "0.5.1" }
 
 [features]
 
@@ -49,7 +58,18 @@ serde_test = "1.0.176"
 # - Hex: ability to print a GitOid with a hexadecimal hash representation.
 # - Url: ability to convert a GitOid to and from a gitoid-scheme URL.
 # - Serde: ability to serialize and deserialize a GitOid to and from a URL.
-default = ["async", "hex", "serde", "sha1", "sha1cd", "sha256", "std", "url"]
+# - Rustcrypto: use the RustCrypto crates as the cryptography backend.
+default = [
+    "async",
+    "hex",
+    "serde",
+    "std",
+    "url",
+    "rustcrypto",
+    "sha1",
+    "sha1cd",
+    "sha256",
+]
 
 # Async support is optional. That said, it's currently _only_ with Tokio,
 # meaning you'd need to handle integrating with any other async runtime
@@ -85,7 +105,7 @@ std = [
     "sha1?/std",
     "sha1collisiondetection?/std",
     "sha2?/std",
-    "dep:format-bytes"
+    "dep:format-bytes",
 ]
 
 # Get the ability to construct and get out URLs.
@@ -93,3 +113,19 @@ std = [
 # This relies on `std` as the `url` crate isn't `no_std`-compatible.
 # This also relies on `hex` as the URL includes the hex-encoded hash.
 url = ["dep:url", "hex", "std"]
+
+# Enable using RustCrypto as a cryptography backend.
+rustcrypto = []
+
+# Enable using BoringSLL as a cryptography backend.
+#
+# NOTE: This unconditionally turns on the "sha1" and "sha256" features,
+# because the `boring` crate which provides the BoringSSL cryptography
+# implementations does not permit conditionally compiling those
+# implementations out. Since they're _always_ present, we might as well
+# use them unconditionally.
+boringssl = ["dep:boring", "sha1", "sha256"]
+
+[[bench]]
+name = "benchmark"
+harness = false
