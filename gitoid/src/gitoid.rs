@@ -14,7 +14,9 @@ use core::hash::Hash;
 use core::hash::Hasher;
 use core::marker::PhantomData;
 use core::ops::Not as _;
+#[cfg(feature = "serde")]
 use core::result::Result as StdResult;
+#[cfg(feature = "url")]
 use core::str::FromStr;
 #[cfg(feature = "url")]
 use core::str::Split;
@@ -165,6 +167,7 @@ where
     }
 }
 
+#[cfg(feature = "url")]
 impl<H, O> FromStr for GitOid<H, O>
 where
     H: HashAlgorithm,
