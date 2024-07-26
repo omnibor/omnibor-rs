@@ -109,7 +109,7 @@
     feature = "sha1",
     feature = "sha1cd",
     feature = "sha256",
-    feature = "rustcrypto"
+    feature = "rustcrypto",
 )))]
 compile_error!(
     r#"At least one hash algorithm feature must be active: "sha1", "sha1cd", or "sha256""#
@@ -117,6 +117,9 @@ compile_error!(
 
 #[cfg(all(feature = "sha1cd", feature = "boringssl", not(feature = "rustcrypto")))]
 compile_error!(r#"The "boringssl" feature does not support the "sha1cd" algorithm"#);
+
+#[cfg(all(feature = "sha1cd", feature = "openssl", not(feature = "rustcrypto")))]
+compile_error!(r#"The "openssl" feature does not support the "sha1cd" algorithm"#);
 
 #[cfg(all(
     feature = "rustcrypto",
@@ -126,8 +129,8 @@ compile_error!(
     r#"The "rustcrypto" feature requires at least one of the following algorithms: "sha1", "sha1cd", or "sha256""#
 );
 
-#[cfg(not(any(feature = "rustcrypto", feature = "boringssl")))]
-compile_error!(r#"At least one of the "rustcrypto" or "boringssl" features must be enabled"#);
+#[cfg(not(any(feature = "rustcrypto", feature = "boringssl", feature = "openssl")))]
+compile_error!(r#"At least one of the "rustcrypto", "boringssl", or "openssl" features must be enabled"#);
 
 mod backend;
 mod error;
@@ -142,6 +145,8 @@ mod tests;
 pub use crate::backend::boringssl;
 #[cfg(feature = "rustcrypto")]
 pub use crate::backend::rustcrypto;
+#[cfg(feature = "openssl")]
+pub use crate::backend::openssl;
 pub use crate::error::Error;
 pub(crate) use crate::error::Result;
 pub use crate::gitoid::GitOid;
