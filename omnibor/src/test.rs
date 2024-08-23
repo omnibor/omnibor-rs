@@ -18,8 +18,8 @@ fn artifact_id_sha256_size() {
 
 #[cfg(feature = "serde")]
 mod serde_test {
+    use crate::hashes::Sha256;
     use crate::ArtifactId;
-    use crate::Sha256;
     use serde_test::assert_tokens;
     use serde_test::Token;
 

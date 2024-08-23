@@ -2,20 +2,20 @@ use criterion::black_box;
 use criterion::criterion_group;
 use criterion::criterion_main;
 use criterion::Criterion;
+#[cfg(all(feature = "boringssl", feature = "sha1"))]
+use gitoid::boringssl::Sha1 as BoringSha1;
+#[cfg(all(feature = "boringssl", feature = "sha256"))]
+use gitoid::boringssl::Sha256 as BoringSha256;
+#[cfg(all(feature = "openssl", feature = "sha1"))]
+use gitoid::openssl::Sha1 as OpenSSLSha1;
+#[cfg(all(feature = "openssl", feature = "sha1"))]
+use gitoid::openssl::Sha256 as OpenSSLSha256;
 #[cfg(all(feature = "rustcrypto", feature = "sha1"))]
 use gitoid::rustcrypto::Sha1 as RustSha1;
 #[cfg(all(feature = "rustcrypto", feature = "sha256"))]
 use gitoid::rustcrypto::Sha256 as RustSha256;
 use gitoid::Blob;
-#[cfg(all(feature = "boringssl", feature = "sha1"))]
-use gitoid::boringssl::Sha1 as BoringSha1;
-#[cfg(all(feature = "boringssl", feature = "sha256"))]
-use gitoid::boringssl::Sha256 as BoringSha256;
 use gitoid::GitOid;
-#[cfg(all(feature = "openssl", feature = "sha1"))]
-use gitoid::openssl::Sha256 as OpenSSLSha256;
-#[cfg(all(feature = "openssl", feature = "sha1"))]
-use gitoid::openssl::Sha1 as OpenSSLSha1;
 
 #[cfg(not(any(feature = "rustcrypto", feature = "boringssl",)))]
 compile_error!(
@@ -187,20 +187,44 @@ criterion_group!(
 #[cfg(all(feature = "rustcrypto", feature = "boringssl", feature = "openssl"))]
 criterion_main!(rustcrypto_benches, boringssl_benches, openssl_benches);
 
-#[cfg(all(feature = "rustcrypto", feature = "boringssl", not(feature= "openssl")))]
+#[cfg(all(
+    feature = "rustcrypto",
+    feature = "boringssl",
+    not(feature = "openssl")
+))]
 criterion_main!(rustcrypto_benches, boringssl_benches);
 
-#[cfg(all(not(feature = "rustcrypto"), feature = "boringssl", feature= "openssl"))]
+#[cfg(all(
+    not(feature = "rustcrypto"),
+    feature = "boringssl",
+    feature = "openssl"
+))]
 criterion_main!(boringssl_benches, openssl_benches());
 
-#[cfg(all(feature = "rustcrypto", not(feature = "boringssl"), feature= "openssl"))]
+#[cfg(all(
+    feature = "rustcrypto",
+    not(feature = "boringssl"),
+    feature = "openssl"
+))]
 criterion_main!(rustcrypto_benches, openssl_benches);
 
-#[cfg(all(feature = "rustcrypto", not(feature = "boringssl"), not(feature= "openssl")))]
+#[cfg(all(
+    feature = "rustcrypto",
+    not(feature = "boringssl"),
+    not(feature = "openssl")
+))]
 criterion_main!(rustcrypto_benches);
 
-#[cfg(all(not(feature = "rustcrypto"), feature = "boringssl", not(feature = "openssl")))]
+#[cfg(all(
+    not(feature = "rustcrypto"),
+    feature = "boringssl",
+    not(feature = "openssl")
+))]
 criterion_main!(boringssl_benches);
 
-#[cfg(all(not(feature = "rustcrypto"), not(feature = "boringssl"), feature = "openssl"))]
+#[cfg(all(
+    not(feature = "rustcrypto"),
+    not(feature = "boringssl"),
+    feature = "openssl"
+))]
 criterion_main!(openssl_benches);

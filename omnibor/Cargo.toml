@@ -32,45 +32,28 @@ crate-type = [
 
 [dependencies]
 
-# The async runtime we support.
-tokio = { version = "1.36.0", features = ["io-util"] }
-
-# Support conversion of ArtifactId's to and from `gitoid`-scheme URLs.
-url = "2.5.0"
-
-# Support serializing and deserializing.
-serde = { version = "1.0.197", optional = true }
-
-# Make it easier to define our error type.
-thiserror = "1.0.60"
-
-# Make it easier to build paths.
+gitoid = { version = "0.7.0", path = "../gitoid", default-features = false, features = [
+    "async",
+    "hex",
+    "rustcrypto",
+    "sha256",
+    "std",
+    "url",
+] }
 pathbuf = "1.0.0"
-
-# Walk through directories. Used for file system storage.
+serde = { version = "1.0.197", optional = true }
+thiserror = "1.0.60"
+tokio = { version = "1.36.0", features = ["io-util"] }
+url = "2.5.0"
 walkdir = "2.5.0"
-
-[dependencies.gitoid]
-version = "0.7.0"
-default-features = false
-features = ["async", "hex", "sha256", "std", "url"]
 
 [dev-dependencies]
 
-# This just adds the "fs" feature when running tests.
-tokio = { version = "1.36.0", features = ["io-util", "fs"] }
-
-# Helper for running tests with the Tokio runtime.
-tokio-test = "0.4.3"
-
-# Match the version used in the `gitoid` crate.
 digest = "0.10.7"
-
-# Helper for testing Serde implementations.
-serde_test = "1.0.176"
-
-# Make it easier to build paths for testing.
 pathbuf = "1.0.0"
+serde_test = "1.0.176"
+tokio = { version = "1.36.0", features = ["io-util", "fs"] }
+tokio-test = "0.4.3"
 
 [features]
 
