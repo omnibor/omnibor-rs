@@ -3,7 +3,6 @@
 use crate::impl_hash_algorithm;
 use crate::sealed::Sealed;
 use crate::HashAlgorithm;
-use openssl::sha;
 use digest::consts::U20;
 use digest::consts::U32;
 use digest::generic_array::GenericArray;
@@ -13,6 +12,7 @@ use digest::HashMarker;
 use digest::Output;
 use digest::OutputSizeUser;
 use digest::Update;
+use openssl::sha;
 
 #[cfg(feature = "sha1")]
 /// SHA-1 algorithm

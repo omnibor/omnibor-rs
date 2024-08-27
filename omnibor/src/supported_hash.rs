@@ -17,5 +17,5 @@ pub struct Sha256 {
 impl Sealed for Sha256 {}
 
 impl SupportedHash for Sha256 {
-    type HashAlgorithm = gitoid::Sha256;
+    type HashAlgorithm = gitoid::rustcrypto::Sha256;
 }
