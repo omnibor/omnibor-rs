@@ -28,7 +28,7 @@ path = "src/main.rs"
 
 [dependencies]
 
-omnibor = { version = "0.5.1", path = "../omnibor" }
+omnibor = { version = "0.6.0", path = "../omnibor" }
 anyhow = "1.0.80"
 async-walkdir = "1.0.0"
 futures-lite = "2.2.0"
