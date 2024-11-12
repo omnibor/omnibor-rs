@@ -32,6 +32,8 @@ permissions:
 env:
   RUSTFLAGS: -Dwarnings
   CARGO_TERM_COLOR: always
+  # Necessary for 'cargo-insta' to handle CI behavior correctly.
+  CI: true
 
 jobs:
   test:
