@@ -119,6 +119,7 @@ pub enum Command {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
 pub struct ArtifactArgs {
     #[clap(subcommand)]
     command: Option<ArtifactCommand>,
@@ -140,6 +141,7 @@ pub enum ArtifactCommand {
 }
 
 #[derive(Debug, Clone, clap::Args)]
+#[command(arg_required_else_help = true)]
 pub struct IdArgs {
     /// Path to identify
     #[arg(short = 'p', long = "path", help_heading = "Important Flags")]
@@ -147,6 +149,7 @@ pub struct IdArgs {
 }
 
 #[derive(Debug, Clone, clap::Args)]
+#[command(arg_required_else_help = true)]
 pub struct FindArgs {
     /// Artifact ID to match
     #[arg(short = 'a', long = "aid", help_heading = "Important Flags")]
@@ -158,6 +161,7 @@ pub struct FindArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
 pub struct ManifestArgs {
     #[clap(subcommand)]
     command: ManifestCommand,
@@ -180,12 +184,15 @@ pub enum ManifestCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
 pub struct ManifestAddArgs {}
 
 #[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
 pub struct ManifestRemoveArgs {}
 
 #[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
 pub struct ManifestCreateArgs {
     /// Inputs to record in the manifest
     #[arg(short = 'i', long = "input", help_heading = "Important Flags")]
@@ -201,6 +208,7 @@ pub struct ManifestCreateArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
 pub struct DebugArgs {
     #[clap(subcommand)]
     command: Option<DebugCommand>,
