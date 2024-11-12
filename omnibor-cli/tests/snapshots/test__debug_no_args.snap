@@ -1,0 +1,29 @@
+---
+source: omnibor-cli/tests/test.rs
+info:
+  program: omnibor
+  args:
+    - debug
+---
+success: false
+exit_code: 2
+----- stdout -----
+
+----- stderr -----
+Actions to help debug the OmniBOR CLI
+
+Usage: omnibor debug [OPTIONS] [COMMAND]
+
+Commands:
+  config  
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help (see more with '--help')
+  -V, --version  Print version
+
+General Flags:
+  -b, --buffer <BUFFER>  How many print messages to buffer at once [env: OMNIBOR_BUFFER=] [default: 100]
+  -f, --format <FORMAT>  Output format [env: OMNIBOR_FORMAT=] [possible values: plain, json, short]
+  -H, --hash <HASH>      Hash algorithm to use when parsing Artifact IDs [env: OMNIBOR_HASH=] [possible values: sha256]
+  -d, --dir <DIR>        Directory to store manifests [env: OMNIBOR_DIR=]
