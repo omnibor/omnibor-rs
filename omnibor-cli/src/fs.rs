@@ -1,18 +1,15 @@
 //! File system helper operations.
 
-use crate::cli::Format;
-use crate::cli::SelectedHash;
-use crate::print::PrinterCmd;
-use anyhow::Context as _;
-use anyhow::Result;
-use async_walkdir::DirEntry as AsyncDirEntry;
-use async_walkdir::WalkDir;
+use crate::{
+    cli::{Format, SelectedHash},
+    print::PrinterCmd,
+};
+use anyhow::{Context as _, Result};
+use async_walkdir::{DirEntry as AsyncDirEntry, WalkDir};
 use futures_lite::stream::StreamExt as _;
-use omnibor::hashes::Sha256;
-use omnibor::ArtifactId;
+use omnibor::{hashes::Sha256, ArtifactId};
 use std::path::Path;
-use tokio::fs::File as AsyncFile;
-use tokio::sync::mpsc::Sender;
+use tokio::{fs::File as AsyncFile, sync::mpsc::Sender};
 use url::Url;
 
 // Identify, recursively, all the files under a directory.

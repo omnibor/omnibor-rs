@@ -1,8 +1,9 @@
 //! The `manifest remove` command, which removes manifests.
 
-use crate::cli::Config;
-use crate::cli::ManifestRemoveArgs;
-use crate::print::PrinterCmd;
+use crate::{
+    cli::{Config, ManifestRemoveArgs},
+    print::PrinterCmd,
+};
 use anyhow::Result;
 use tokio::sync::mpsc::Sender;
 

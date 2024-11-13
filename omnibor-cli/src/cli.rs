@@ -1,19 +1,15 @@
 //! Defines the Command Line Interface.
 
-#![allow(unused)]
-
 use anyhow::anyhow;
-use omnibor::hashes::Sha256;
-use omnibor::ArtifactId;
-use omnibor::IntoArtifactId;
+use omnibor::{hashes::Sha256, ArtifactId, IntoArtifactId};
 use pathbuf::pathbuf;
-use std::default::Default;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::path::Path;
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::sync::OnceLock;
+use std::{
+    default::Default,
+    fmt::{Display, Formatter},
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::OnceLock,
+};
 
 // The default root directory for OmniBOR.
 // We use a `static` here to make sure we can safely give out

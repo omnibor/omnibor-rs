@@ -1,9 +1,10 @@
 //! The `artifact id` command, which identifies files.
 
-use crate::cli::Config;
-use crate::cli::IdArgs;
-use crate::fs::*;
-use crate::print::PrinterCmd;
+use crate::{
+    cli::{Config, IdArgs},
+    fs::*,
+    print::PrinterCmd,
+};
 use anyhow::Result;
 use tokio::sync::mpsc::Sender;
 

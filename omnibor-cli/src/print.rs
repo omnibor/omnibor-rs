@@ -1,23 +1,21 @@
 //! Defines a simple print queue abstraction.
 
 use crate::cli::Format;
-use anyhow::Error;
-use anyhow::Result;
-use serde_json::json;
-use serde_json::Value as JsonValue;
-use std::fmt::Formatter;
-use std::fmt::Result as FmtResult;
-use std::future::Future;
-use std::panic;
-use std::path::Path;
-use std::result::Result as StdResult;
-use std::{fmt::Display, io::Write};
-use tokio::io::stderr;
-use tokio::io::stdout;
-use tokio::io::AsyncWriteExt as _;
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::Sender;
-use tokio::task::JoinError;
+use anyhow::{Error, Result};
+use serde_json::{json, Value as JsonValue};
+use std::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    future::Future,
+    io::Write,
+    panic,
+    path::Path,
+    result::Result as StdResult,
+};
+use tokio::io::{stderr, stdout, AsyncWriteExt as _};
+use tokio::{
+    sync::mpsc::{self, Sender},
+    task::JoinError,
+};
 use tracing::debug;
 use url::Url;
 
@@ -37,7 +35,7 @@ impl Printer {
 
         let printer = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
-                debug!(?msg);
+                debug!(msg = ?msg);
 
                 match msg {
                     // Closing the stream ensures it still drains if there are messages in flight.

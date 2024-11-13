@@ -1,17 +1,16 @@
 //! The `manifest create` command, which creates manifests.
 
-use crate::cli::Config;
-use crate::cli::ManifestCreateArgs;
-use crate::print::PrinterCmd;
-use anyhow::anyhow;
-use anyhow::Result;
-use omnibor::embedding::NoEmbed;
-use omnibor::hashes::Sha256;
-use omnibor::storage::FileSystemStorage;
-use omnibor::InputManifestBuilder;
-use omnibor::IntoArtifactId;
-use omnibor::RelationKind;
+use crate::{
+    cli::{Config, ManifestCreateArgs},
+    print::PrinterCmd,
+};
+use anyhow::{anyhow, Result};
+use omnibor::{
+    embedding::NoEmbed, hashes::Sha256, storage::FileSystemStorage, InputManifestBuilder,
+    IntoArtifactId, RelationKind,
+};
 use tokio::sync::mpsc::Sender;
+use tracing::info;
 
 /// Run the `manifest create` subcommand.
 pub async fn run(
@@ -23,7 +22,7 @@ pub async fn run(
         .dir()
         .ok_or_else(|| anyhow!("no root directory found"))?;
 
-    tracing::info!("selected OmniBOR root dir '{}'", root.display());
+    info!(root = %root.display());
 
     let storage = FileSystemStorage::new(root)?;
 

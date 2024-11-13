@@ -1,23 +1,18 @@
-mod artifact_find;
-mod artifact_id;
 mod cli;
-mod debug_config;
+mod cmd;
 mod fs;
-mod manifest_add;
-mod manifest_create;
-mod manifest_remove;
 mod print;
 
-use crate::cli::Command;
-use crate::cli::Config;
-use crate::cli::ManifestCommand;
-use crate::print::Printer;
-use crate::print::PrinterCmd;
+use crate::{
+    cli::{ArtifactCommand, Command, Config, DebugCommand, ManifestCommand},
+    cmd::{artifact, debug, manifest},
+    print::{Printer, PrinterCmd},
+};
 use anyhow::Result;
 use clap::Parser as _;
-use cli::ArtifactCommand;
 use std::process::ExitCode;
 use tokio::sync::mpsc::Sender;
+use tracing::trace;
 use tracing_subscriber::filter::EnvFilter;
 
 // The environment variable to use when configuring the log.
@@ -28,7 +23,8 @@ async fn main() -> ExitCode {
     init_log();
     let config = Config::parse();
     let printer = Printer::launch(config.buffer());
-    tracing::trace!("config: {:#?}", config);
+
+    trace!(config = ?config);
 
     match run(printer.tx(), &config).await {
         Ok(_) => {
@@ -54,16 +50,16 @@ fn init_log() {
 async fn run(tx: &Sender<PrinterCmd>, config: &Config) -> Result<()> {
     match config.command() {
         Command::Artifact(ref args) => match args.command() {
-            ArtifactCommand::Id(ref args) => artifact_id::run(tx, config, args).await?,
-            ArtifactCommand::Find(ref args) => artifact_find::run(tx, config, args).await?,
+            ArtifactCommand::Id(ref args) => artifact::id::run(tx, config, args).await?,
+            ArtifactCommand::Find(ref args) => artifact::find::run(tx, config, args).await?,
         },
         Command::Manifest(ref args) => match args.command() {
-            ManifestCommand::Add(ref args) => manifest_add::run(tx, config, args).await?,
-            ManifestCommand::Remove(ref args) => manifest_remove::run(tx, config, args).await?,
-            ManifestCommand::Create(ref args) => manifest_create::run(tx, config, args).await?,
+            ManifestCommand::Add(ref args) => manifest::add::run(tx, config, args).await?,
+            ManifestCommand::Remove(ref args) => manifest::remove::run(tx, config, args).await?,
+            ManifestCommand::Create(ref args) => manifest::create::run(tx, config, args).await?,
         },
         Command::Debug(ref args) => match args.command() {
-            cli::DebugCommand::Config => debug_config::run(tx, config).await?,
+            DebugCommand::Config => debug::config::run(tx, config).await?,
         },
     }
 

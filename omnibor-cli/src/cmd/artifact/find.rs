@@ -1,10 +1,10 @@
 //! The `artifact find` command, which finds files by ID.
 
-use crate::cli::Config;
-use crate::cli::FindArgs;
-use crate::cli::SelectedHash;
-use crate::fs::*;
-use crate::print::PrinterCmd;
+use crate::{
+    cli::{Config, FindArgs, SelectedHash},
+    fs::*,
+    print::PrinterCmd,
+};
 use anyhow::Result;
 use async_walkdir::WalkDir;
 use futures_lite::stream::StreamExt as _;
