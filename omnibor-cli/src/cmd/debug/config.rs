@@ -1,7 +1,6 @@
 //! The `debug config` command, which helps debug the CLI configuration.
 
-use crate::{cli::Config, print::PrinterCmd};
-use anyhow::Result;
+use crate::{cli::Config, error::Result, print::PrinterCmd};
 use tokio::sync::mpsc::Sender;
 
 /// Run the `debug config` subcommand.

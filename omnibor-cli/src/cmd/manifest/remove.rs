@@ -2,9 +2,9 @@
 
 use crate::{
     cli::{Config, ManifestRemoveArgs},
+    error::Result,
     print::PrinterCmd,
 };
-use anyhow::Result;
 use tokio::sync::mpsc::Sender;
 
 /// Run the `manifest remove` subcommand.

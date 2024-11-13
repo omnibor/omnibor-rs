@@ -1,7 +1,9 @@
 //! Defines a simple print queue abstraction.
 
-use crate::cli::Format;
-use anyhow::{Error, Result};
+use crate::{
+    cli::Format,
+    error::{Error, Result},
+};
 use serde_json::{json, Value as JsonValue};
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -119,7 +121,7 @@ impl PrinterCmd {
     }
 
     /// Construct a new error printer command.
-    pub fn error<E: Into<Error>>(error: E, format: Format) -> PrinterCmd {
+    pub fn error(error: Error, format: Format) -> PrinterCmd {
         PrinterCmd::Message(Msg::error(error, format))
     }
 
@@ -180,17 +182,13 @@ impl Msg {
     }
 
     /// Construct a new error message.
-    pub fn error<E: Into<Error>>(error: E, format: Format) -> Msg {
-        fn _error(error: Error, format: Format) -> Msg {
-            let status = Status::Error;
+    pub fn error(error: Error, format: Format) -> Msg {
+        let status = Status::Error;
 
-            match format {
-                Format::Plain | Format::Short => Msg::plain(status, &format!("error: {}", error)),
-                Format::Json => Msg::json(status, json!({"error": error.to_string()})),
-            }
+        match format {
+            Format::Plain | Format::Short => Msg::plain(status, &format!("error: {}", error)),
+            Format::Json => Msg::json(status, json!({"error": error.to_string()})),
         }
-
-        _error(error.into(), format)
     }
 
     /// Construct a new plain Msg.
@@ -230,8 +228,12 @@ impl Msg {
         let bytes = to_output.as_bytes();
 
         match self.status {
-            Status::Success => std::io::stdout().write_all(bytes)?,
-            Status::Error => std::io::stderr().write_all(bytes)?,
+            Status::Success => std::io::stdout()
+                .write_all(bytes)
+                .map_err(Error::StdoutWriteFailed)?,
+            Status::Error => std::io::stderr()
+                .write_all(bytes)
+                .map_err(Error::StderrWriteFailed)?,
         }
 
         Ok(())
@@ -240,8 +242,14 @@ impl Msg {
     /// Write bytes to the correct sink.
     async fn write(&self, bytes: &[u8]) -> Result<()> {
         match self.status {
-            Status::Success => stdout().write_all(bytes).await?,
-            Status::Error => stderr().write_all(bytes).await?,
+            Status::Success => stdout()
+                .write_all(bytes)
+                .await
+                .map_err(Error::StdoutWriteFailed)?,
+            Status::Error => stderr()
+                .write_all(bytes)
+                .await
+                .map_err(Error::StderrWriteFailed)?,
         }
 
         Ok(())

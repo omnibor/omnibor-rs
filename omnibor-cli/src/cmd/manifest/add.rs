@@ -2,9 +2,9 @@
 
 use crate::{
     cli::{Config, ManifestAddArgs},
+    error::Result,
     print::PrinterCmd,
 };
-use anyhow::Result;
 use tokio::sync::mpsc::Sender;
 
 /// Run the `manifest add` subcommand.

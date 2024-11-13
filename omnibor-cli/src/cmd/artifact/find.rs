@@ -2,10 +2,10 @@
 
 use crate::{
     cli::{Config, FindArgs, SelectedHash},
+    error::{Error, Result},
     fs::*,
     print::PrinterCmd,
 };
-use anyhow::Result;
 use async_walkdir::WalkDir;
 use futures_lite::stream::StreamExt as _;
 use tokio::sync::mpsc::Sender;
@@ -21,7 +21,16 @@ pub async fn run(tx: &Sender<PrinterCmd>, config: &Config, args: &FindArgs) -> R
     loop {
         match entries.next().await {
             None => break,
-            Some(Err(e)) => tx.send(PrinterCmd::error(e, config.format())).await?,
+            Some(Err(source)) => {
+                tx.send(PrinterCmd::error(
+                    Error::WalkDirFailed {
+                        path: path.to_path_buf(),
+                        source,
+                    },
+                    config.format(),
+                ))
+                .await?
+            }
             Some(Ok(entry)) => {
                 let path = &entry.path();
 

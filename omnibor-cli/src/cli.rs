@@ -1,6 +1,7 @@
 //! Defines the Command Line Interface.
 
-use anyhow::anyhow;
+use crate::error::Error;
+use clap_verbosity_flag::{InfoLevel, Verbosity};
 use omnibor::{hashes::Sha256, ArtifactId, IntoArtifactId};
 use pathbuf::pathbuf;
 use std::{
@@ -66,6 +67,9 @@ pub struct Config {
         help_heading = "General Flags"
     )]
     dir: Option<PathBuf>,
+
+    #[command(flatten)]
+    pub verbose: Verbosity<InfoLevel>,
 
     #[command(subcommand)]
     command: Option<Command>,
@@ -230,13 +234,13 @@ pub enum IdentifiableArg {
 }
 
 impl FromStr for IdentifiableArg {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match (ArtifactId::from_str(s), PathBuf::from_str(s)) {
             (Ok(aid), _) => Ok(IdentifiableArg::ArtifactId(aid)),
             (_, Ok(path)) => Ok(IdentifiableArg::Path(path)),
-            (Err(_), Err(_)) => Err(anyhow!("input not recognized as Artifact ID or file path")),
+            (Err(_), Err(_)) => Err(Error::NotIdentifiable(s.to_string())),
         }
     }
 }
