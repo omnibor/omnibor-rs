@@ -13,12 +13,12 @@ use std::{
     path::Path,
     result::Result as StdResult,
 };
-use tokio::io::{stderr, stdout, AsyncWriteExt as _};
 use tokio::{
+    io::{stderr, stdout, AsyncWriteExt as _},
     sync::mpsc::{self, Sender},
     task::JoinError,
 };
-use tracing::debug;
+use tracing::{debug, error};
 use url::Url;
 
 /// A handle to assist in interacting with the printer.
@@ -51,11 +51,11 @@ impl Printer {
                             let err_msg = Msg::error(err, format);
 
                             if let Err(err) = err_msg.sync_print() {
-                                panic!("failed to print sync error message: '{}'", err);
+                                error!(msg = "failed to print sync error message", error = %err);
                             }
 
                             if let Err(err) = msg_clone.sync_print() {
-                                panic!("failed to print sync message: '{}'", err);
+                                error!(msg = "failed to print sync message", error = %err);
                             }
                         }
                     }
@@ -71,10 +71,9 @@ impl Printer {
 
     /// Send a message to the print task.
     pub async fn send(&self, cmd: PrinterCmd) {
-        self.tx
-            .send(cmd)
-            .await
-            .expect("print task is awaited and should still be receiving")
+        if let Err(e) = self.tx.send(cmd.clone()).await {
+            error!(msg = "failed to send printer cmd", cmd = ?cmd, error = %e);
+        }
     }
 
     /// Wait on the underlying task.
@@ -88,7 +87,7 @@ impl Printer {
             }
 
             if error.is_cancelled() {
-                panic!("the printer task was cancelled unexpectedly");
+                error!(msg = "the printer task was cancelled unexpectedly");
             }
         }
     }

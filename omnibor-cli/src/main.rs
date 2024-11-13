@@ -23,11 +23,8 @@ const LOG_VAR: &str = "OMNIBOR_LOG";
 #[tokio::main]
 async fn main() -> ExitCode {
     let config = Config::parse();
-
     init_log(&config.verbose);
-
     let printer = Printer::launch(config.buffer());
-
     trace!(config = ?config);
 
     match run(printer.tx(), &config).await {
