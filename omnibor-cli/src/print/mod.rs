@@ -21,7 +21,6 @@ use std::{
     result::Result as StdResult,
 };
 use tokio::{
-    io::{stderr, stdout, AsyncWriteExt as _},
     sync::mpsc::{self, Sender},
     task::JoinError,
 };
@@ -41,8 +40,8 @@ impl Printer {
     pub fn launch(buffer_size: usize) -> Printer {
         let (tx, mut rx) = mpsc::channel::<PrinterCmd>(buffer_size);
 
-        let printer = tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
+        let printer = tokio::task::spawn_blocking(move || {
+            while let Some(msg) = rx.blocking_recv() {
                 debug!(msg = ?msg);
 
                 match msg {
@@ -52,15 +51,11 @@ impl Printer {
                         let status = output.status();
                         let output = output.format(format);
 
-                        if let Err(error) = print(status, output.clone()).await {
+                        if let Err(error) = sync_print(status, output.clone()) {
                             let err_output = ErrorMsg::new(error).format(format);
 
                             if let Err(err) = sync_print(Status::Error, err_output) {
                                 error!(msg = "failed to print sync error message", error = %err);
-                            }
-
-                            if let Err(err) = sync_print(status, output) {
-                                error!(msg = "failed to print sync message", error = %err);
                             }
                         }
                     }
@@ -111,6 +106,12 @@ impl PrintSender {
             .send(value)
             .await
             .map_err(|_| Error::PrintChannelClose)
+    }
+}
+
+impl Clone for PrintSender {
+    fn clone(&self) -> Self {
+        PrintSender(self.0.clone())
     }
 }
 
@@ -178,24 +179,6 @@ pub trait CommandOutput: Debug + DynClone + Send + 'static {
 
         output
     }
-}
-
-/// Print to the appropriate sink.
-async fn print(status: Status, output: String) -> Result<()> {
-    let bytes = output.as_bytes();
-
-    match status {
-        Status::Success => stdout()
-            .write_all(bytes)
-            .await
-            .map_err(Error::StdoutWriteFailed)?,
-        Status::Error => stderr()
-            .write_all(bytes)
-            .await
-            .map_err(Error::StderrWriteFailed)?,
-    }
-
-    Ok(())
 }
 
 /// Print the contents of the message synchronously.

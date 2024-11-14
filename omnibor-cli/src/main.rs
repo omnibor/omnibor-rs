@@ -13,20 +13,28 @@ use crate::{
 use clap::Parser as _;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use std::process::ExitCode;
-use tracing::trace;
-use tracing_subscriber::filter::EnvFilter;
+use tokio::runtime::Runtime;
+use tracing::{trace, Subscriber};
+use tracing_subscriber::{
+    filter::EnvFilter, layer::SubscriberExt as _, registry::LookupSpan,
+    util::SubscriberInitExt as _, Layer,
+};
 
 // The environment variable to use when configuring the log.
 const LOG_VAR: &str = "OMNIBOR_LOG";
 
-#[tokio::main]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
+    let runtime = Runtime::new().expect("runtime construction succeeds");
+    runtime.block_on(async { run().await })
+}
+
+async fn run() -> ExitCode {
     let config = Config::parse();
     init_log(&config.verbose);
     let printer = Printer::launch(config.buffer());
     trace!(config = ?config);
 
-    match run(printer.tx(), &config).await {
+    match run_cmd(printer.tx(), &config).await {
         Ok(_) => {
             printer.join().await;
             ExitCode::SUCCESS
@@ -41,23 +49,43 @@ async fn main() -> ExitCode {
     }
 }
 
+#[cfg(feature = "console")]
 /// Initialize the logging / tracing.
 fn init_log(verbosity: &Verbosity<InfoLevel>) {
     let level_filter = adapt_level_filter(verbosity.log_level_filter());
     let filter = EnvFilter::from_env(LOG_VAR).add_directive(level_filter.into());
-
-    let format = tracing_subscriber::fmt::format()
-        .with_level(true)
-        .without_time()
-        .with_target(false)
-        .with_thread_ids(false)
-        .with_thread_names(false)
-        .compact();
-
-    tracing_subscriber::fmt()
-        .event_format(format)
-        .with_env_filter(filter)
+    let fmt_layer = fmt_layer(filter);
+    let console_layer = console_subscriber::spawn();
+    tracing_subscriber::registry()
+        .with(fmt_layer)
+        .with(console_layer)
         .init();
+}
+
+#[cfg(not(feature = "console"))]
+/// Initialize the logging / tracing.
+fn init_log(verbosity: &Verbosity<InfoLevel>) {
+    let level_filter = adapt_level_filter(verbosity.log_level_filter());
+    let filter = EnvFilter::from_env(LOG_VAR).add_directive(level_filter.into());
+    let fmt_layer = fmt_layer(filter);
+    tracing_subscriber::registry().with(fmt_layer).init();
+}
+
+fn fmt_layer<S>(filter: EnvFilter) -> impl Layer<S>
+where
+    S: Subscriber + for<'span> LookupSpan<'span>,
+{
+    tracing_subscriber::fmt::layer()
+        .event_format(
+            tracing_subscriber::fmt::format()
+                .with_level(true)
+                .without_time()
+                .with_target(false)
+                .with_thread_ids(false)
+                .with_thread_names(false)
+                .compact(),
+        )
+        .with_filter(filter)
 }
 
 /// Convert the clap LevelFilter to the tracing LevelFilter.
@@ -75,7 +103,7 @@ fn adapt_level_filter(
 }
 
 /// Select and run the chosen command.
-async fn run(tx: &PrintSender, config: &Config) -> Result<()> {
+async fn run_cmd(tx: &PrintSender, config: &Config) -> Result<()> {
     match config.command() {
         Command::Artifact(ref args) => match args.command() {
             ArtifactCommand::Id(ref args) => artifact::id::run(tx, config, args).await?,

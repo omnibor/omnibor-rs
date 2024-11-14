@@ -26,14 +26,22 @@ default-run = "omnibor"
 name = "omnibor"
 path = "src/main.rs"
 
+[features]
+
+# Optionally turn on `tokio-console` support.
+console = ["dep:console-subscriber"]
+
 [dependencies]
+async-channel = "2.3.1"
 
 async-walkdir = "1.0.0"
 clap = { version = "4.5.1", features = ["derive", "env"] }
 clap-verbosity-flag = "2.2.2"
+console-subscriber = { version = "0.4.1", optional = true }
 dirs = "5.0.1"
 dyn-clone = "1.0.17"
 futures-lite = "2.2.0"
+futures-util = "0.3.31"
 omnibor = { version = "0.6.0", path = "../omnibor" }
 pathbuf = "1.0.0"
 serde_json = "1.0.114"
@@ -47,6 +55,7 @@ tokio = { version = "1.36.0", features = [
     "rt-multi-thread",
     "sync",
     "time",
+    "tracing",
 ] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
