@@ -1,18 +1,15 @@
 //! File system helper operations.
 
-use crate::cli::Format;
-use crate::cli::SelectedHash;
-use crate::print::PrinterCmd;
-use anyhow::Context as _;
-use anyhow::Result;
-use async_walkdir::DirEntry as AsyncDirEntry;
-use async_walkdir::WalkDir;
+use crate::{
+    cli::{Format, SelectedHash},
+    error::{Error, Result},
+    print::{error::ErrorMsg, id_file::IdFileMsg, PrinterCmd},
+};
+use async_walkdir::{DirEntry as AsyncDirEntry, WalkDir};
 use futures_lite::stream::StreamExt as _;
-use omnibor::hashes::Sha256;
-use omnibor::ArtifactId;
+use omnibor::{hashes::Sha256, ArtifactId};
 use std::path::Path;
-use tokio::fs::File as AsyncFile;
-use tokio::sync::mpsc::Sender;
+use tokio::{fs::File as AsyncFile, sync::mpsc::Sender};
 use url::Url;
 
 // Identify, recursively, all the files under a directory.
@@ -27,7 +24,16 @@ pub async fn id_directory(
     loop {
         match entries.next().await {
             None => break,
-            Some(Err(e)) => tx.send(PrinterCmd::error(e, format)).await?,
+            Some(Err(source)) => tx
+                .send(PrinterCmd::msg(
+                    ErrorMsg::new(Error::WalkDirFailed {
+                        path: path.to_path_buf(),
+                        source,
+                    }),
+                    format,
+                ))
+                .await
+                .map_err(|_| Error::PrintChannelClose)?,
             Some(Ok(entry)) => {
                 let path = &entry.path();
 
@@ -53,7 +59,17 @@ pub async fn id_file(
     hash: SelectedHash,
 ) -> Result<()> {
     let url = hash_file(hash, file, path).await?;
-    tx.send(PrinterCmd::id(path, &url, format)).await?;
+
+    tx.send(PrinterCmd::msg(
+        IdFileMsg {
+            path: path.to_path_buf(),
+            id: url.clone(),
+        },
+        format,
+    ))
+    .await
+    .map_err(|_| Error::PrintChannelClose)?;
+
     Ok(())
 }
 
@@ -65,8 +81,14 @@ pub async fn hash_file(hash: SelectedHash, file: &mut AsyncFile, path: &Path) ->
 }
 
 /// Check if the file is for a directory.
-pub async fn file_is_dir(file: &AsyncFile) -> Result<bool> {
-    Ok(file.metadata().await.map(|meta| meta.is_dir())?)
+pub async fn file_is_dir(file: &AsyncFile, path: &Path) -> Result<bool> {
+    file.metadata()
+        .await
+        .map(|meta| meta.is_dir())
+        .map_err(|source| Error::FileFailedMetadata {
+            path: path.to_path_buf(),
+            source,
+        })
 }
 
 /// Check if the entry is for a directory.
@@ -74,25 +96,29 @@ pub async fn entry_is_dir(entry: &AsyncDirEntry) -> Result<bool> {
     entry
         .file_type()
         .await
-        .with_context(|| {
-            format!(
-                "unable to identify file type for '{}'",
-                entry.path().display()
-            )
-        })
         .map(|file_type| file_type.is_dir())
+        .map_err(|source| Error::UnknownFileType {
+            path: entry.path(),
+            source,
+        })
 }
 
 /// Open an asynchronous file.
 pub async fn open_async_file(path: &Path) -> Result<AsyncFile> {
     AsyncFile::open(path)
         .await
-        .with_context(|| format!("failed to open file '{}'", path.display()))
+        .map_err(|source| Error::FileFailedToOpen {
+            path: path.to_path_buf(),
+            source,
+        })
 }
 
 /// Identify a file using a SHA-256 hash.
 pub async fn sha256_id_async_file(file: &mut AsyncFile, path: &Path) -> Result<ArtifactId<Sha256>> {
     ArtifactId::id_async_reader(file)
         .await
-        .with_context(|| format!("failed to produce Artifact ID for '{}'", path.display()))
+        .map_err(|source| Error::FileFailedToId {
+            path: path.to_path_buf(),
+            source,
+        })
 }

@@ -1,9 +1,10 @@
 //! The `manifest add` command, which adds manifests.
 
-use crate::cli::Config;
-use crate::cli::ManifestAddArgs;
-use crate::print::PrinterCmd;
-use anyhow::Result;
+use crate::{
+    cli::{Config, ManifestAddArgs},
+    error::Result,
+    print::PrinterCmd,
+};
 use tokio::sync::mpsc::Sender;
 
 /// Run the `manifest add` subcommand.

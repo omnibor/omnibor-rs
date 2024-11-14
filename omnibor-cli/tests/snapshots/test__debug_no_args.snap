@@ -19,8 +19,10 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
-  -h, --help     Print help (see more with '--help')
-  -V, --version  Print version
+  -v, --verbose...  Increase logging verbosity
+  -q, --quiet...    Decrease logging verbosity
+  -h, --help        Print help (see more with '--help')
+  -V, --version     Print version
 
 General Flags:
   -b, --buffer <BUFFER>  How many print messages to buffer at once [env: OMNIBOR_BUFFER=] [default: 100]

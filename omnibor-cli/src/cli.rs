@@ -1,19 +1,16 @@
 //! Defines the Command Line Interface.
 
-#![allow(unused)]
-
-use anyhow::anyhow;
-use omnibor::hashes::Sha256;
-use omnibor::ArtifactId;
-use omnibor::IntoArtifactId;
+use crate::error::Error;
+use clap_verbosity_flag::{InfoLevel, Verbosity};
+use omnibor::{hashes::Sha256, ArtifactId, IntoArtifactId};
 use pathbuf::pathbuf;
-use std::default::Default;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::path::Path;
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::sync::OnceLock;
+use std::{
+    default::Default,
+    fmt::{Display, Formatter},
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::OnceLock,
+};
 
 // The default root directory for OmniBOR.
 // We use a `static` here to make sure we can safely give out
@@ -70,6 +67,9 @@ pub struct Config {
         help_heading = "General Flags"
     )]
     dir: Option<PathBuf>,
+
+    #[command(flatten)]
+    pub verbose: Verbosity<InfoLevel>,
 
     #[command(subcommand)]
     command: Option<Command>,
@@ -234,13 +234,13 @@ pub enum IdentifiableArg {
 }
 
 impl FromStr for IdentifiableArg {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match (ArtifactId::from_str(s), PathBuf::from_str(s)) {
             (Ok(aid), _) => Ok(IdentifiableArg::ArtifactId(aid)),
             (_, Ok(path)) => Ok(IdentifiableArg::Path(path)),
-            (Err(_), Err(_)) => Err(anyhow!("input not recognized as Artifact ID or file path")),
+            (Err(_), Err(_)) => Err(Error::NotIdentifiable(s.to_string())),
         }
     }
 }
