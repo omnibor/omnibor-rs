@@ -1,0 +1,18 @@
+---
+source: omnibor-cli/tests/test.rs
+info:
+  program: omnibor
+  args:
+    - artifact
+    - id
+    - "--format"
+    - plain
+    - "--path"
+    - tests/data/main.c
+---
+success: true
+exit_code: 0
+----- stdout -----
+tests/data/main.c => <GITOID>
+
+----- stderr -----
