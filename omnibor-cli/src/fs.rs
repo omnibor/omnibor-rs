@@ -55,7 +55,7 @@ pub async fn id_directory(
 
 /// Walk the target path structure, printing errors and sending discovered
 /// paths out to workers.
-async fn walk_target(
+pub async fn walk_target(
     path_sender: WorkSender<PathBuf>,
     print_tx: PrintSender,
     format: Format,
