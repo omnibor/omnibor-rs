@@ -1,7 +1,9 @@
 //! Error types.
 
+use async_channel::SendError;
 use omnibor::Error as OmniborError;
 use std::{io::Error as IoError, path::PathBuf, result::Result as StdResult};
+use tokio::task::JoinError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -59,6 +61,12 @@ pub enum Error {
         #[source]
         source: OmniborError,
     },
+
+    #[error("work channel closed for sending")]
+    WorkChannelCloseSend(#[source] SendError<PathBuf>),
+
+    #[error("failed to join worker task")]
+    CouldNotJoinWorker(#[source] JoinError),
 
     #[error("print channel closed")]
     PrintChannelClose,

@@ -5,12 +5,18 @@ use crate::{
     error::{Error, Result},
     print::{error::ErrorMsg, id_file::IdFileMsg, PrintSender, PrinterCmd},
 };
+use async_channel::{bounded, Receiver, Sender as WorkSender};
 use async_walkdir::{DirEntry as AsyncDirEntry, WalkDir};
-use futures_lite::stream::StreamExt as _;
+use futures_util::{pin_mut, StreamExt};
 use omnibor::{hashes::Sha256, ArtifactId};
-use std::path::Path;
-use tokio::fs::File as AsyncFile;
+use std::path::{Path, PathBuf};
+use tokio::{fs::File as AsyncFile, task::JoinSet};
+use tracing::debug;
 use url::Url;
+
+// TODO: Make this tunable on the CLI.
+/// Capacity of the async channel between the producer loop and the consumers.
+const ID_CHAN_CAPACITY: usize = 20;
 
 // Identify, recursively, all the files under a directory.
 pub async fn id_directory(
@@ -19,20 +25,57 @@ pub async fn id_directory(
     format: Format,
     hash: SelectedHash,
 ) -> Result<()> {
-    let mut entries = WalkDir::new(path);
+    let (sender, receiver) = bounded(ID_CHAN_CAPACITY);
+
+    tokio::spawn(walk_target(sender, tx.clone(), format, path.to_path_buf()));
+
+    let mut join_set = JoinSet::new();
+
+    // TODO: Make this tunable on the CLI, with the logic here as a fallback.
+    // Subtract 1, since we've spawned one task separately.
+    let num_workers = tokio::runtime::Handle::current().metrics().num_workers() - 1;
+
+    debug!(num_workers = %num_workers);
+
+    for _ in 0..num_workers {
+        join_set.spawn(open_and_id_files(
+            receiver.clone(),
+            tx.clone(),
+            format,
+            hash,
+        ));
+    }
+
+    while let Some(result) = join_set.join_next().await {
+        result.map_err(Error::CouldNotJoinWorker)??;
+    }
+
+    Ok(())
+}
+
+/// Walk the target path structure, printing errors and sending discovered
+/// paths out to workers.
+async fn walk_target(
+    path_sender: WorkSender<PathBuf>,
+    print_tx: PrintSender,
+    format: Format,
+    path: PathBuf,
+) -> Result<()> {
+    let mut entries = WalkDir::new(&path);
 
     loop {
         match entries.next().await {
-            None => break,
+            None => break Ok(()),
             Some(Err(source)) => {
-                tx.send(PrinterCmd::msg(
-                    ErrorMsg::new(Error::WalkDirFailed {
-                        path: path.to_path_buf(),
-                        source,
-                    }),
-                    format,
-                ))
-                .await?
+                print_tx
+                    .send(PrinterCmd::msg(
+                        ErrorMsg::new(Error::WalkDirFailed {
+                            path: path.to_path_buf(),
+                            source,
+                        }),
+                        format,
+                    ))
+                    .await?
             }
             Some(Ok(entry)) => {
                 let path = &entry.path();
@@ -41,10 +84,30 @@ pub async fn id_directory(
                     continue;
                 }
 
-                let mut file = open_async_file(path).await?;
-                id_file(tx, &mut file, path, format, hash).await?;
+                path_sender
+                    .send(path.clone())
+                    .await
+                    .map_err(Error::WorkChannelCloseSend)?;
             }
         }
+    }
+}
+
+/// Listen on the path receiver and identify each file found.
+///
+/// The semantics of the channel being used mean each path sent will only
+/// be received by one receiver.
+async fn open_and_id_files(
+    path_rx: Receiver<PathBuf>,
+    print_tx: PrintSender,
+    format: Format,
+    hash: SelectedHash,
+) -> Result<()> {
+    pin_mut!(path_rx);
+
+    while let Some(path) = path_rx.next().await {
+        let mut file = open_async_file(&path).await?;
+        id_file(&print_tx, &mut file, &path, format, hash).await?;
     }
 
     Ok(())
