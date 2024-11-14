@@ -1,9 +1,7 @@
 //! Error types.
 
-use crate::print::PrinterCmd;
 use omnibor::Error as OmniborError;
 use std::{io::Error as IoError, path::PathBuf, result::Result as StdResult};
-use tokio::sync::mpsc::error::SendError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -63,7 +61,7 @@ pub enum Error {
     },
 
     #[error("print channel closed")]
-    PrintChannelClose(#[from] SendError<PrinterCmd>),
+    PrintChannelClose,
 }
 
 pub type Result<T> = StdResult<T, Error>;

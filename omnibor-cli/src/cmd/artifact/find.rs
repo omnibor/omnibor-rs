@@ -4,7 +4,7 @@ use crate::{
     cli::{Config, FindArgs, SelectedHash},
     error::{Error, Result},
     fs::*,
-    print::PrinterCmd,
+    print::{error::ErrorMsg, find_file::FindFileMsg, PrinterCmd},
 };
 use async_walkdir::WalkDir;
 use futures_lite::stream::StreamExt as _;
@@ -21,16 +21,16 @@ pub async fn run(tx: &Sender<PrinterCmd>, config: &Config, args: &FindArgs) -> R
     loop {
         match entries.next().await {
             None => break,
-            Some(Err(source)) => {
-                tx.send(PrinterCmd::error(
-                    Error::WalkDirFailed {
+            Some(Err(source)) => tx
+                .send(PrinterCmd::msg(
+                    ErrorMsg::new(Error::WalkDirFailed {
                         path: path.to_path_buf(),
                         source,
-                    },
+                    }),
                     config.format(),
                 ))
-                .await?
-            }
+                .await
+                .map_err(|_| Error::PrintChannelClose)?,
             Some(Ok(entry)) => {
                 let path = &entry.path();
 
@@ -42,8 +42,15 @@ pub async fn run(tx: &Sender<PrinterCmd>, config: &Config, args: &FindArgs) -> R
                 let file_url = hash_file(SelectedHash::Sha256, &mut file, path).await?;
 
                 if url == file_url {
-                    tx.send(PrinterCmd::find(path, &url, config.format()))
-                        .await?;
+                    tx.send(PrinterCmd::msg(
+                        FindFileMsg {
+                            path: path.to_path_buf(),
+                            id: url.clone(),
+                        },
+                        config.format(),
+                    ))
+                    .await
+                    .map_err(|_| Error::PrintChannelClose)?;
                 }
             }
         }

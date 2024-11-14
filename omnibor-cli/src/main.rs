@@ -7,8 +7,8 @@ mod print;
 use crate::{
     cli::{ArtifactCommand, Command, Config, DebugCommand, ManifestCommand},
     cmd::{artifact, debug, manifest},
-    error::Result,
-    print::{Printer, PrinterCmd},
+    error::{Error, Result},
+    print::{error::ErrorMsg, Printer, PrinterCmd},
 };
 use clap::Parser as _;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
@@ -33,7 +33,9 @@ async fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(e) => {
-            printer.send(PrinterCmd::error(e, config.format())).await;
+            printer
+                .send(PrinterCmd::msg(ErrorMsg::new(e), config.format()))
+                .await;
             printer.join().await;
             ExitCode::FAILURE
         }
@@ -91,7 +93,9 @@ async fn run(tx: &Sender<PrinterCmd>, config: &Config) -> Result<()> {
     }
 
     // Ensure we always send the "End" printer command.
-    tx.send(PrinterCmd::End).await?;
+    tx.send(PrinterCmd::End)
+        .await
+        .map_err(|_| Error::PrintChannelClose)?;
 
     Ok(())
 }

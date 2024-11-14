@@ -3,7 +3,7 @@
 use crate::{
     cli::{Format, SelectedHash},
     error::{Error, Result},
-    print::PrinterCmd,
+    print::{error::ErrorMsg, id_file::IdFileMsg, PrinterCmd},
 };
 use async_walkdir::{DirEntry as AsyncDirEntry, WalkDir};
 use futures_lite::stream::StreamExt as _;
@@ -24,16 +24,16 @@ pub async fn id_directory(
     loop {
         match entries.next().await {
             None => break,
-            Some(Err(source)) => {
-                tx.send(PrinterCmd::error(
-                    Error::WalkDirFailed {
+            Some(Err(source)) => tx
+                .send(PrinterCmd::msg(
+                    ErrorMsg::new(Error::WalkDirFailed {
                         path: path.to_path_buf(),
                         source,
-                    },
+                    }),
                     format,
                 ))
-                .await?
-            }
+                .await
+                .map_err(|_| Error::PrintChannelClose)?,
             Some(Ok(entry)) => {
                 let path = &entry.path();
 
@@ -59,7 +59,17 @@ pub async fn id_file(
     hash: SelectedHash,
 ) -> Result<()> {
     let url = hash_file(hash, file, path).await?;
-    tx.send(PrinterCmd::id(path, &url, format)).await?;
+
+    tx.send(PrinterCmd::msg(
+        IdFileMsg {
+            path: path.to_path_buf(),
+            id: url.clone(),
+        },
+        format,
+    ))
+    .await
+    .map_err(|_| Error::PrintChannelClose)?;
+
     Ok(())
 }
 

@@ -32,6 +32,7 @@ async-walkdir = "1.0.0"
 clap = { version = "4.5.1", features = ["derive", "env"] }
 clap-verbosity-flag = "2.2.2"
 dirs = "5.0.1"
+dyn-clone = "1.0.17"
 futures-lite = "2.2.0"
 omnibor = { version = "0.6.0", path = "../omnibor" }
 pathbuf = "1.0.0"
