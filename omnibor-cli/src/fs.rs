@@ -3,18 +3,18 @@
 use crate::{
     cli::{Format, SelectedHash},
     error::{Error, Result},
-    print::{error::ErrorMsg, id_file::IdFileMsg, PrinterCmd},
+    print::{error::ErrorMsg, id_file::IdFileMsg, PrintSender, PrinterCmd},
 };
 use async_walkdir::{DirEntry as AsyncDirEntry, WalkDir};
 use futures_lite::stream::StreamExt as _;
 use omnibor::{hashes::Sha256, ArtifactId};
 use std::path::Path;
-use tokio::{fs::File as AsyncFile, sync::mpsc::Sender};
+use tokio::fs::File as AsyncFile;
 use url::Url;
 
 // Identify, recursively, all the files under a directory.
 pub async fn id_directory(
-    tx: &Sender<PrinterCmd>,
+    tx: &PrintSender,
     path: &Path,
     format: Format,
     hash: SelectedHash,
@@ -24,16 +24,16 @@ pub async fn id_directory(
     loop {
         match entries.next().await {
             None => break,
-            Some(Err(source)) => tx
-                .send(PrinterCmd::msg(
+            Some(Err(source)) => {
+                tx.send(PrinterCmd::msg(
                     ErrorMsg::new(Error::WalkDirFailed {
                         path: path.to_path_buf(),
                         source,
                     }),
                     format,
                 ))
-                .await
-                .map_err(|_| Error::PrintChannelClose)?,
+                .await?
+            }
             Some(Ok(entry)) => {
                 let path = &entry.path();
 
@@ -52,7 +52,7 @@ pub async fn id_directory(
 
 /// Identify a single file.
 pub async fn id_file(
-    tx: &Sender<PrinterCmd>,
+    tx: &PrintSender,
     file: &mut AsyncFile,
     path: &Path,
     format: Format,
@@ -67,8 +67,7 @@ pub async fn id_file(
         },
         format,
     ))
-    .await
-    .map_err(|_| Error::PrintChannelClose)?;
+    .await?;
 
     Ok(())
 }

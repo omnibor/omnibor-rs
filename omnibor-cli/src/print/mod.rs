@@ -30,7 +30,7 @@ use tracing::{debug, error};
 /// A handle to assist in interacting with the printer.
 pub struct Printer {
     /// The transmitter to send message to the task.
-    tx: Sender<PrinterCmd>,
+    tx: PrintSender,
 
     /// The actual future to be awaited.
     task: Box<dyn Future<Output = StdResult<(), JoinError>> + Unpin>,
@@ -69,7 +69,7 @@ impl Printer {
         });
 
         Printer {
-            tx,
+            tx: PrintSender(tx),
             task: Box::new(printer),
         }
     }
@@ -98,8 +98,19 @@ impl Printer {
     }
 
     /// Get a reference to the task transmitter.
-    pub fn tx(&self) -> &Sender<PrinterCmd> {
+    pub fn tx(&self) -> &PrintSender {
         &self.tx
+    }
+}
+
+pub struct PrintSender(Sender<PrinterCmd>);
+
+impl PrintSender {
+    pub async fn send(&self, value: PrinterCmd) -> Result<()> {
+        self.0
+            .send(value)
+            .await
+            .map_err(|_| Error::PrintChannelClose)
     }
 }
 
