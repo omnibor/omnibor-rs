@@ -4,14 +4,13 @@ use crate::{
     cli::{Config, FindArgs, SelectedHash},
     error::{Error, Result},
     fs::*,
-    print::{error::ErrorMsg, find_file::FindFileMsg, PrinterCmd},
+    print::{error::ErrorMsg, find_file::FindFileMsg, PrintSender, PrinterCmd},
 };
 use async_walkdir::WalkDir;
 use futures_lite::stream::StreamExt as _;
-use tokio::sync::mpsc::Sender;
 
 /// Run the `artifact find` subcommand.
-pub async fn run(tx: &Sender<PrinterCmd>, config: &Config, args: &FindArgs) -> Result<()> {
+pub async fn run(tx: &PrintSender, config: &Config, args: &FindArgs) -> Result<()> {
     let FindArgs { aid, path } = args;
 
     let url = aid.url();
@@ -21,16 +20,16 @@ pub async fn run(tx: &Sender<PrinterCmd>, config: &Config, args: &FindArgs) -> R
     loop {
         match entries.next().await {
             None => break,
-            Some(Err(source)) => tx
-                .send(PrinterCmd::msg(
+            Some(Err(source)) => {
+                tx.send(PrinterCmd::msg(
                     ErrorMsg::new(Error::WalkDirFailed {
                         path: path.to_path_buf(),
                         source,
                     }),
                     config.format(),
                 ))
-                .await
-                .map_err(|_| Error::PrintChannelClose)?,
+                .await?
+            }
             Some(Ok(entry)) => {
                 let path = &entry.path();
 
@@ -49,8 +48,7 @@ pub async fn run(tx: &Sender<PrinterCmd>, config: &Config, args: &FindArgs) -> R
                         },
                         config.format(),
                     ))
-                    .await
-                    .map_err(|_| Error::PrintChannelClose)?;
+                    .await?;
                 }
             }
         }

@@ -3,15 +3,10 @@
 use crate::{
     cli::{Config, ManifestRemoveArgs},
     error::Result,
-    print::PrinterCmd,
+    print::PrintSender,
 };
-use tokio::sync::mpsc::Sender;
 
 /// Run the `manifest remove` subcommand.
-pub async fn run(
-    _tx: &Sender<PrinterCmd>,
-    _config: &Config,
-    _args: &ManifestRemoveArgs,
-) -> Result<()> {
+pub async fn run(_tx: &PrintSender, _config: &Config, _args: &ManifestRemoveArgs) -> Result<()> {
     todo!()
 }

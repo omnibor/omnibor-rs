@@ -3,21 +3,16 @@
 use crate::{
     cli::{Config, ManifestCreateArgs},
     error::{Error, Result},
-    print::PrinterCmd,
+    print::PrintSender,
 };
 use omnibor::{
     embedding::NoEmbed, hashes::Sha256, storage::FileSystemStorage, InputManifestBuilder,
     IntoArtifactId, RelationKind,
 };
-use tokio::sync::mpsc::Sender;
 use tracing::info;
 
 /// Run the `manifest create` subcommand.
-pub async fn run(
-    _tx: &Sender<PrinterCmd>,
-    config: &Config,
-    args: &ManifestCreateArgs,
-) -> Result<()> {
+pub async fn run(_tx: &PrintSender, config: &Config, args: &ManifestCreateArgs) -> Result<()> {
     let root = config.dir().ok_or_else(|| Error::NoRoot)?;
 
     info!(root = %root.display());

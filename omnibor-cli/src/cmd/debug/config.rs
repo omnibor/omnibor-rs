@@ -3,17 +3,15 @@
 use crate::{
     cli::Config,
     error::{Error, Result},
-    print::{root_dir::RootDirMsg, PrinterCmd},
+    print::{root_dir::RootDirMsg, PrintSender, PrinterCmd},
 };
-use tokio::sync::mpsc::Sender;
 
 /// Run the `debug config` subcommand.
-pub async fn run(tx: &Sender<PrinterCmd>, config: &Config) -> Result<()> {
+pub async fn run(tx: &PrintSender, config: &Config) -> Result<()> {
     let root = config.dir().ok_or(Error::NoRoot)?.to_path_buf();
 
     tx.send(PrinterCmd::msg(RootDirMsg { path: root }, config.format()))
-        .await
-        .map_err(|_| Error::PrintChannelClose)?;
+        .await?;
 
     Ok(())
 }

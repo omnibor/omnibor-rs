@@ -7,13 +7,12 @@ mod print;
 use crate::{
     cli::{ArtifactCommand, Command, Config, DebugCommand, ManifestCommand},
     cmd::{artifact, debug, manifest},
-    error::{Error, Result},
-    print::{error::ErrorMsg, Printer, PrinterCmd},
+    error::Result,
+    print::{error::ErrorMsg, PrintSender, Printer, PrinterCmd},
 };
 use clap::Parser as _;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use std::process::ExitCode;
-use tokio::sync::mpsc::Sender;
 use tracing::trace;
 use tracing_subscriber::filter::EnvFilter;
 
@@ -76,7 +75,7 @@ fn adapt_level_filter(
 }
 
 /// Select and run the chosen command.
-async fn run(tx: &Sender<PrinterCmd>, config: &Config) -> Result<()> {
+async fn run(tx: &PrintSender, config: &Config) -> Result<()> {
     match config.command() {
         Command::Artifact(ref args) => match args.command() {
             ArtifactCommand::Id(ref args) => artifact::id::run(tx, config, args).await?,
@@ -93,9 +92,7 @@ async fn run(tx: &Sender<PrinterCmd>, config: &Config) -> Result<()> {
     }
 
     // Ensure we always send the "End" printer command.
-    tx.send(PrinterCmd::End)
-        .await
-        .map_err(|_| Error::PrintChannelClose)?;
+    tx.send(PrinterCmd::End).await?;
 
     Ok(())
 }

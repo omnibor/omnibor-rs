@@ -4,12 +4,11 @@ use crate::{
     cli::{Config, IdArgs},
     error::Result,
     fs::*,
-    print::PrinterCmd,
+    print::PrintSender,
 };
-use tokio::sync::mpsc::Sender;
 
 /// Run the `artifact id` subcommand.
-pub async fn run(tx: &Sender<PrinterCmd>, config: &Config, args: &IdArgs) -> Result<()> {
+pub async fn run(tx: &PrintSender, config: &Config, args: &IdArgs) -> Result<()> {
     let mut file = open_async_file(&args.path).await?;
 
     if file_is_dir(&file, &args.path).await? {
