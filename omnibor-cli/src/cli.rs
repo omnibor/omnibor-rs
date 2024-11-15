@@ -1,6 +1,7 @@
 //! Defines the Command Line Interface.
 
 use crate::error::Error;
+use clap::{builder::PossibleValue, ValueEnum};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use omnibor::{hashes::Sha256, ArtifactId, IntoArtifactId};
 use pathbuf::pathbuf;
@@ -295,6 +296,27 @@ impl IntoArtifactId<Sha256> for IdentifiableArg {
     }
 }
 
+// Helper macro, generates `Display` and `FromStr` impls for any type that
+// implements `clap::ValueEnum`, delegating to `ValueEnum` functions.
+macro_rules! to_and_from_string {
+    ($name:ident) => {
+        impl Display for $name {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", possible_value(self.to_possible_value()))
+            }
+        }
+
+        impl FromStr for $name {
+            type Err = String;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                let ignore_case = true;
+                ValueEnum::from_str(s, ignore_case)
+            }
+        }
+    };
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default, clap::ValueEnum)]
 pub enum Format {
     /// A human-readable plaintext format
@@ -306,24 +328,7 @@ pub enum Format {
     Short,
 }
 
-impl Display for Format {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Format::Plain => write!(f, "plain"),
-            Format::Json => write!(f, "json"),
-            Format::Short => write!(f, "short"),
-        }
-    }
-}
-
-impl FromStr for Format {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let ignore_case = true;
-        <Self as clap::ValueEnum>::from_str(s, ignore_case)
-    }
-}
+to_and_from_string!(Format);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default, clap::ValueEnum)]
 pub enum SelectedHash {
@@ -332,19 +337,11 @@ pub enum SelectedHash {
     Sha256,
 }
 
-impl Display for SelectedHash {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SelectedHash::Sha256 => write!(f, "sha256"),
-        }
-    }
-}
+to_and_from_string!(SelectedHash);
 
-impl FromStr for SelectedHash {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let ignore_case = true;
-        <Self as clap::ValueEnum>::from_str(s, ignore_case)
+fn possible_value(value: Option<PossibleValue>) -> String {
+    match value {
+        Some(value) => value.get_name().to_string(),
+        None => String::from("<skipped>"),
     }
 }
