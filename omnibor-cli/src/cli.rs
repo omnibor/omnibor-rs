@@ -27,17 +27,6 @@ static DEFAULT_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
     subcommand_required = true
 )]
 pub struct Config {
-    /// How many print messages to buffer at once
-    #[arg(
-        short = 'b',
-        long = "buffer",
-        default_value = "100",
-        global = true,
-        env = "OMNIBOR_BUFFER",
-        help_heading = "General Flags"
-    )]
-    buffer: Option<usize>,
-
     /// Output format
     #[arg(
         short = 'f',
@@ -76,11 +65,6 @@ pub struct Config {
 }
 
 impl Config {
-    /// Get the configured buffer size.
-    pub fn buffer(&self) -> usize {
-        self.buffer.unwrap()
-    }
-
     /// Get the selected format.
     pub fn format(&self) -> Format {
         self.format.unwrap_or_default()
