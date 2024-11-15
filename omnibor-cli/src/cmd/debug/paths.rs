@@ -6,7 +6,7 @@ use crate::{
     error::{Error, Result},
     print::{paths::PathsMsg, PrintSender, PrinterCmd},
 };
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, ops::Not, path::Path};
 
 /// Run the `debug paths` subcommand.
 pub async fn run(tx: &PrintSender, app: &App, args: &DebugPathsArgs) -> Result<()> {
@@ -21,8 +21,13 @@ pub async fn run(tx: &PrintSender, app: &App, args: &DebugPathsArgs) -> Result<(
     to_insert
         .into_iter()
         .filter(|(key, _)| {
-            let key: String = key.to_string();
-            args.keys.contains(&key)
+            if args.keys.is_empty().not() {
+                let key: String = key.to_string();
+                args.keys.contains(&key)
+            } else {
+                // Keep everything if there's no filter list.
+                true
+            }
         })
         .for_each(|(key, path)| msg.insert(key, path));
 

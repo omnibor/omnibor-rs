@@ -2,6 +2,7 @@ use crate::{
     error::Error,
     print::{CommandOutput, Status},
 };
+use console::Style;
 use serde_json::json;
 use std::sync::{Arc, Mutex};
 
@@ -25,7 +26,11 @@ impl ErrorMsg {
 
 impl CommandOutput for ErrorMsg {
     fn plain_output(&self) -> String {
-        format!("error: {}", self.error_string())
+        format!(
+            "{}: {}",
+            Style::new().red().apply_to("error"),
+            self.error_string()
+        )
     }
 
     fn short_output(&self) -> String {

@@ -1,19 +1,20 @@
 use crate::print::{CommandOutput, Status};
+use console::Style;
 use serde_json::json;
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     path::{Path, PathBuf},
 };
 
 #[derive(Debug, Clone)]
 pub struct PathsMsg {
-    data: HashMap<String, Option<PathBuf>>,
+    data: BTreeMap<String, Option<PathBuf>>,
 }
 
 impl PathsMsg {
     pub fn new() -> Self {
         PathsMsg {
-            data: HashMap::new(),
+            data: BTreeMap::new(),
         }
     }
 
@@ -31,10 +32,17 @@ fn opt_path(path: &Option<PathBuf>) -> String {
 
 impl CommandOutput for PathsMsg {
     fn plain_output(&self) -> String {
+        let pad_width = self.data.keys().map(|key| key.len()).max().unwrap_or(10) + 2;
+
         self.data
             .iter()
             .fold(String::new(), |mut output, (name, path)| {
-                output.push_str(&format!("{}: {}\n", name, opt_path(path)));
+                output.push_str(&format!(
+                    "{:>width$}: {}\n",
+                    Style::new().blue().bold().apply_to(name),
+                    opt_path(path),
+                    width = pad_width,
+                ));
                 output
             })
     }
