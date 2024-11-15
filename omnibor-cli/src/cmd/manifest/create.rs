@@ -10,13 +10,12 @@ use omnibor::{
     embedding::NoEmbed, hashes::Sha256, storage::FileSystemStorage, InputManifestBuilder,
     IntoArtifactId, RelationKind,
 };
-use tracing::info;
+use tracing::debug;
 
 /// Run the `manifest create` subcommand.
 pub async fn run(_tx: &PrintSender, app: &App, args: &ManifestCreateArgs) -> Result<()> {
     let root = app.args.dir().ok_or_else(|| Error::NoRoot)?;
-
-    info!(root = %root.display());
+    debug!(root = %root.display());
 
     let storage = FileSystemStorage::new(root).map_err(Error::StorageInitFailed)?;
 

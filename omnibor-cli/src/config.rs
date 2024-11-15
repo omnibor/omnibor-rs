@@ -3,7 +3,7 @@ use crate::{
     error::{Error, Result},
 };
 use serde::Deserialize;
-use std::{fs::File, path::Path};
+use std::{fs::File, io::Read, path::Path};
 use tokio::runtime::Handle;
 use tracing::debug;
 
@@ -20,7 +20,7 @@ impl Config {
             return Ok(Config::default());
         };
 
-        let file = match File::open(path) {
+        let mut file = match File::open(path) {
             Ok(file) => file,
             Err(error) => {
                 // If we simply didn't find the default file, that's fine. It's
@@ -57,7 +57,20 @@ impl Config {
             }
         };
 
-        let config = serde_json::from_reader(file).map_err(Error::CantReadConfig)?;
+        let mut config_contents = String::new();
+        file.read_to_string(&mut config_contents)
+            .map_err(|source| Error::ConfigCouldNotRead {
+                path: path.to_path_buf(),
+                source,
+            })?;
+
+        // If the file exists, we can read it, but it's all whitespace, just
+        // ignore it and use the default.
+        if config_contents.chars().all(|c| c.is_whitespace()) {
+            return Ok(Config::default());
+        }
+
+        let config = serde_json::from_str(&config_contents).map_err(Error::CantReadConfig)?;
         Ok(config)
     }
 }

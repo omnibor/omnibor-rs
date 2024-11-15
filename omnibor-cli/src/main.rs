@@ -17,7 +17,7 @@ use crate::{
     print::{error::ErrorMsg, PrintSender, Printer, PrinterCmd},
 };
 use clap::Parser as _;
-use std::process::ExitCode;
+use std::{error::Error as StdError, process::ExitCode};
 use tokio::runtime::Runtime;
 use tracing::{error, trace};
 
@@ -33,7 +33,7 @@ async fn run() -> ExitCode {
     let config = match Config::init(args.config()) {
         Ok(config) => config,
         Err(error) => {
-            error!("error: {}", error);
+            log_error(&error);
             return ExitCode::FAILURE;
         }
     };
@@ -79,4 +79,12 @@ async fn run_cmd(tx: &PrintSender, app: &App) -> Result<()> {
     tx.send(PrinterCmd::End).await?;
 
     Ok(())
+}
+
+fn log_error(error: &dyn StdError) {
+    error!("{}", error);
+
+    if let Some(child) = error.source() {
+        log_error(child);
+    }
 }
