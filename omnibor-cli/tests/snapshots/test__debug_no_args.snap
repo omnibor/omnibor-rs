@@ -15,8 +15,8 @@ Actions to help debug the OmniBOR CLI
 Usage: omnibor debug [OPTIONS] [COMMAND]
 
 Commands:
-  config  
-  help    Print this message or the help of the given subcommand(s)
+  paths  
+  help   Print this message or the help of the given subcommand(s)
 
 Options:
   -v, --verbose...  Increase logging verbosity
