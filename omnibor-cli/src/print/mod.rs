@@ -3,7 +3,7 @@
 pub mod error;
 pub mod find_file;
 pub mod id_file;
-pub mod root_dir;
+pub mod paths;
 
 use crate::{
     cli::Format,

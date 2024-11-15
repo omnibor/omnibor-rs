@@ -20,6 +20,10 @@ static DEFAULT_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
 // The default config path.
 pub static DEFAULT_CONFIG: OnceLock<Option<PathBuf>> = OnceLock::new();
 
+// Help headings
+const IMPORTANT: &str = "Important Flags";
+const GENERAL: &str = "General Flags";
+
 #[derive(Debug, Default, clap::Parser)]
 #[command(
     name = "omnibor",
@@ -36,7 +40,7 @@ pub struct Args {
         long = "format",
         global = true,
         env = "OMNIBOR_FORMAT",
-        help_heading = "General Flags"
+        help_heading = GENERAL
     )]
     format: Option<Format>,
 
@@ -46,7 +50,7 @@ pub struct Args {
         long = "hash",
         global = true,
         env = "OMNIBOR_HASH",
-        help_heading = "General Flags"
+        help_heading = GENERAL
     )]
     hash: Option<SelectedHash>,
 
@@ -56,7 +60,7 @@ pub struct Args {
         long = "dir",
         global = true,
         env = "OMNIBOR_DIR",
-        help_heading = "General Flags"
+        help_heading = GENERAL
     )]
     dir: Option<PathBuf>,
 
@@ -66,7 +70,7 @@ pub struct Args {
         long = "config",
         global = true,
         env = "OMNIBOR_CONFIG",
-        help_heading = "General Flags"
+        help_heading = GENERAL
     )]
     config: Option<PathBuf>,
 
@@ -76,7 +80,7 @@ pub struct Args {
         default_value_t = false,
         global = true,
         env = "OMNIBOR_CONSOLE",
-        help_heading = "General Flags"
+        help_heading = GENERAL
     )]
     console: bool,
 
@@ -170,7 +174,7 @@ pub enum ArtifactCommand {
 #[command(arg_required_else_help = true)]
 pub struct IdArgs {
     /// Path to identify
-    #[arg(short = 'p', long = "path", help_heading = "Important Flags")]
+    #[arg(short = 'p', long = "path", help_heading = IMPORTANT)]
     pub path: PathBuf,
 }
 
@@ -178,11 +182,11 @@ pub struct IdArgs {
 #[command(arg_required_else_help = true)]
 pub struct FindArgs {
     /// Artifact ID to match
-    #[arg(short = 'a', long = "aid", help_heading = "Important Flags")]
+    #[arg(short = 'a', long = "aid", help_heading = IMPORTANT)]
     pub aid: ArtifactId<Sha256>,
 
     /// The root path to search under
-    #[arg(short = 'p', long = "path", help_heading = "Important Flags")]
+    #[arg(short = 'p', long = "path", help_heading = IMPORTANT)]
     pub path: PathBuf,
 }
 
@@ -221,15 +225,15 @@ pub struct ManifestRemoveArgs {}
 #[command(arg_required_else_help = true)]
 pub struct ManifestCreateArgs {
     /// Inputs to record in the manifest
-    #[arg(short = 'i', long = "input", help_heading = "Important Flags")]
+    #[arg(short = 'i', long = "input", help_heading = IMPORTANT)]
     pub inputs: Vec<IdentifiableArg>,
 
     /// The tool that built the target artifact
-    #[arg(short = 'B', long = "built-by", help_heading = "Important Flags")]
+    #[arg(short = 'B', long = "built-by", help_heading = IMPORTANT)]
     pub built_by: Option<IdentifiableArg>,
 
     /// The target the manifest is describing
-    #[arg(short = 't', long = "target", help_heading = "Important Flags")]
+    #[arg(short = 't', long = "target", help_heading = IMPORTANT)]
     pub target: PathBuf,
 }
 
@@ -248,7 +252,18 @@ impl DebugArgs {
 
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum DebugCommand {
-    Config,
+    Paths(DebugPathsArgs),
+}
+
+#[derive(Debug, Clone, clap::Args)]
+pub struct DebugPathsArgs {
+    /// Names of specific paths to get.
+    #[arg(
+        short = 'k',
+        long = "keys",
+        help_heading = IMPORTANT
+    )]
+    pub keys: Vec<String>,
 }
 
 #[derive(Debug, Clone)]

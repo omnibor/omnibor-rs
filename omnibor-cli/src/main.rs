@@ -71,7 +71,7 @@ async fn run_cmd(tx: &PrintSender, app: &App) -> Result<()> {
             ManifestCommand::Create(ref args) => manifest::create::run(tx, app, args).await?,
         },
         Command::Debug(ref args) => match args.command() {
-            DebugCommand::Config => debug::config::run(tx, app).await?,
+            DebugCommand::Paths(ref args) => debug::paths::run(tx, app, args).await?,
         },
     }
 
