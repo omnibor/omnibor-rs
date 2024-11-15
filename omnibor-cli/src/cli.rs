@@ -322,10 +322,10 @@ pub enum Format {
     /// A human-readable plaintext format
     #[default]
     Plain,
-    /// JSON format
-    Json,
     /// Shortest possible format (ideal for piping to other commands)
     Short,
+    /// JSON format
+    Json,
 }
 
 to_and_from_string!(Format);
