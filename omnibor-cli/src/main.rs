@@ -31,7 +31,8 @@ fn main() -> ExitCode {
 async fn run() -> ExitCode {
     let config = Config::parse();
     init_log(&config.verbose);
-    let printer = Printer::launch(config.buffer());
+    // TODO: Make this tunable.
+    let printer = Printer::launch(100);
     trace!(config = ?config);
 
     match run_cmd(printer.tx(), &config).await {

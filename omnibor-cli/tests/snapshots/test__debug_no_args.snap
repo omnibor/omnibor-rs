@@ -25,7 +25,6 @@ Options:
   -V, --version     Print version
 
 General Flags:
-  -b, --buffer <BUFFER>  How many print messages to buffer at once [env: OMNIBOR_BUFFER=] [default: 100]
   -f, --format <FORMAT>  Output format [env: OMNIBOR_FORMAT=] [possible values: plain, json, short]
   -H, --hash <HASH>      Hash algorithm to use when parsing Artifact IDs [env: OMNIBOR_HASH=] [possible values: sha256]
   -d, --dir <DIR>        Directory to store manifests [env: OMNIBOR_DIR=]
