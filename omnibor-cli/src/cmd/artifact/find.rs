@@ -3,7 +3,8 @@
 use std::path::PathBuf;
 
 use crate::{
-    cli::{Config, FindArgs, Format, SelectedHash},
+    app::App,
+    cli::{FindArgs, Format, SelectedHash},
     error::{Error, Result},
     fs::*,
     print::{find_file::FindFileMsg, PrintSender, PrinterCmd},
@@ -15,37 +16,30 @@ use tokio::task::JoinSet;
 use tracing::debug;
 use url::Url;
 
-// TODO: Make this tunable on the CLI.
-/// Capacity of the async channel between the producer loop and the consumers.
-const ID_CHAN_CAPACITY: usize = 20;
-
 /// Run the `artifact find` subcommand.
-pub async fn run(tx: &PrintSender, config: &Config, args: &FindArgs) -> Result<()> {
+pub async fn run(tx: &PrintSender, app: &App, args: &FindArgs) -> Result<()> {
     let FindArgs { aid, path } = args;
     let url = aid.url();
 
-    let (sender, receiver) = bounded(ID_CHAN_CAPACITY);
+    let (sender, receiver) = bounded(app.config.perf.work_queue_size());
 
     tokio::spawn(walk_target(
         sender,
         tx.clone(),
-        config.format(),
+        app.args.format(),
         path.to_path_buf(),
     ));
 
     let mut join_set = JoinSet::new();
 
-    // TODO: Make this tunable on the CLI, with the logic here as a fallback.
-    // Subtract 1, since we've spawned one task separately.
-    let num_workers = tokio::runtime::Handle::current().metrics().num_workers() - 1;
-
+    let num_workers = app.config.perf.num_workers();
     debug!(num_workers = %num_workers);
 
     for _ in 0..num_workers {
         join_set.spawn(open_and_match_files(
             receiver.clone(),
             tx.clone(),
-            config.format(),
+            app.args.format(),
             url.clone(),
         ));
     }

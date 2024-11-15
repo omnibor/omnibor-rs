@@ -2,6 +2,7 @@
 
 use async_channel::SendError;
 use omnibor::Error as OmniborError;
+use serde_json::Error as JsonError;
 use std::{io::Error as IoError, path::PathBuf, result::Result as StdResult};
 use tokio::task::JoinError;
 
@@ -70,6 +71,30 @@ pub enum Error {
 
     #[error("print channel closed")]
     PrintChannelClose,
+
+    #[error("did not find configuration file '{}'", path.display())]
+    ConfigNotFound {
+        path: PathBuf,
+        #[source]
+        source: IoError,
+    },
+
+    #[error("could not read default configuration file '{}'", path.display())]
+    ConfigDefaultCouldNotRead {
+        path: PathBuf,
+        #[source]
+        source: IoError,
+    },
+
+    #[error("could not read configuration file '{}'", path.display())]
+    ConfigCouldNotRead {
+        path: PathBuf,
+        #[source]
+        source: IoError,
+    },
+
+    #[error("can't read configuration file")]
+    CantReadConfig(#[source] JsonError),
 }
 
 pub type Result<T> = StdResult<T, Error>;

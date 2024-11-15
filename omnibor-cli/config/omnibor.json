@@ -1,0 +1,7 @@
+{
+  "perf": {
+    "print_queue_size": 1,
+    "work_queue_size": 1,
+    "num_workers": 1
+  }
+}
