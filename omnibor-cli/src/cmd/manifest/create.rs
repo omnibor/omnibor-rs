@@ -1,7 +1,8 @@
 //! The `manifest create` command, which creates manifests.
 
 use crate::{
-    cli::{Config, ManifestCreateArgs},
+    app::App,
+    cli::ManifestCreateArgs,
     error::{Error, Result},
     print::PrintSender,
 };
@@ -12,8 +13,8 @@ use omnibor::{
 use tracing::info;
 
 /// Run the `manifest create` subcommand.
-pub async fn run(_tx: &PrintSender, config: &Config, args: &ManifestCreateArgs) -> Result<()> {
-    let root = config.dir().ok_or_else(|| Error::NoRoot)?;
+pub async fn run(_tx: &PrintSender, app: &App, args: &ManifestCreateArgs) -> Result<()> {
+    let root = app.args.dir().ok_or_else(|| Error::NoRoot)?;
 
     info!(root = %root.display());
 

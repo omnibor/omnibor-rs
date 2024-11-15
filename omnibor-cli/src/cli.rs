@@ -12,10 +12,13 @@ use std::{
     sync::OnceLock,
 };
 
-// The default root directory for OmniBOR.
-// We use a `static` here to make sure we can safely give out
-// references to it.
+// We use `static`s here to make sure we can safely give out
+// references to these values.
+
+// The default root directory.
 static DEFAULT_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
+// The default config path.
+pub static DEFAULT_CONFIG: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 #[derive(Debug, Default, clap::Parser)]
 #[command(
@@ -26,7 +29,7 @@ static DEFAULT_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
     arg_required_else_help = true,
     subcommand_required = true
 )]
-pub struct Config {
+pub struct Args {
     /// Output format
     #[arg(
         short = 'f',
@@ -57,14 +60,34 @@ pub struct Config {
     )]
     dir: Option<PathBuf>,
 
+    /// Path to a configuration file.
+    #[arg(
+        short = 'c',
+        long = "config",
+        global = true,
+        env = "OMNIBOR_CONFIG",
+        help_heading = "General Flags"
+    )]
+    config: Option<PathBuf>,
+
+    /// Turn on 'tokio-console' debug integration.
+    #[arg(
+        long = "console",
+        default_value_t = false,
+        global = true,
+        env = "OMNIBOR_CONSOLE",
+        help_heading = "General Flags"
+    )]
+    console: bool,
+
     #[command(flatten)]
-    pub verbose: Verbosity<InfoLevel>,
+    verbosity: Verbosity<InfoLevel>,
 
     #[command(subcommand)]
     command: Option<Command>,
 }
 
-impl Config {
+impl Args {
     /// Get the selected format.
     pub fn format(&self) -> Format {
         self.format.unwrap_or_default()
@@ -75,11 +98,30 @@ impl Config {
         self.hash.unwrap_or_default()
     }
 
+    /// Get the selected verbosity.
+    pub fn verbosity(&self) -> Verbosity<InfoLevel> {
+        self.verbosity.clone()
+    }
+
+    /// Get whether to turn on `tokio-console` integration.
+    pub fn console(&self) -> bool {
+        self.console
+    }
+
     /// Get the chosen OmniBOR root directory.
     pub fn dir(&self) -> Option<&Path> {
         self.dir.as_deref().or_else(|| {
             DEFAULT_DIR
                 .get_or_init(|| dirs::data_dir().map(|cache_dir| pathbuf![&cache_dir, "omnibor"]))
+                .as_deref()
+        })
+    }
+
+    /// Get the chosen configuration file.
+    pub fn config(&self) -> Option<&Path> {
+        self.config.as_deref().or_else(|| {
+            DEFAULT_CONFIG
+                .get_or_init(|| self.dir().map(|root| pathbuf![root, "omnibor.json"]))
                 .as_deref()
         })
     }

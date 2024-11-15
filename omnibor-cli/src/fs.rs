@@ -1,6 +1,7 @@
 //! File system helper operations.
 
 use crate::{
+    app::App,
     cli::{Format, SelectedHash},
     error::{Error, Result},
     print::{error::ErrorMsg, id_file::IdFileMsg, PrintSender, PrinterCmd},
@@ -14,20 +15,16 @@ use tokio::{fs::File as AsyncFile, task::JoinSet};
 use tracing::debug;
 use url::Url;
 
-// TODO: Make this tunable on the CLI.
-/// Capacity of the async channel between the producer loop and the consumers.
-const ID_CHAN_CAPACITY: usize = 20;
-
 // Identify, recursively, all the files under a directory.
-pub async fn id_directory(
-    tx: &PrintSender,
-    path: &Path,
-    format: Format,
-    hash: SelectedHash,
-) -> Result<()> {
-    let (sender, receiver) = bounded(ID_CHAN_CAPACITY);
+pub async fn id_directory(app: &App, tx: &PrintSender, path: &Path) -> Result<()> {
+    let (sender, receiver) = bounded(app.config.perf.work_queue_size());
 
-    tokio::spawn(walk_target(sender, tx.clone(), format, path.to_path_buf()));
+    tokio::spawn(walk_target(
+        sender,
+        tx.clone(),
+        app.args.format(),
+        path.to_path_buf(),
+    ));
 
     let mut join_set = JoinSet::new();
 
@@ -41,8 +38,8 @@ pub async fn id_directory(
         join_set.spawn(open_and_id_files(
             receiver.clone(),
             tx.clone(),
-            format,
-            hash,
+            app.args.format(),
+            app.args.hash(),
         ));
     }
 
