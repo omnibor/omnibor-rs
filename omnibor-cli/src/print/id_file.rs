@@ -1,4 +1,5 @@
 use crate::print::{CommandOutput, Status};
+use console::Style;
 use serde_json::json;
 use std::path::PathBuf;
 use url::Url;
@@ -21,7 +22,12 @@ impl IdFileMsg {
 
 impl CommandOutput for IdFileMsg {
     fn plain_output(&self) -> String {
-        format!("{} => {}", self.path_string(), self.id_string())
+        format!(
+            "{} {} {}",
+            Style::new().blue().bold().apply_to(self.path_string()),
+            Style::new().dim().apply_to("=>"),
+            self.id_string()
+        )
     }
 
     fn short_output(&self) -> String {

@@ -32,6 +32,7 @@ async-channel = "2.3.1"
 async-walkdir = "1.0.0"
 clap = { version = "4.5.1", features = ["derive", "env"] }
 clap-verbosity-flag = "2.2.2"
+console = "0.15.8"
 console-subscriber = "0.4.1"
 dirs = "5.0.1"
 dyn-clone = "1.0.17"
