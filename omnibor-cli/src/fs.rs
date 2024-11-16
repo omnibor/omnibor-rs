@@ -16,7 +16,12 @@ use tracing::debug;
 use url::Url;
 
 // Identify, recursively, all the files under a directory.
-pub async fn id_directory(app: &App, tx: &PrintSender, path: &Path) -> Result<()> {
+pub async fn id_directory(
+    app: &App,
+    hash: SelectedHash,
+    tx: &PrintSender,
+    path: &Path,
+) -> Result<()> {
     let (sender, receiver) = bounded(app.config.perf.work_queue_size());
 
     tokio::spawn(walk_target(
@@ -39,7 +44,7 @@ pub async fn id_directory(app: &App, tx: &PrintSender, path: &Path) -> Result<()
             receiver.clone(),
             tx.clone(),
             app.args.format(),
-            app.args.hash(),
+            hash,
         ));
     }
 

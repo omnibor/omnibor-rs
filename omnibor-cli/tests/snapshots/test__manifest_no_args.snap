@@ -15,20 +15,15 @@ Actions related to Input Manifests
 Usage: omnibor manifest [OPTIONS] <COMMAND>
 
 Commands:
-  add     Add a new manifest to the store
-  remove  Remove a manifest from the store
   create  Create a new manifest and add it to the store
   help    Print this message or the help of the given subcommand(s)
 
 Options:
-  -v, --verbose...  Increase logging verbosity
-  -q, --quiet...    Decrease logging verbosity
-  -h, --help        Print help (see more with '--help')
-  -V, --version     Print version
-
-General Flags:
   -f, --format <FORMAT>  Output format [env: OMNIBOR_FORMAT=] [possible values: plain, short, json]
-  -H, --hash <HASH>      Hash algorithm to use when parsing Artifact IDs [env: OMNIBOR_HASH=] [possible values: sha256]
   -d, --dir <DIR>        Directory to store manifests [env: OMNIBOR_DIR=]
   -c, --config <CONFIG>  Path to a configuration file [env: OMNIBOR_CONFIG=]
-      --console          Turn on 'tokio-console' debug integration [env: OMNIBOR_CONSOLE=]
+  -D, --debug-console    Turn on 'tokio-console' debug integration [env: OMNIBOR_DEBUG_CONSOLE=]
+  -v, --verbose...       Increase logging verbosity
+  -q, --quiet...         Decrease logging verbosity
+  -h, --help             Print help (see more with '--help')
+  -V, --version          Print version

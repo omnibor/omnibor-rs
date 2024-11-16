@@ -9,8 +9,8 @@ mod print;
 
 use crate::{
     app::App,
-    cli::{Args, ArtifactCommand, Command, DebugCommand, ManifestCommand},
-    cmd::{artifact, debug, manifest},
+    cli::{Args, ArtifactCommand, Command, DebugCommand, ManifestCommand, StoreCommand},
+    cmd::{artifact, debug, manifest, store},
     config::Config,
     error::Result,
     log::init_log,
@@ -61,16 +61,19 @@ async fn run() -> ExitCode {
 /// Select and run the chosen command.
 async fn run_cmd(tx: &PrintSender, app: &App) -> Result<()> {
     match app.args.command() {
-        Command::Artifact(ref args) => match args.command() {
+        Command::Artifact(ref args) => match args.command {
             ArtifactCommand::Id(ref args) => artifact::id::run(tx, app, args).await?,
             ArtifactCommand::Find(ref args) => artifact::find::run(tx, app, args).await?,
         },
-        Command::Manifest(ref args) => match args.command() {
-            ManifestCommand::Add(ref args) => manifest::add::run(tx, app, args).await?,
-            ManifestCommand::Remove(ref args) => manifest::remove::run(tx, app, args).await?,
+        Command::Manifest(ref args) => match args.command {
             ManifestCommand::Create(ref args) => manifest::create::run(tx, app, args).await?,
         },
-        Command::Debug(ref args) => match args.command() {
+        Command::Store(ref args) => match args.command {
+            StoreCommand::Add(ref args) => store::add::run(tx, app, args).await?,
+            StoreCommand::Remove(ref args) => store::remove::run(tx, app, args).await?,
+            StoreCommand::Log(ref args) => store::log::run(tx, app, args).await?,
+        },
+        Command::Debug(ref args) => match args.command {
             DebugCommand::Paths(ref args) => debug::paths::run(tx, app, args).await?,
         },
     }
