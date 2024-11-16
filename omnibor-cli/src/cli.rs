@@ -23,7 +23,6 @@ pub static DEFAULT_CONFIG: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 // Help headings
 const IMPORTANT: &str = "Important Flags";
-const GENERAL: &str = "General Flags";
 
 #[derive(Debug, Default, clap::Parser)]
 #[command(
@@ -36,52 +35,24 @@ const GENERAL: &str = "General Flags";
 )]
 pub struct Args {
     /// Output format
-    #[arg(
-        short = 'f',
-        long = "format",
-        global = true,
-        env = "OMNIBOR_FORMAT",
-        help_heading = GENERAL
-    )]
+    #[arg(short = 'f', long = "format", global = true, env = "OMNIBOR_FORMAT")]
     format: Option<Format>,
 
-    /// Hash algorithm to use when parsing Artifact IDs
-    #[arg(
-        short = 'H',
-        long = "hash",
-        global = true,
-        env = "OMNIBOR_HASH",
-        help_heading = GENERAL
-    )]
-    hash: Option<SelectedHash>,
-
     /// Directory to store manifests.
-    #[arg(
-        short = 'd',
-        long = "dir",
-        global = true,
-        env = "OMNIBOR_DIR",
-        help_heading = GENERAL
-    )]
+    #[arg(short = 'd', long = "dir", global = true, env = "OMNIBOR_DIR")]
     dir: Option<PathBuf>,
 
     /// Path to a configuration file.
-    #[arg(
-        short = 'c',
-        long = "config",
-        global = true,
-        env = "OMNIBOR_CONFIG",
-        help_heading = GENERAL
-    )]
+    #[arg(short = 'c', long = "config", global = true, env = "OMNIBOR_CONFIG")]
     config: Option<PathBuf>,
 
     /// Turn on 'tokio-console' debug integration.
     #[arg(
-        long = "console",
+        short = 'D',
+        long = "debug-console",
         default_value_t = false,
         global = true,
-        env = "OMNIBOR_CONSOLE",
-        help_heading = GENERAL
+        env = "OMNIBOR_DEBUG_CONSOLE"
     )]
     console: bool,
 
@@ -96,11 +67,6 @@ impl Args {
     /// Get the selected format.
     pub fn format(&self) -> Format {
         self.format.unwrap_or_default()
-    }
-
-    /// Get the selected hash algorithm.
-    pub fn hash(&self) -> SelectedHash {
-        self.hash.unwrap_or_default()
     }
 
     /// Get the selected verbosity.
@@ -145,6 +111,9 @@ pub enum Command {
     /// Actions related to Input Manifests.
     Manifest(ManifestArgs),
 
+    /// Actions related to the filesystem store.
+    Store(StoreArgs),
+
     /// Actions to help debug the OmniBOR CLI.
     Debug(DebugArgs),
 }
@@ -153,13 +122,7 @@ pub enum Command {
 #[command(arg_required_else_help = true)]
 pub struct ArtifactArgs {
     #[clap(subcommand)]
-    command: Option<ArtifactCommand>,
-}
-
-impl ArtifactArgs {
-    pub fn command(&self) -> ArtifactCommand {
-        self.command.clone().unwrap()
-    }
+    pub command: ArtifactCommand,
 }
 
 #[derive(Debug, Clone, clap::Subcommand)]
@@ -177,6 +140,22 @@ pub struct IdArgs {
     /// Path to identify
     #[arg(short = 'p', long = "path", help_heading = IMPORTANT)]
     pub path: PathBuf,
+
+    /// Hash algorithm to use for Artifact IDs.
+    #[arg(
+        short = 'H',
+        long = "hash",
+        global = true,
+        help_heading = IMPORTANT
+    )]
+    hash: Option<SelectedHash>,
+}
+
+impl IdArgs {
+    /// Get the hash to use.
+    pub fn hash(&self) -> SelectedHash {
+        self.hash.unwrap_or_default()
+    }
 }
 
 #[derive(Debug, Clone, clap::Args)]
@@ -195,21 +174,11 @@ pub struct FindArgs {
 #[command(arg_required_else_help = true)]
 pub struct ManifestArgs {
     #[clap(subcommand)]
-    command: ManifestCommand,
-}
-
-impl ManifestArgs {
-    pub fn command(&self) -> &ManifestCommand {
-        &self.command
-    }
+    pub command: ManifestCommand,
 }
 
 #[derive(Debug, clap::Subcommand)]
 pub enum ManifestCommand {
-    /// Add a new manifest to the store.
-    Add(ManifestAddArgs),
-    /// Remove a manifest from the store.
-    Remove(ManifestRemoveArgs),
     /// Create a new manifest and add it to the store
     Create(ManifestCreateArgs),
 }
@@ -225,38 +194,65 @@ pub struct ManifestRemoveArgs {}
 #[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]
 pub struct ManifestCreateArgs {
-    /// Inputs to record in the manifest
+    /// Inputs to record in the manifest.
     #[arg(short = 'i', long = "input", help_heading = IMPORTANT)]
     pub inputs: Vec<IdentifiableArg>,
 
-    /// The tool that built the target artifact
+    /// The tool that built the target artifact.
     #[arg(short = 'B', long = "built-by", help_heading = IMPORTANT)]
     pub built_by: Option<IdentifiableArg>,
 
-    /// The target the manifest is describing
+    /// The target the manifest is describing.
     #[arg(short = 't', long = "target", help_heading = IMPORTANT)]
     pub target: PathBuf,
+
+    /// Hash algorithm to use for Artifact IDs.
+    #[arg(short = 'H', long = "hash", global = true, env = "OMNIBOR_HASH")]
+    pub hash: Option<SelectedHash>,
 }
+
+#[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
+pub struct StoreArgs {
+    #[clap(subcommand)]
+    pub command: StoreCommand,
+}
+
+#[derive(Debug, clap::Subcommand)]
+pub enum StoreCommand {
+    /// Add an Input Manifest to the store.
+    Add(StoreAddArgs),
+    /// Remove an Input Manifest from the store.
+    Remove(StoreRemoveArgs),
+    /// Review the log of changes to the store.
+    Log(StoreLogArgs),
+}
+
+#[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
+pub struct StoreAddArgs {}
+
+#[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
+pub struct StoreRemoveArgs {}
+
+#[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
+pub struct StoreLogArgs {}
 
 #[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]
 pub struct DebugArgs {
     #[clap(subcommand)]
-    command: Option<DebugCommand>,
+    pub command: DebugCommand,
 }
 
-impl DebugArgs {
-    pub fn command(&self) -> DebugCommand {
-        self.command.as_ref().unwrap().clone()
-    }
-}
-
-#[derive(Debug, Clone, clap::Subcommand)]
+#[derive(Debug, clap::Subcommand)]
 pub enum DebugCommand {
     Paths(DebugPathsArgs),
 }
 
-#[derive(Debug, Clone, clap::Args)]
+#[derive(Debug, clap::Args)]
 pub struct DebugPathsArgs {
     /// Names of specific paths to get.
     #[arg(
