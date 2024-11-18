@@ -11,6 +11,9 @@ pub enum Error {
     #[error("could not identify '{0}'")]
     NotIdentifiable(String),
 
+    #[error("can't specify both --no-store and --no-out")]
+    NoStoreAndNoOut,
+
     #[error("could not find root directory")]
     NoRoot,
 

@@ -9,7 +9,6 @@ use gitoid::HashAlgorithm;
 use gitoid::ObjectType;
 use std::cmp::Ordering;
 use std::fmt::Debug;
-use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
 use std::fs::File;
@@ -144,10 +143,10 @@ impl<H: SupportedHash> InputManifest<H> {
         for relation in &self.relations {
             let aid = relation.artifact;
 
-            write!(bytes, "{} {}", relation.kind, aid.as_hex())?;
+            write!(bytes, "{}", aid.as_hex())?;
 
             if let Some(mid) = relation.manifest {
-                write!(bytes, " bom {}", mid.as_hex())?;
+                write!(bytes, " manifest {}", mid.as_hex())?;
             }
 
             write!(bytes, "\n")?;
@@ -179,15 +178,12 @@ impl<H: SupportedHash> Clone for InputManifest<H> {
 fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
     let parts = input.split(' ').collect::<Vec<_>>();
 
-    if parts.len() < 3 {
+    if parts.len() < 2 {
         return Err(Error::MissingRelationParts);
     }
 
     // Panic Safety: we've already checked the length.
-    let (kind, aid_hex, bom_indicator, manifest_aid_hex) =
-        (parts[0], parts[1], parts.get(2), parts.get(3));
-
-    let kind = RelationKind::from_str(kind)?;
+    let (aid_hex, manifest_indicator, manifest_aid_hex) = (parts[0], parts.get(1), parts.get(2));
 
     let artifact = ArtifactId::<H>::from_str(&format!(
         "gitoid:{}:{}:{}",
@@ -196,10 +192,10 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
         aid_hex
     ))?;
 
-    let manifest = match (bom_indicator, manifest_aid_hex) {
+    let manifest = match (manifest_indicator, manifest_aid_hex) {
         (None, None) | (Some(_), None) | (None, Some(_)) => None,
-        (Some(bom_indicator), Some(manifest_aid_hex)) => {
-            if *bom_indicator != "bom" {
+        (Some(manifest_indicator), Some(manifest_aid_hex)) => {
+            if *manifest_indicator != "manifest" {
                 return Err(Error::MissingBomIndicatorInRelation);
             }
 
@@ -214,19 +210,12 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
         }
     };
 
-    Ok(Relation {
-        kind,
-        artifact,
-        manifest,
-    })
+    Ok(Relation { artifact, manifest })
 }
 
 /// A single input artifact represented in a [`InputManifest`].
 #[derive(Copy)]
 pub struct Relation<H: SupportedHash> {
-    /// The kind of relation being represented.
-    kind: RelationKind,
-
     /// The ID of the artifact itself.
     artifact: ArtifactId<H>,
 
@@ -243,7 +232,6 @@ pub struct Relation<H: SupportedHash> {
 impl<H: SupportedHash> Debug for Relation<H> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("Relation")
-            .field("kind", &self.kind)
             .field("artifact", &self.artifact)
             .field("manifest", &self.manifest)
             .finish()
@@ -253,7 +241,6 @@ impl<H: SupportedHash> Debug for Relation<H> {
 impl<H: SupportedHash> Clone for Relation<H> {
     fn clone(&self) -> Self {
         Relation {
-            kind: self.kind,
             artifact: self.artifact,
             manifest: self.manifest,
         }
@@ -262,9 +249,7 @@ impl<H: SupportedHash> Clone for Relation<H> {
 
 impl<H: SupportedHash> PartialEq for Relation<H> {
     fn eq(&self, other: &Self) -> bool {
-        self.kind.eq(&other.kind)
-            && self.artifact.eq(&other.artifact)
-            && self.manifest.eq(&other.manifest)
+        self.artifact.eq(&other.artifact) && self.manifest.eq(&other.manifest)
     }
 }
 
@@ -278,29 +263,13 @@ impl<H: SupportedHash> PartialOrd for Relation<H> {
 
 impl<H: SupportedHash> Ord for Relation<H> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.kind
-            .cmp(&other.kind)
-            .then_with(|| self.artifact.cmp(&other.artifact))
+        self.artifact.cmp(&other.artifact)
     }
 }
 
 impl<H: SupportedHash> Relation<H> {
-    pub(crate) fn new(
-        kind: RelationKind,
-        artifact: ArtifactId<H>,
-        manifest: Option<ArtifactId<H>>,
-    ) -> Relation<H> {
-        Relation {
-            kind,
-            artifact,
-            manifest,
-        }
-    }
-
-    /// Get the kind of relation being described.
-    #[inline]
-    pub fn kind(&self) -> RelationKind {
-        self.kind
+    pub(crate) fn new(artifact: ArtifactId<H>, manifest: Option<ArtifactId<H>>) -> Relation<H> {
+        Relation { artifact, manifest }
     }
 
     /// Get the ID of the artifact.
@@ -313,37 +282,5 @@ impl<H: SupportedHash> Relation<H> {
     #[inline]
     pub fn manifest(&self) -> Option<ArtifactId<H>> {
         self.manifest
-    }
-}
-
-/// Describes the relationship between an [`InputManifest`]'s target artifact and other artifacts.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum RelationKind {
-    /// Is a build input for the target artifact.
-    Input,
-
-    /// Is a tool used to build the target artifact.
-    BuiltBy,
-}
-
-impl Display for RelationKind {
-    #[inline]
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            RelationKind::Input => write!(f, "input"),
-            RelationKind::BuiltBy => write!(f, "built-by"),
-        }
-    }
-}
-
-impl FromStr for RelationKind {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        match s {
-            "input" => Ok(RelationKind::Input),
-            "built-by" => Ok(RelationKind::BuiltBy),
-            _ => Err(Error::InvalidRelationKind(s.to_owned())),
-        }
     }
 }

@@ -7,7 +7,6 @@ use crate::Error;
 use crate::InputManifest;
 use crate::IntoArtifactId;
 use crate::Relation;
-use crate::RelationKind;
 use crate::Result;
 use std::collections::BTreeSet;
 use std::fmt::Debug;
@@ -59,18 +58,10 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
     }
 
     /// Add a relation to an artifact to the transaction.
-    pub fn add_relation(
-        &mut self,
-        kind: RelationKind,
-        artifact: impl IntoArtifactId<H>,
-    ) -> Result<&mut Self> {
+    pub fn add_relation(&mut self, artifact: impl IntoArtifactId<H>) -> Result<&mut Self> {
         let artifact = artifact.into_artifact_id()?;
-
         let manifest = self.storage.get_manifest_id_for_artifact(artifact)?;
-
-        self.relations
-            .insert(Relation::new(kind, artifact, manifest));
-
+        self.relations.insert(Relation::new(artifact, manifest));
         Ok(self)
     }
 
@@ -79,7 +70,7 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
         &mut self,
         target: &Path,
         should_store: ShouldStore,
-    ) -> Result<TransactionIds<H>> {
+    ) -> Result<LinkedInputManifest<H>> {
         Self::finish_with_optional_embedding(self, target, M::mode(), should_store)
     }
 
@@ -93,7 +84,7 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
         target: &Path,
         embed_mode: Mode,
         should_store: ShouldStore,
-    ) -> Result<TransactionIds<H>> {
+    ) -> Result<LinkedInputManifest<H>> {
         // Construct a new input manifest.
         let mut manifest = InputManifest::with_relations(self.relations.iter().cloned());
 
@@ -129,7 +120,7 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
         // Clear out the set of relations so you can reuse the builder.
         self.relations.clear();
 
-        Ok(TransactionIds {
+        Ok(LinkedInputManifest {
             target_aid,
             manifest_aid,
             manifest,
@@ -142,7 +133,8 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
     }
 }
 
-pub struct TransactionIds<H: SupportedHash> {
+/// An [`InputManifest`] with a known target artifact.
+pub struct LinkedInputManifest<H: SupportedHash> {
     /// The ArtifactId of the target.
     target_aid: ArtifactId<H>,
 
@@ -153,7 +145,7 @@ pub struct TransactionIds<H: SupportedHash> {
     manifest: InputManifest<H>,
 }
 
-impl<H: SupportedHash> Debug for TransactionIds<H> {
+impl<H: SupportedHash> Debug for LinkedInputManifest<H> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("TransactionIds")
             .field("target_aid", &self.target_aid)
@@ -163,7 +155,7 @@ impl<H: SupportedHash> Debug for TransactionIds<H> {
     }
 }
 
-impl<H: SupportedHash> TransactionIds<H> {
+impl<H: SupportedHash> LinkedInputManifest<H> {
     /// Get the ArtifactId of the file targeted by the transaction.
     pub fn target_aid(&self) -> ArtifactId<H> {
         self.target_aid
@@ -275,40 +267,47 @@ mod tests {
         let first_input_aid = ArtifactId::id_str("test_1");
         let second_input_aid = ArtifactId::id_str("test_2");
 
-        let expected_target_aid = ArtifactId::from_str(
+        let expected_target_aid = ArtifactId::<Sha256>::from_str(
             "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03",
         )
         .unwrap();
 
-        let expected_manifest_aid = ArtifactId::from_str(
-            "gitoid:blob:sha256:2915dcbb3be71eb375246f716c4a851f0229e356747fe0e853158169c1f58ac7",
+        let expected_manifest_aid = ArtifactId::<Sha256>::from_str(
+            "gitoid:blob:sha256:9a5b2fc9692cd80380660cea055012a7e5e91aa8a2154551cba423c8ba1043c0",
         )
         .unwrap();
 
         let ids = InputManifestBuilder::<Sha256, NoEmbed, _>::with_storage(storage)
-            .add_relation(RelationKind::Input, first_input_aid)
+            .add_relation(first_input_aid)
             .unwrap()
-            .add_relation(RelationKind::Input, second_input_aid)
+            .add_relation(second_input_aid)
             .unwrap()
             .finish(&target, ShouldStore::Yes)
             .unwrap();
 
         // Check the ArtifactIDs of the target and the manifest.
-        assert_eq!(ids.target_aid, expected_target_aid);
-        assert_eq!(ids.manifest_aid, expected_manifest_aid);
+        assert_eq!(ids.target_aid.as_hex(), expected_target_aid.as_hex());
+        assert_eq!(ids.manifest_aid.as_hex(), expected_manifest_aid.as_hex());
 
         // Check the first relation in the manifest.
         let first_relation = &ids.manifest.relations()[0];
-        assert_eq!(first_relation.artifact(), second_input_aid);
-        assert_eq!(first_relation.kind(), RelationKind::Input);
+        assert_eq!(
+            first_relation.artifact().as_hex(),
+            second_input_aid.as_hex()
+        );
 
         // Check the second relation in the manifest.
         let second_relation = &ids.manifest.relations()[1];
-        assert_eq!(second_relation.artifact(), first_input_aid);
-        assert_eq!(second_relation.kind(), RelationKind::Input);
+        assert_eq!(
+            second_relation.artifact().as_hex(),
+            first_input_aid.as_hex()
+        );
 
         // Make sure we update the target in the manifest.
-        assert_eq!(ids.manifest.target(), Some(ids.target_aid));
+        assert_eq!(
+            ids.manifest.target().map(|target| target.as_hex()),
+            Some(ids.target_aid.as_hex())
+        );
     }
 
     #[test]
