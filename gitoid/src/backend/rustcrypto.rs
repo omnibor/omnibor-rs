@@ -1,13 +1,10 @@
 //! RustCrypto-based cryptography backend.
 
-use crate::impl_hash_algorithm;
-use crate::sealed::Sealed;
+use crate::{impl_hash_algorithm, sealed::Sealed, HashAlgorithm};
+use digest::{generic_array::GenericArray, Digest, OutputSizeUser};
+
 #[cfg(doc)]
 use crate::GitOid;
-use crate::HashAlgorithm;
-use digest::generic_array::GenericArray;
-use digest::Digest;
-use digest::OutputSizeUser;
 
 #[cfg(feature = "sha1")]
 /// SHA-1 algorithm,

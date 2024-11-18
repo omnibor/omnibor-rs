@@ -1,18 +1,12 @@
 //! BoringSSL-based cryptography backend.
 
-use crate::impl_hash_algorithm;
-use crate::sealed::Sealed;
-use crate::HashAlgorithm;
+use crate::{impl_hash_algorithm, sealed::Sealed, HashAlgorithm};
 use boring::sha;
-use digest::consts::U20;
-use digest::consts::U32;
-use digest::generic_array::GenericArray;
-use digest::Digest;
-use digest::FixedOutput;
-use digest::HashMarker;
-use digest::Output;
-use digest::OutputSizeUser;
-use digest::Update;
+use digest::{
+    consts::{U20, U32},
+    generic_array::GenericArray,
+    Digest, FixedOutput, HashMarker, Output, OutputSizeUser, Update,
+};
 
 #[cfg(feature = "sha1")]
 /// SHA-1 algorithm

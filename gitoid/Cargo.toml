@@ -30,13 +30,13 @@ sha2 = { version = "0.10.8", default-features = false, optional = true }
 
 # std-requiring dependencies.
 
-format-bytes = { version = "0.3.0", optional = true }
 hex = { version = "0.4.3", optional = true }
 serde = { version = "1.0.197", optional = true }
 tokio = { version = "1.36.0", features = ["io-util"], optional = true }
 url = { version = "2.4.1", optional = true }
 boring = { version = "4.6.0", optional = true }
 openssl = { version = "0.10.66", optional = true }
+bytecount = "0.6.8"
 
 [dev-dependencies]
 
@@ -101,13 +101,7 @@ sha256 = ["dep:sha2"]
 #
 # This feature is enabled by default. You can disable it to run in
 # environments without `std`, usually embedded environments.
-std = [
-    "digest/std",
-    "sha1?/std",
-    "sha1collisiondetection?/std",
-    "sha2?/std",
-    "dep:format-bytes",
-]
+std = ["digest/std", "sha1?/std", "sha1collisiondetection?/std", "sha2?/std"]
 
 # Get the ability to construct and get out URLs.
 #

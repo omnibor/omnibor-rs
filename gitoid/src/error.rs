@@ -1,19 +1,18 @@
 //! Error arising from `GitOid` construction or use.
 
-use core::fmt::Display;
-use core::fmt::Formatter;
-use core::fmt::Result as FmtResult;
-use core::result::Result as StdResult;
+use core::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    result::Result as StdResult,
+};
+
 #[cfg(feature = "hex")]
 use hex::FromHexError as HexError;
+
 #[cfg(feature = "std")]
-use std::error::Error as StdError;
-#[cfg(feature = "std")]
-use std::io::Error as IoError;
+use std::{error::Error as StdError, io::Error as IoError};
+
 #[cfg(feature = "url")]
-use url::ParseError as UrlError;
-#[cfg(feature = "url")]
-use url::Url;
+use url::{ParseError as UrlError, Url};
 
 /// A `Result` with `gitoid::Error` as the error type.
 pub(crate) type Result<T> = StdResult<T, Error>;
