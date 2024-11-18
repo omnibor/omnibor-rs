@@ -30,6 +30,15 @@ pub struct InputManifestBuilder<H: SupportedHash, M: EmbeddingMode, S: Storage<H
     storage: S,
 }
 
+/// Should a manifest be stored after creation?
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum ShouldStore {
+    /// Yes, store the manifest.
+    Yes,
+    /// No, do not store the manifest.
+    No,
+}
+
 impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> Debug for InputManifestBuilder<H, M, S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("InputManifestBuilder")
@@ -66,8 +75,12 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
     }
 
     /// Complete the transaction without updating the target artifact.
-    pub fn finish(&mut self, target: &Path) -> Result<TransactionIds<H>> {
-        Self::finish_with_optional_embedding(self, target, M::mode())
+    pub fn finish(
+        &mut self,
+        target: &Path,
+        should_store: ShouldStore,
+    ) -> Result<TransactionIds<H>> {
+        Self::finish_with_optional_embedding(self, target, M::mode(), should_store)
     }
 
     /// Complete creation of a new [`InputManifest`], possibly embedding in the target.
@@ -79,12 +92,18 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
         &mut self,
         target: &Path,
         embed_mode: Mode,
+        should_store: ShouldStore,
     ) -> Result<TransactionIds<H>> {
         // Construct a new input manifest.
         let mut manifest = InputManifest::with_relations(self.relations.iter().cloned());
 
-        // Write the manifest to storage.
-        let manifest_aid = self.storage.write_manifest(&manifest)?;
+        let manifest_aid = if should_store == ShouldStore::Yes {
+            // Write the manifest to storage.
+            self.storage.write_manifest(&manifest)?
+        } else {
+            // Otherwise, just build it.
+            ArtifactId::id_manifest(&manifest)?
+        };
 
         // Get the ArtifactID of the target, possibly embedding the
         // manifest ArtifactID into the target first.
@@ -115,6 +134,11 @@ impl<H: SupportedHash, M: EmbeddingMode, S: Storage<H>> InputManifestBuilder<H, 
             manifest_aid,
             manifest,
         })
+    }
+
+    /// Get a reference to the underlying storage.
+    pub fn storage(&self) -> &S {
+        &self.storage
     }
 }
 
@@ -266,7 +290,7 @@ mod tests {
             .unwrap()
             .add_relation(RelationKind::Input, second_input_aid)
             .unwrap()
-            .finish(&target)
+            .finish(&target, ShouldStore::Yes)
             .unwrap();
 
         // Check the ArtifactIDs of the target and the manifest.

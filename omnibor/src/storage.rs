@@ -22,6 +22,7 @@ use std::ops::Not as _;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
+use tracing::debug;
 use walkdir::DirEntry;
 use walkdir::WalkDir;
 
@@ -262,6 +263,8 @@ fn artifact_id_from_dir_entry<H: SupportedHash>(entry: &DirEntry) -> Option<Arti
         let front = meta.replace('_', ":");
         format!("{}:{}", front, hash)
     };
+
+    debug!(gitoid_url = %gitoid_url);
 
     ArtifactId::<H>::from_str(&gitoid_url).ok()
 }

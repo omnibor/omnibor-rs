@@ -87,4 +87,5 @@ pub use crate::input_manifest::InputManifest;
 pub use crate::input_manifest::Relation;
 pub use crate::input_manifest::RelationKind;
 pub use crate::input_manifest_builder::InputManifestBuilder;
+pub use crate::input_manifest_builder::ShouldStore;
 pub use crate::into_artifact_id::IntoArtifactId;
