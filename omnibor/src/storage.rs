@@ -23,6 +23,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 use tracing::debug;
+use tracing::info;
 use walkdir::DirEntry;
 use walkdir::WalkDir;
 
@@ -224,6 +225,8 @@ impl<H: SupportedHash> Storage<H> for FileSystemStorage {
 
         write(&path, manifest.as_bytes()?)
             .map_err(|e| Error::CantWriteManifest(path.display().to_string(), e))?;
+
+        info!("wrote manifest '{}' to store", manifest_aid);
 
         Ok(manifest_aid)
     }

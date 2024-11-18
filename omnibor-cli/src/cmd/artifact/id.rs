@@ -1,15 +1,22 @@
 //! The `artifact id` command, which identifies files.
 
-use crate::{app::App, cli::IdArgs, error::Result, fs::*, print::PrintSender};
+use crate::{app::App, cli::IdArgs, error::Result, fs::*};
 
 /// Run the `artifact id` subcommand.
-pub async fn run(tx: &PrintSender, app: &App, args: &IdArgs) -> Result<()> {
+pub async fn run(app: &App, args: &IdArgs) -> Result<()> {
     let mut file = open_async_file(&args.path).await?;
 
     if file_is_dir(&file, &args.path).await? {
-        id_directory(app, args.hash(), tx, &args.path).await?;
+        id_directory(app, args.hash(), &app.print_tx, &args.path).await?;
     } else {
-        id_file(tx, &mut file, &args.path, app.args.format(), args.hash()).await?;
+        id_file(
+            &app.print_tx,
+            &mut file,
+            &args.path,
+            app.args.format(),
+            args.hash(),
+        )
+        .await?;
     }
 
     Ok(())

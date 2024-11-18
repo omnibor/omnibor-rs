@@ -1,7 +1,5 @@
 //! The `artifact find` command, which finds files by ID.
 
-use std::path::PathBuf;
-
 use crate::{
     app::App,
     cli::{FindArgs, Format, SelectedHash},
@@ -12,12 +10,13 @@ use crate::{
 use async_channel::{bounded, Receiver};
 use futures_lite::stream::StreamExt as _;
 use futures_util::pin_mut;
+use std::path::PathBuf;
 use tokio::task::JoinSet;
 use tracing::debug;
 use url::Url;
 
 /// Run the `artifact find` subcommand.
-pub async fn run(tx: &PrintSender, app: &App, args: &FindArgs) -> Result<()> {
+pub async fn run(app: &App, args: &FindArgs) -> Result<()> {
     let FindArgs { aid, path } = args;
     let url = aid.url();
 
@@ -25,7 +24,7 @@ pub async fn run(tx: &PrintSender, app: &App, args: &FindArgs) -> Result<()> {
 
     tokio::spawn(walk_target(
         sender,
-        tx.clone(),
+        app.print_tx.clone(),
         app.args.format(),
         path.to_path_buf(),
     ));
@@ -38,7 +37,7 @@ pub async fn run(tx: &PrintSender, app: &App, args: &FindArgs) -> Result<()> {
     for _ in 0..num_workers {
         join_set.spawn(open_and_match_files(
             receiver.clone(),
-            tx.clone(),
+            app.print_tx.clone(),
             app.args.format(),
             url.clone(),
         ));

@@ -14,7 +14,7 @@ use crate::{
     config::Config,
     error::Result,
     log::init_log,
-    print::{error::ErrorMsg, PrintSender, Printer, PrinterCmd},
+    print::{error::ErrorMsg, Printer, PrinterCmd},
 };
 use clap::Parser as _;
 use std::{error::Error as StdError, process::ExitCode};
@@ -38,50 +38,50 @@ async fn run() -> ExitCode {
         }
     };
 
-    let app = App { args, config };
+    let printer = Printer::launch(config.perf.print_queue_size());
+
+    let app = App {
+        args,
+        config,
+        print_tx: printer.tx().clone(),
+    };
     trace!(app = ?app);
 
-    let printer = Printer::launch(app.config.perf.print_queue_size());
-
-    match run_cmd(printer.tx(), &app).await {
-        Ok(_) => {
-            printer.join().await;
-            ExitCode::SUCCESS
-        }
+    let exit_code = match run_cmd(&app).await {
+        Ok(_) => ExitCode::SUCCESS,
         Err(e) => {
             printer
                 .send(PrinterCmd::msg(ErrorMsg::new(e), app.args.format()))
                 .await;
-            printer.join().await;
             ExitCode::FAILURE
         }
-    }
+    };
+
+    // Ensure we always send the "End" printer command.
+    app.print_tx.send(PrinterCmd::End).await.unwrap();
+    printer.join().await;
+    exit_code
 }
 
 /// Select and run the chosen command.
-async fn run_cmd(tx: &PrintSender, app: &App) -> Result<()> {
+async fn run_cmd(app: &App) -> Result<()> {
     match app.args.command() {
         Command::Artifact(ref args) => match args.command {
-            ArtifactCommand::Id(ref args) => artifact::id::run(tx, app, args).await?,
-            ArtifactCommand::Find(ref args) => artifact::find::run(tx, app, args).await?,
+            ArtifactCommand::Id(ref args) => artifact::id::run(app, args).await,
+            ArtifactCommand::Find(ref args) => artifact::find::run(app, args).await,
         },
         Command::Manifest(ref args) => match args.command {
-            ManifestCommand::Create(ref args) => manifest::create::run(tx, app, args).await?,
+            ManifestCommand::Create(ref args) => manifest::create::run(app, args).await,
         },
         Command::Store(ref args) => match args.command {
-            StoreCommand::Add(ref args) => store::add::run(tx, app, args).await?,
-            StoreCommand::Remove(ref args) => store::remove::run(tx, app, args).await?,
-            StoreCommand::Log(ref args) => store::log::run(tx, app, args).await?,
+            StoreCommand::Add(ref args) => store::add::run(app, args).await,
+            StoreCommand::Remove(ref args) => store::remove::run(app, args).await,
+            StoreCommand::Log(ref args) => store::log::run(app, args).await,
         },
         Command::Debug(ref args) => match args.command {
-            DebugCommand::Paths(ref args) => debug::paths::run(tx, app, args).await?,
+            DebugCommand::Paths(ref args) => debug::paths::run(app, args).await,
         },
     }
-
-    // Ensure we always send the "End" printer command.
-    tx.send(PrinterCmd::End).await?;
-
-    Ok(())
 }
 
 fn log_error(error: &dyn StdError) {

@@ -197,10 +197,6 @@ pub struct ManifestCreateArgs {
     #[arg(short = 'i', long = "input", help_heading = IMPORTANT)]
     pub inputs: Vec<IdentifiableArg>,
 
-    /// The tool that built the target artifact.
-    #[arg(short = 'B', long = "built-by", help_heading = IMPORTANT)]
-    pub built_by: Option<IdentifiableArg>,
-
     /// The target the manifest is describing.
     #[arg(short = 't', long = "target", help_heading = IMPORTANT)]
     pub target: PathBuf,
