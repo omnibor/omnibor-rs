@@ -552,6 +552,33 @@ impl<R: BufRead> ForEachChunk for R {
     }
 }
 
+fn dos_newline_boundary(char1: &u8, char2: &u8) -> bool {
+    ((*char1, *char2) == (b'\r', b'\n')).not()
+}
+
+fn digest_with_normalized_newlines<D>(buf: &[u8], digester: &mut D)
+where
+    D: Digest,
+{
+    for chunk in buf.chunk_by(dos_newline_boundary) {
+        if chunk.last() == Some(&b'\r') {
+            digester.update(&chunk[0..=(chunk.len() - 2)]);
+        } else {
+            digester.update(chunk)
+        }
+    }
+}
+
+fn num_dos_newlines<R: Read>(reader: R) -> Result<(usize, R)> {
+    let mut total_dos_newlines = 0;
+    let mut buf_reader = BufReader::new(reader);
+    buf_reader.for_each_chunk(|buf| {
+        total_dos_newlines += buf.chunk_by(dos_newline_boundary).count() - 1
+    })?;
+    let reader = buf_reader.into_inner();
+    Ok((total_dos_newlines, reader))
+}
+
 #[cfg(feature = "std")]
 /// Helper function which actually applies the [`GitOid`] construction rules.
 ///
@@ -567,12 +594,16 @@ where
     O: ObjectType,
     R: Read,
 {
+    let (dos_newlines, reader) = num_dos_newlines(reader)?;
+    let adjusted_expected_read_length = expected_read_length - dos_newlines;
+
     digester.update(format_bytes!(
         b"{} {}\0",
         O::NAME.as_bytes(),
-        expected_read_length
+        adjusted_expected_read_length
     ));
-    let amount_read = BufReader::new(reader).for_each_chunk(|b| digester.update(b))?;
+    let amount_read = BufReader::new(reader)
+        .for_each_chunk(|b| digest_with_normalized_newlines(b, &mut digester))?;
     let hash = digester.finalize();
     Ok((hash, amount_read))
 }
@@ -591,15 +622,18 @@ where
     D: Digest,
     O: ObjectType,
 {
+    let (dos_newlines, reader) = num_dos_newlines(reader)?;
+    let adjusted_expected_read_length = expected_read_length - dos_newlines;
+
     // Manually write out the prefix
     digester.update(O::NAME.as_bytes());
     digester.update(b" ");
-    digester.update(expected_read_length.to_ne_bytes());
+    digester.update(expected_read_length.to_ne_bytes() - adjusted_expected_read_length);
     digester.update(b"\0");
 
     // It's in memory, so we know the exact size up front.
     let amount_read = reader.len();
-    digester.update(reader);
+    digest_with_normalized_newlines(reader, &mut digester);
     let hash = digester.finalize();
     Ok((hash, amount_read))
 }
