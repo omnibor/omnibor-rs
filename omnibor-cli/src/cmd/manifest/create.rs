@@ -97,7 +97,5 @@ fn manifest_file_path(output: Option<&Path>, target_aid: ArtifactId<Sha256>) -> 
         },
     };
 
-    let file_name = format!("{}.manifest", target_aid.as_hex());
-
-    Ok(pathbuf![&dir, &file_name])
+    Ok(pathbuf![&dir, &target_aid.as_file_name()])
 }
