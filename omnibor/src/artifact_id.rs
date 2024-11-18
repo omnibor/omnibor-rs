@@ -336,8 +336,11 @@ impl<H: SupportedHash> ArtifactId<H> {
     ///
     /// What that means for us is that the `:` separator character is
     /// replaced with `_`.
-    pub fn safe_name(&self) -> PathBuf {
-        self.gitoid.url().to_string().replace(':', "_").into()
+    pub fn as_file_name(&self) -> PathBuf {
+        let name = self.gitoid.url().to_string().replace(':', "_");
+        let mut path = PathBuf::from(name);
+        path.set_extension("manifest");
+        path
     }
 
     /// Get the underlying bytes of the [`ArtifactId`] hash.
