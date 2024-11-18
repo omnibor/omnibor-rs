@@ -92,7 +92,7 @@ impl Args {
     pub fn config(&self) -> Option<&Path> {
         self.config.as_deref().or_else(|| {
             DEFAULT_CONFIG
-                .get_or_init(|| self.dir().map(|root| pathbuf![root, "omnibor.json"]))
+                .get_or_init(|| self.dir().map(|root| pathbuf![root, "config.json"]))
                 .as_deref()
         })
     }
@@ -145,7 +145,6 @@ pub struct IdArgs {
     #[arg(
         short = 'H',
         long = "hash",
-        global = true,
         help_heading = IMPORTANT
     )]
     hash: Option<SelectedHash>,
@@ -206,8 +205,20 @@ pub struct ManifestCreateArgs {
     #[arg(short = 't', long = "target", help_heading = IMPORTANT)]
     pub target: PathBuf,
 
+    /// Do not store the manifest in the local store.
+    #[arg(long = "no-store", help_heading = IMPORTANT)]
+    pub no_store: bool,
+
+    /// Do not write the manifest to a local directory.
+    #[arg(long = "no-out", help_heading = IMPORTANT)]
+    pub no_out: bool,
+
+    /// Directory to write manifest out to.
+    #[arg(short = 'o', long = "output", help_heading = IMPORTANT, value_name = "DIR")]
+    pub output: Option<PathBuf>,
+
     /// Hash algorithm to use for Artifact IDs.
-    #[arg(short = 'H', long = "hash", global = true, env = "OMNIBOR_HASH")]
+    #[arg(short = 'H', long = "hash", env = "OMNIBOR_HASH", help_heading = IMPORTANT)]
     pub hash: Option<SelectedHash>,
 }
 

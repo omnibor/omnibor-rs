@@ -40,10 +40,12 @@ gitoid = { version = "0.8.0", path = "../gitoid", default-features = false, feat
     "std",
     "url",
 ] }
+newline-converter = "0.3.0"
 pathbuf = "1.0.0"
 serde = { version = "1.0.197", optional = true }
 thiserror = "1.0.60"
 tokio = { version = "1.36.0", features = ["io-util"] }
+tracing = "0.1.40"
 url = "2.5.0"
 walkdir = "2.5.0"
 
