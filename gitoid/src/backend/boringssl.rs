@@ -8,7 +8,7 @@ use digest::{
     Digest, FixedOutput, HashMarker, Output, OutputSizeUser, Update,
 };
 
-#[cfg(feature = "sha1")]
+#[cfg(feature = "hash-sha1")]
 /// SHA-1 algorithm
 pub struct Sha256 {
     #[doc(hidden)]
@@ -21,7 +21,7 @@ pub struct BoringSha256 {
     hash: sha::Sha256,
 }
 
-#[cfg(all(feature = "sha256"))]
+#[cfg(all(feature = "hash-sha256"))]
 impl_hash_algorithm!(Sha256, BoringSha256, "sha256");
 
 impl Update for BoringSha256 {
@@ -56,7 +56,7 @@ impl Default for BoringSha256 {
     }
 }
 
-#[cfg(feature = "sha1")]
+#[cfg(feature = "hash-sha1")]
 /// SHA-1 algorithm
 pub struct Sha1 {
     #[doc(hidden)]
@@ -69,7 +69,7 @@ pub struct BoringSha1 {
     hash: sha::Sha1,
 }
 
-#[cfg(all(feature = "sha1"))]
+#[cfg(all(feature = "hash-sha1"))]
 impl_hash_algorithm!(Sha1, BoringSha1, "sha1");
 
 impl Update for BoringSha1 {

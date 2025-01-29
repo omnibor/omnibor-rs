@@ -105,31 +105,39 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(not(any(feature = "sha1", feature = "sha1cd", feature = "sha256")))]
+#[cfg(not(any(
+    feature = "hash-sha1",
+    feature = "hash-sha1cd",
+    feature = "hash-sha256"
+)))]
 compile_error!(
-    r#"At least one hash algorithm feature must be active: "sha1", "sha1cd", or "sha256""#
+    r#"At least one hash algorithm feature must be active: "hash-sha1", "hash-sha1cd", or "hash-sha256""#
 );
 
 #[cfg(all(
-    feature = "sha1cd",
+    feature = "hash-sha1cd",
     feature = "backend-boringssl",
     not(feature = "backend-rustcrypto")
 ))]
-compile_error!(r#"The "backend-boringssl" feature does not support the "sha1cd" algorithm"#);
+compile_error!(r#"The "backend-boringssl" feature does not support the "hash-sha1cd" algorithm"#);
 
 #[cfg(all(
-    feature = "sha1cd",
+    feature = "hash-sha1cd",
     feature = "backend-openssl",
     not(feature = "backend-rustcrypto")
 ))]
-compile_error!(r#"The "backend-openssl" feature does not support the "sha1cd" algorithm"#);
+compile_error!(r#"The "backend-openssl" feature does not support the "hash-sha1cd" algorithm"#);
 
 #[cfg(all(
     feature = "backend-rustcrypto",
-    not(any(feature = "sha1", feature = "sha1cd", feature = "sha256"))
+    not(any(
+        feature = "hash-sha1",
+        feature = "hash-sha1cd",
+        feature = "hash-sha256"
+    ))
 ))]
 compile_error!(
-    r#"The "backend-rustcrypto" feature requires at least one of the following algorithms: "sha1", "sha1cd", or "sha256""#
+    r#"The "backend-rustcrypto" feature requires at least one of the following algorithms: "hash-sha1", "hash-sha1cd", or "hash-sha256""#
 );
 
 #[cfg(not(any(
@@ -144,6 +152,7 @@ compile_error!(
 mod backend;
 mod error;
 mod gitoid;
+#[cfg(feature = "std")]
 mod gitoid_url_parser;
 mod hash_algorithm;
 mod internal;

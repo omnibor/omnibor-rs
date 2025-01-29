@@ -18,26 +18,21 @@ use {
     tokio::io::{AsyncRead, AsyncSeek},
 };
 
-#[cfg(feature = "hex")]
-use core::fmt::Display;
-
-#[cfg(feature = "serde")]
+#[cfg(feature = "std")]
 use {
-    core::result::Result as StdResult,
+    crate::{gitoid_url_parser::GitOidUrlParser, internal::gitoid_from_reader},
     serde::{
         de::{Deserializer, Error as DeserializeError, Visitor},
         Deserialize, Serialize, Serializer,
     },
+    std::{
+        fmt::Display,
+        io::{Read, Seek},
+        result::Result as StdResult,
+        str::FromStr,
+    },
+    url::Url,
 };
-
-#[cfg(feature = "std")]
-use {
-    crate::internal::gitoid_from_reader,
-    std::io::{Read, Seek},
-};
-
-#[cfg(feature = "url")]
-use {crate::gitoid_url_parser::GitOidUrlParser, core::str::FromStr, url::Url};
 
 /// A struct that computes [gitoids][g] based on the selected algorithm
 ///
@@ -55,7 +50,7 @@ where
     pub(crate) value: H::Array,
 }
 
-#[cfg(feature = "url")]
+#[cfg(feature = "std")]
 pub(crate) const GITOID_URL_SCHEME: &str = "gitoid";
 
 impl<H, O> GitOid<H, O>
@@ -124,13 +119,13 @@ where
         gitoid_from_async_reader(H::new(), reader, expected_length).await
     }
 
-    #[cfg(feature = "url")]
+    #[cfg(feature = "std")]
     /// Construct a new `GitOid` from a `Url`.
     pub fn try_from_url(url: Url) -> Result<GitOid<H, O>> {
         GitOid::try_from(url)
     }
 
-    #[cfg(feature = "url")]
+    #[cfg(feature = "std")]
     /// Get a URL for the current `GitOid`.
     pub fn url(&self) -> Url {
         // PANIC SAFETY: We know that this is a valid URL;
@@ -143,7 +138,7 @@ where
         &self.value[..]
     }
 
-    #[cfg(feature = "hex")]
+    #[cfg(feature = "std")]
     /// Convert the hash to a hexadecimal string.
     pub fn as_hex(&self) -> String {
         hex::encode(self.as_bytes())
@@ -165,7 +160,7 @@ where
     }
 }
 
-#[cfg(feature = "url")]
+#[cfg(feature = "std")]
 impl<H, O> FromStr for GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -260,7 +255,7 @@ where
     }
 }
 
-#[cfg(feature = "hex")]
+#[cfg(feature = "std")]
 impl<H, O> Display for GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -278,7 +273,7 @@ where
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "std")]
 impl<H, O> Serialize for GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -294,7 +289,7 @@ where
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "std")]
 impl<'de, H, O> Deserialize<'de> for GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -328,7 +323,7 @@ where
     }
 }
 
-#[cfg(feature = "url")]
+#[cfg(feature = "std")]
 impl<H, O> TryFrom<Url> for GitOid<H, O>
 where
     H: HashAlgorithm,

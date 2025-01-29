@@ -22,6 +22,7 @@ edition.workspace = true
 # for any/all of them to be missing. It's simpler to just specify it here
 # so we know we always get the crate.
 digest = { version = "0.10.7" }
+
 sha1 = { version = "0.10.6", default-features = false, optional = true }
 sha1collisiondetection = { version = "0.3.3", default-features = false, features = [
     "digest-trait",
@@ -36,7 +37,7 @@ tokio = { version = "1.36.0", features = ["io-util"], optional = true }
 url = { version = "2.4.1", optional = true }
 boring = { version = "4.6.0", optional = true }
 openssl = { version = "0.10.66", optional = true }
-bytecount = "0.6.8"
+bytecount = { version = "0.6.8" }
 
 [dev-dependencies]
 
@@ -54,22 +55,11 @@ criterion = { version = "0.5.1" }
 
 # By default, you get:
 #
-# - Hashes: sha1, sha1cd, sha256.
-# - Async: ability to asynchronously produce GitOIDs using the Tokio runtime.
-# - Hex: ability to print a GitOid with a hexadecimal hash representation.
-# - Url: ability to convert a GitOid to and from a gitoid-scheme URL.
-# - Serde: ability to serialize and deserialize a GitOid to and from a URL.
-# - Rustcrypto: use the RustCrypto crates as the cryptography backend.
-default = [
-    "backend-rustcrypto",
-    "hex",
-    "serde",
-    "std",
-    "url",
-    "sha1",
-    "sha1cd",
-    "sha256",
-]
+# - Async support.
+# - The 'rustcrypto' backend.
+# - The SHA-256 algorithm.
+# - Standard library support.
+default = ["async", "backend-rustcrypto", "hash-sha256", "std"]
 
 # Async support is optional. That said, it's currently _only_ with Tokio,
 # meaning you'd need to handle integrating with any other async runtime
@@ -80,33 +70,27 @@ default = [
 # is not `no_std`-compatible.
 async = ["dep:tokio", "std"]
 
-# Get the ability to print the contents of the hash buffer as a hexadecimal string.
-#
-# This relies on `std` as we don't currently expose a `no_std`-compatible
-# variant of our API's which use `hex`.
-hex = ["dep:hex", "std"]
-
-# Get the ability to serialize and deserialize `GitOids`.
-serde = ["dep:serde", "url", "std"]
-
 # All hash algorithms are optional, though you need to have at least one
 # algorithm turned on for this crate to be useful. This is intended to
 # just let you avoid paying the cost of algorithms you don't use.
-sha1 = ["dep:sha1"]
-sha1cd = ["dep:sha1collisiondetection"]
-sha256 = ["dep:sha2"]
+hash-sha1 = ["dep:sha1"]
+hash-sha1cd = ["dep:sha1collisiondetection"]
+hash-sha256 = ["dep:sha2"]
 
 # Get standard library support.
 #
 # This feature is enabled by default. You can disable it to run in
 # environments without `std`, usually embedded environments.
-std = ["digest/std", "sha1?/std", "sha1collisiondetection?/std", "sha2?/std"]
-
-# Get the ability to construct and get out URLs.
-#
-# This relies on `std` as the `url` crate isn't `no_std`-compatible.
-# This also relies on `hex` as the URL includes the hex-encoded hash.
-url = ["dep:url", "hex", "std"]
+std = [
+    "digest/std",
+    "sha1?/std",
+    "sha1collisiondetection?/std",
+    "sha2?/std",
+    "bytecount/runtime-dispatch-simd",
+    "dep:hex",
+    "dep:serde",
+    "dep:url",
+]
 
 # Enable using RustCrypto as a cryptography backend.
 backend-rustcrypto = []
@@ -118,7 +102,7 @@ backend-rustcrypto = []
 # implementations does not permit conditionally compiling those
 # implementations out. Since they're _always_ present, we might as well
 # use them unconditionally.
-backend-boringssl = ["dep:boring", "sha1", "sha256"]
+backend-boringssl = ["dep:boring", "hash-sha1", "hash-sha256"]
 
 # Enable using OpenSSL as a cryptography backend.
 #
@@ -126,7 +110,7 @@ backend-boringssl = ["dep:boring", "sha1", "sha256"]
 # the "sha1" and "sha256" features, as they're not able to be
 # conditionally compiled out of the dependency, so there's no reason to omit
 # them here.
-backend-openssl = ["dep:openssl", "sha1", "sha256"]
+backend-openssl = ["dep:openssl", "hash-sha1", "hash-sha256"]
 
 [[bench]]
 name = "benchmark"

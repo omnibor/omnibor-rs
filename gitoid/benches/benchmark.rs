@@ -1,28 +1,37 @@
-use criterion::black_box;
-use criterion::criterion_group;
-use criterion::criterion_main;
-use criterion::Criterion;
-#[cfg(all(feature = "backend-boringssl", feature = "sha1"))]
-use gitoid::boringssl::Sha1 as BoringSha1;
-#[cfg(all(feature = "backend-boringssl", feature = "sha256"))]
-use gitoid::boringssl::Sha256 as BoringSha256;
-#[cfg(all(feature = "backend-openssl", feature = "sha1"))]
-use gitoid::openssl::Sha1 as OpenSSLSha1;
-#[cfg(all(feature = "backend-openssl", feature = "sha1"))]
-use gitoid::openssl::Sha256 as OpenSSLSha256;
-#[cfg(all(feature = "backend-rustcrypto", feature = "sha1"))]
-use gitoid::rustcrypto::Sha1 as RustSha1;
-#[cfg(all(feature = "backend-rustcrypto", feature = "sha256"))]
-use gitoid::rustcrypto::Sha256 as RustSha256;
-use gitoid::Blob;
-use gitoid::GitOid;
+//! Benchmarks comparing cryptography backends.
 
-#[cfg(not(any(feature = "backend-rustcrypto", feature = "backend-boringssl")))]
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use gitoid::{Blob, GitOid};
+
+#[cfg(all(feature = "backend-boringssl"))]
+use gitoid::boringssl::{Sha1 as BoringSha1, Sha256 as BoringSha256};
+
+#[cfg(all(feature = "backend-openssl"))]
+use gitoid::openssl::{Sha1 as OpenSSLSha1, Sha256 as OpenSSLSha256};
+
+#[cfg(all(feature = "backend-rustcrypto", feature = "hash-sha1"))]
+use gitoid::rustcrypto::Sha1 as RustSha1;
+
+#[cfg(all(feature = "backend-rustcrypto", feature = "hash-sha256"))]
+use gitoid::rustcrypto::Sha256 as RustSha256;
+
+#[cfg(not(any(
+    feature = "backend-rustcrypto",
+    feature = "backend-boringssl",
+    feature = "backend-openssl"
+)))]
 compile_error!(
-    r#"At least one cryptography backend must be active: "backend-rustcrypto" and/or "backend-boringssl""#
+    r#"At least one cryptography backend must be active: "#
+    r#""backend-rustcrypto", "backend-boringssl", "backend-openssl""#
 );
 
-#[cfg(feature = "backend-rustcrypto")]
+/*===============================================================================================
+ * BENCHMARK FUNCTIONS
+ *
+ * Define the benchmark functions based on the selected features.
+ */
+
+#[cfg(all(feature = "backend-rustcrypto", feature = "hash-sha1"))]
 fn bench_rustcrypto_sha1_small(c: &mut Criterion) {
     let name = "GitOid RustCrypto SHA-1 11B";
     let input = b"hello world";
@@ -55,7 +64,7 @@ fn bench_openssl_sha1_small(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "backend-rustcrypto")]
+#[cfg(all(feature = "backend-rustcrypto", feature = "hash-sha256"))]
 fn bench_rustcrypto_sha256_small(c: &mut Criterion) {
     let name = "GitOid RustCrypto SHA-256 11B";
     let input = b"hello world";
@@ -88,7 +97,7 @@ fn bench_openssl_sha256_small(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "backend-rustcrypto")]
+#[cfg(all(feature = "backend-rustcrypto", feature = "hash-sha1"))]
 fn bench_rustcrypto_sha1_large(c: &mut Criterion) {
     let name = "GitOid RustCrypto SHA-1 100MB";
     let input = &[0; 1024 * 1024 * 100]; // 100 MB
@@ -121,7 +130,7 @@ fn bench_openssl_sha1_large(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "backend-rustcrypto")]
+#[cfg(all(feature = "backend-rustcrypto", feature = "hash-sha256"))]
 fn bench_rustcrypto_sha256_large(c: &mut Criterion) {
     let name = "GitOid RustCrypto SHA-256 100MB";
     let input = &[0; 1024 * 1024 * 100]; // 100 MB
@@ -154,13 +163,35 @@ fn bench_openssl_sha256_large(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "backend-rustcrypto")]
+/*===============================================================================================
+ * BENCHMARK GROUPS
+ *
+ * Define the benchmark groups based on the selected features.
+ */
+
+#[cfg(all(
+    feature = "backend-rustcrypto",
+    feature = "hash-sha1",
+    feature = "hash-sha256"
+))]
 criterion_group!(
     name = rustcrypto_benches;
     config = Criterion::default();
     targets = bench_rustcrypto_sha1_small,
     bench_rustcrypto_sha256_small,
     bench_rustcrypto_sha1_large,
+    bench_rustcrypto_sha256_large
+);
+
+#[cfg(all(
+    feature = "backend-rustcrypto",
+    not(feature = "hash-sha1"),
+    feature = "hash-sha256"
+))]
+criterion_group!(
+    name = rustcrypto_benches;
+    config = Criterion::default();
+    targets = bench_rustcrypto_sha256_small,
     bench_rustcrypto_sha256_large
 );
 
@@ -183,6 +214,13 @@ criterion_group!(
     bench_openssl_sha1_large,
     bench_openssl_sha256_large
 );
+
+/*===============================================================================================
+ * MAIN FUNCTION
+ *
+ * Use conditional compilation to select the main function, incorporating the defined benchmark
+ * groups based on the selected features.
+ */
 
 #[cfg(all(
     feature = "backend-rustcrypto",
@@ -215,7 +253,7 @@ criterion_main!(rustcrypto_benches, openssl_benches);
 #[cfg(all(
     feature = "backend-rustcrypto",
     not(feature = "backend-boringssl"),
-    not(feature = "backend-openssl")
+    not(feature = "backend-openssl"),
 ))]
 criterion_main!(rustcrypto_benches);
 

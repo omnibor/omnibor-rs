@@ -5,14 +5,12 @@ use core::{
     result::Result as StdResult,
 };
 
-#[cfg(feature = "hex")]
-use hex::FromHexError as HexError;
-
 #[cfg(feature = "std")]
-use std::{error::Error as StdError, io::Error as IoError};
-
-#[cfg(feature = "url")]
-use url::{ParseError as UrlError, Url};
+use {
+    hex::FromHexError as HexError,
+    std::{error::Error as StdError, io::Error as IoError},
+    url::{ParseError as UrlError, Url},
+};
 
 /// A `Result` with `gitoid::Error` as the error type.
 pub(crate) type Result<T> = StdResult<T, Error>;
@@ -20,19 +18,19 @@ pub(crate) type Result<T> = StdResult<T, Error>;
 /// An error arising during `GitOid` construction or use.
 #[derive(Debug)]
 pub enum Error {
-    #[cfg(feature = "url")]
+    #[cfg(feature = "std")]
     /// Tried to construct a `GitOid` from a `Url` with a scheme besides `gitoid`.
     InvalidScheme(Url),
 
-    #[cfg(feature = "url")]
+    #[cfg(feature = "std")]
     /// Tried to construct a `GitOid` from a `Url` without an `ObjectType` in it.
     MissingObjectType(Url),
 
-    #[cfg(feature = "url")]
+    #[cfg(feature = "std")]
     /// Tried to construct a `GitOid` from a `Url` without a `HashAlgorithm` in it.
     MissingHashAlgorithm(Url),
 
-    #[cfg(feature = "url")]
+    #[cfg(feature = "std")]
     /// Tried to construct a `GitOid` from a `Url` without a hash in it.
     MissingHash(Url),
 
@@ -51,11 +49,11 @@ pub enum Error {
     /// The amount of data read didn't match the expected amount of data
     UnexpectedReadLength { expected: usize, observed: usize },
 
-    #[cfg(feature = "hex")]
+    #[cfg(feature = "std")]
     /// Tried to parse an invalid hex string.
     InvalidHex(HexError),
 
-    #[cfg(feature = "url")]
+    #[cfg(feature = "std")]
     /// Could not construct a valid URL based on the `GitOid` data.
     Url(UrlError),
 
@@ -67,18 +65,18 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
-            #[cfg(feature = "url")]
+            #[cfg(feature = "std")]
             Error::InvalidScheme(url) => write!(f, "invalid scheme in URL '{}'", url.scheme()),
 
-            #[cfg(feature = "url")]
+            #[cfg(feature = "std")]
             Error::MissingObjectType(url) => write!(f, "missing object type in URL '{}'", url),
 
-            #[cfg(feature = "url")]
+            #[cfg(feature = "std")]
             Error::MissingHashAlgorithm(url) => {
                 write!(f, "missing hash algorithm in URL '{}'", url)
             }
 
-            #[cfg(feature = "url")]
+            #[cfg(feature = "std")]
             Error::MissingHash(url) => write!(f, "missing hash in URL '{}'", url),
 
             Error::UnknownObjectType => write!(f, "unknown object type"),
@@ -107,10 +105,10 @@ impl Display for Error {
                 )
             }
 
-            #[cfg(feature = "hex")]
+            #[cfg(feature = "std")]
             Error::InvalidHex(_) => write!(f, "invalid hex string"),
 
-            #[cfg(feature = "url")]
+            #[cfg(feature = "std")]
             Error::Url(e) => write!(f, "{}", e),
 
             #[cfg(feature = "std")]
@@ -123,16 +121,16 @@ impl Display for Error {
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
-            #[cfg(feature = "url")]
+            #[cfg(feature = "std")]
             Error::InvalidScheme(_) => None,
 
-            #[cfg(feature = "url")]
+            #[cfg(feature = "std")]
             Error::MissingObjectType(_) => None,
 
-            #[cfg(feature = "url")]
+            #[cfg(feature = "std")]
             Error::MissingHashAlgorithm(_) => None,
 
-            #[cfg(feature = "url")]
+            #[cfg(feature = "std")]
             Error::MissingHash(_) => None,
 
             Error::UnknownObjectType
@@ -141,10 +139,10 @@ impl StdError for Error {
             | Error::UnexpectedHashLength { .. }
             | Error::UnexpectedReadLength { .. } => None,
 
-            #[cfg(feature = "hex")]
+            #[cfg(feature = "std")]
             Error::InvalidHex(e) => Some(e),
 
-            #[cfg(feature = "url")]
+            #[cfg(feature = "std")]
             Error::Url(e) => Some(e),
 
             #[cfg(feature = "std")]
@@ -153,14 +151,14 @@ impl StdError for Error {
     }
 }
 
-#[cfg(feature = "hex")]
+#[cfg(feature = "std")]
 impl From<HexError> for Error {
     fn from(e: HexError) -> Error {
         Error::InvalidHex(e)
     }
 }
 
-#[cfg(feature = "url")]
+#[cfg(feature = "std")]
 impl From<UrlError> for Error {
     fn from(e: UrlError) -> Error {
         Error::Url(e)

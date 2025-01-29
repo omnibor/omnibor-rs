@@ -3,14 +3,7 @@
 use crate::{gitoid::GITOID_URL_SCHEME, Error, GitOid, HashAlgorithm, ObjectType, Result};
 use core::{marker::PhantomData, ops::Not as _};
 use digest::{block_buffer::generic_array::GenericArray, OutputSizeUser};
-
-#[cfg(feature = "std")]
-use digest::block_buffer::generic_array::sequence::GenericSequence;
-
-#[cfg(feature = "url")]
-use {core::str::Split, url::Url};
-
-#[cfg(feature = "url")]
+use {core::str::Split, digest::block_buffer::generic_array::sequence::GenericSequence, url::Url};
 pub(crate) struct GitOidUrlParser<'u, H, O>
 where
     H: HashAlgorithm,
@@ -27,12 +20,10 @@ where
     _object_type: PhantomData<O>,
 }
 
-#[allow(dead_code)]
 fn some_if_not_empty(s: &str) -> Option<&str> {
     s.is_empty().not().then_some(s)
 }
 
-#[cfg(feature = "url")]
 impl<'u, H, O> GitOidUrlParser<'u, H, O>
 where
     H: HashAlgorithm,
