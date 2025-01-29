@@ -1,33 +1,36 @@
 use super::*;
-#[cfg(all(feature = "sha1", feature = "rustcrypto"))]
+
+#[cfg(all(feature = "hash-sha1", feature = "backend-rustcrypto"))]
 use crate::rustcrypto::Sha1;
-#[cfg(all(feature = "sha256", feature = "rustcrypto"))]
+
+#[cfg(all(feature = "hash-sha256", feature = "backend-rustcrypto"))]
 use crate::rustcrypto::Sha256;
-#[cfg(feature = "std")]
-use std::fs::File;
+
 #[cfg(feature = "async")]
 use tokio::{fs::File as AsyncFile, runtime::Runtime};
-#[cfg(feature = "url")]
-use url::Url;
-#[cfg(feature = "serde")]
+
+#[cfg(feature = "std")]
 use {
-    crate::Blob,
-    crate::GitOid,
+    crate::{Blob, GitOid},
     serde_test::{assert_tokens, Token},
+    std::fs::File,
+    url::Url,
 };
 
 /// SHA-1 hash of a file containing "hello world"
 ///
 /// Taken from a Git repo as ground truth.
+#[cfg(feature = "hash-sha1")]
 const GITOID_HELLO_WORLD_SHA1: &str = "gitoid:blob:sha1:95d09f2b10159347eece71399a7e2e907ea3df4f";
 
 /// SHA-256 hash of a file containing "hello world"
 ///
 /// Taken from a Git repo as ground truth.
+#[cfg(feature = "hash-sha256")]
 const GITOID_HELLO_WORLD_SHA256: &str =
     "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
 
-#[cfg(all(feature = "sha1", feature = "rustcrypto", feature = "hex"))]
+#[cfg(all(feature = "hash-sha1", feature = "backend-rustcrypto", feature = "std"))]
 #[test]
 fn generate_sha1_gitoid_from_bytes() {
     let input = b"hello world";
@@ -36,7 +39,7 @@ fn generate_sha1_gitoid_from_bytes() {
     assert_eq!(result.to_string(), GITOID_HELLO_WORLD_SHA1);
 }
 
-#[cfg(all(feature = "sha1", feature = "rustcrypto", feature = "std"))]
+#[cfg(all(feature = "hash-sha1", feature = "backend-rustcrypto", feature = "std"))]
 #[test]
 fn generate_sha1_gitoid_from_buffer() -> Result<()> {
     let reader = File::open("test/data/hello_world.txt")?;
@@ -47,7 +50,7 @@ fn generate_sha1_gitoid_from_buffer() -> Result<()> {
     Ok(())
 }
 
-#[cfg(all(feature = "sha256", feature = "rustcrypto"))]
+#[cfg(all(feature = "hash-sha256", feature = "backend-rustcrypto"))]
 #[test]
 fn generate_sha256_gitoid_from_bytes() {
     let input = b"hello world";
@@ -56,7 +59,11 @@ fn generate_sha256_gitoid_from_bytes() {
     assert_eq!(result.to_string(), GITOID_HELLO_WORLD_SHA256);
 }
 
-#[cfg(all(feature = "sha256", feature = "rustcrypto", feature = "std"))]
+#[cfg(all(
+    feature = "hash-sha256",
+    feature = "backend-rustcrypto",
+    feature = "std"
+))]
 #[test]
 fn generate_sha256_gitoid_from_buffer() -> Result<()> {
     let reader = File::open("test/data/hello_world.txt")?;
@@ -67,7 +74,11 @@ fn generate_sha256_gitoid_from_buffer() -> Result<()> {
     Ok(())
 }
 
-#[cfg(all(feature = "sha256", feature = "rustcrypto", feature = "async"))]
+#[cfg(all(
+    feature = "hash-sha256",
+    feature = "backend-rustcrypto",
+    feature = "async"
+))]
 #[test]
 fn generate_sha256_gitoid_from_async_buffer() -> Result<()> {
     let runtime = Runtime::new()?;
@@ -81,7 +92,7 @@ fn generate_sha256_gitoid_from_async_buffer() -> Result<()> {
     })
 }
 
-#[cfg(all(feature = "sha256", feature = "rustcrypto"))]
+#[cfg(all(feature = "hash-sha256", feature = "backend-rustcrypto"))]
 #[test]
 fn newline_normalization_from_file() -> Result<()> {
     let unix_file = File::open("test/data/unix_line.txt")?;
@@ -95,7 +106,11 @@ fn newline_normalization_from_file() -> Result<()> {
     Ok(())
 }
 
-#[cfg(all(feature = "sha256", feature = "rustcrypto", feature = "async"))]
+#[cfg(all(
+    feature = "hash-sha256",
+    feature = "backend-rustcrypto",
+    feature = "async"
+))]
 #[test]
 fn newline_normalization_from_async_file() -> Result<()> {
     let runtime = Runtime::new()?;
@@ -112,7 +127,7 @@ fn newline_normalization_from_async_file() -> Result<()> {
     })
 }
 
-#[cfg(all(feature = "sha256", feature = "rustcrypto"))]
+#[cfg(all(feature = "hash-sha256", feature = "backend-rustcrypto"))]
 #[test]
 fn newline_normalization_in_memory() -> Result<()> {
     let with_crlf = b"some\r\nstring\r\n";
@@ -126,7 +141,7 @@ fn newline_normalization_in_memory() -> Result<()> {
     Ok(())
 }
 
-#[cfg(all(feature = "sha256", feature = "rustcrypto"))]
+#[cfg(all(feature = "hash-sha256", feature = "backend-rustcrypto"))]
 #[test]
 fn validate_uri() -> Result<()> {
     let content = b"hello world";
@@ -137,7 +152,11 @@ fn validate_uri() -> Result<()> {
     Ok(())
 }
 
-#[cfg(all(feature = "sha256", feature = "rustcrypto", feature = "url"))]
+#[cfg(all(
+    feature = "hash-sha256",
+    feature = "backend-rustcrypto",
+    feature = "std"
+))]
 #[test]
 fn try_from_url_bad_scheme() {
     let url = Url::parse("gitiod:blob:sha1:95d09f2b10159347eece71399a7e2e907ea3df4f").unwrap();
@@ -148,7 +167,7 @@ fn try_from_url_bad_scheme() {
     }
 }
 
-#[cfg(all(feature = "sha1", feature = "rustcrypto", feature = "url"))]
+#[cfg(all(feature = "hash-sha1", feature = "backend-rustcrypto", feature = "std"))]
 #[test]
 fn try_from_url_missing_object_type() {
     let url = Url::parse("gitoid:").unwrap();
@@ -159,7 +178,7 @@ fn try_from_url_missing_object_type() {
     }
 }
 
-#[cfg(all(feature = "sha1", feature = "rustcrypto", feature = "url"))]
+#[cfg(all(feature = "hash-sha1", feature = "backend-rustcrypto", feature = "std"))]
 #[test]
 fn try_from_url_bad_object_type() {
     let url = Url::parse("gitoid:whatever").unwrap();
@@ -170,7 +189,11 @@ fn try_from_url_bad_object_type() {
     }
 }
 
-#[cfg(all(feature = "sha256", feature = "rustcrypto", feature = "url"))]
+#[cfg(all(
+    feature = "hash-sha256",
+    feature = "backend-rustcrypto",
+    feature = "std"
+))]
 #[test]
 fn try_from_url_missing_hash_algorithm() {
     let url = Url::parse("gitoid:blob:").unwrap();
@@ -184,7 +207,7 @@ fn try_from_url_missing_hash_algorithm() {
     }
 }
 
-#[cfg(all(feature = "sha1", feature = "rustcrypto", feature = "url"))]
+#[cfg(all(feature = "hash-sha1", feature = "backend-rustcrypto", feature = "std"))]
 #[test]
 fn try_from_url_bad_hash_algorithm() {
     let url = Url::parse("gitoid:blob:sha10000").unwrap();
@@ -195,7 +218,11 @@ fn try_from_url_bad_hash_algorithm() {
     }
 }
 
-#[cfg(all(feature = "sha256", feature = "rustcrypto", feature = "url"))]
+#[cfg(all(
+    feature = "hash-sha256",
+    feature = "backend-rustcrypto",
+    feature = "std"
+))]
 #[test]
 fn try_from_url_missing_hash() {
     let url = Url::parse("gitoid:blob:sha256:").unwrap();
@@ -206,7 +233,11 @@ fn try_from_url_missing_hash() {
     }
 }
 
-#[cfg(all(feature = "sha256", feature = "rustcrypto", feature = "url"))]
+#[cfg(all(
+    feature = "hash-sha256",
+    feature = "backend-rustcrypto",
+    feature = "std"
+))]
 #[test]
 fn try_url_roundtrip() {
     let url = Url::parse(GITOID_HELLO_WORLD_SHA256).unwrap();
@@ -216,7 +247,11 @@ fn try_url_roundtrip() {
 }
 
 // Validate serialization and deserialization work as expected.
-#[cfg(all(feature = "serde", feature = "sha256", feature = "rustcrypto"))]
+#[cfg(all(
+    feature = "std",
+    feature = "hash-sha256",
+    feature = "backend-rustcrypto"
+))]
 #[test]
 fn valid_gitoid_ser_de() {
     let id = GitOid::<Sha256, Blob>::id_str("hello world");

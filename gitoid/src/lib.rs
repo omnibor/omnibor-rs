@@ -105,33 +105,54 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(not(any(feature = "sha1", feature = "sha1cd", feature = "sha256")))]
+#[cfg(not(any(
+    feature = "hash-sha1",
+    feature = "hash-sha1cd",
+    feature = "hash-sha256"
+)))]
 compile_error!(
-    r#"At least one hash algorithm feature must be active: "sha1", "sha1cd", or "sha256""#
+    r#"At least one hash algorithm feature must be active: "hash-sha1", "hash-sha1cd", or "hash-sha256""#
 );
-
-#[cfg(all(feature = "sha1cd", feature = "boringssl", not(feature = "rustcrypto")))]
-compile_error!(r#"The "boringssl" feature does not support the "sha1cd" algorithm"#);
-
-#[cfg(all(feature = "sha1cd", feature = "openssl", not(feature = "rustcrypto")))]
-compile_error!(r#"The "openssl" feature does not support the "sha1cd" algorithm"#);
 
 #[cfg(all(
-    feature = "rustcrypto",
-    not(any(feature = "sha1", feature = "sha1cd", feature = "sha256"))
+    feature = "hash-sha1cd",
+    feature = "backend-boringssl",
+    not(feature = "backend-rustcrypto")
+))]
+compile_error!(r#"The "backend-boringssl" feature does not support the "hash-sha1cd" algorithm"#);
+
+#[cfg(all(
+    feature = "hash-sha1cd",
+    feature = "backend-openssl",
+    not(feature = "backend-rustcrypto")
+))]
+compile_error!(r#"The "backend-openssl" feature does not support the "hash-sha1cd" algorithm"#);
+
+#[cfg(all(
+    feature = "backend-rustcrypto",
+    not(any(
+        feature = "hash-sha1",
+        feature = "hash-sha1cd",
+        feature = "hash-sha256"
+    ))
 ))]
 compile_error!(
-    r#"The "rustcrypto" feature requires at least one of the following algorithms: "sha1", "sha1cd", or "sha256""#
+    r#"The "backend-rustcrypto" feature requires at least one of the following algorithms: "hash-sha1", "hash-sha1cd", or "hash-sha256""#
 );
 
-#[cfg(not(any(feature = "rustcrypto", feature = "boringssl", feature = "openssl")))]
+#[cfg(not(any(
+    feature = "backend-rustcrypto",
+    feature = "backend-boringssl",
+    feature = "backend-openssl"
+)))]
 compile_error!(
-    r#"At least one of the "rustcrypto", "boringssl", or "openssl" features must be enabled"#
+    r#"At least one of the "backend-rustcrypto", "backend-boringssl", or "backend-openssl" features must be enabled"#
 );
 
 mod backend;
 mod error;
 mod gitoid;
+#[cfg(feature = "std")]
 mod gitoid_url_parser;
 mod hash_algorithm;
 mod internal;
@@ -141,11 +162,11 @@ pub(crate) mod sealed;
 mod tests;
 mod util;
 
-#[cfg(feature = "boringssl")]
+#[cfg(feature = "backend-boringssl")]
 pub use crate::backend::boringssl;
-#[cfg(feature = "openssl")]
+#[cfg(feature = "backend-openssl")]
 pub use crate::backend::openssl;
-#[cfg(feature = "rustcrypto")]
+#[cfg(feature = "backend-rustcrypto")]
 pub use crate::backend::rustcrypto;
 pub use crate::error::Error;
 pub(crate) use crate::error::Result;

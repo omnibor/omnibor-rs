@@ -6,32 +6,32 @@ use digest::{generic_array::GenericArray, Digest, OutputSizeUser};
 #[cfg(doc)]
 use crate::GitOid;
 
-#[cfg(feature = "sha1")]
+#[cfg(feature = "hash-sha1")]
 /// SHA-1 algorithm,
 pub struct Sha1 {
     #[doc(hidden)]
     _private: (),
 }
 
-#[cfg(feature = "sha1")]
+#[cfg(feature = "hash-sha1")]
 impl_hash_algorithm!(Sha1, sha1::Sha1, "sha1");
 
-#[cfg(feature = "sha1cd")]
+#[cfg(feature = "hash-sha1cd")]
 /// SHA-1Cd (collision detection) algorithm.
 pub struct Sha1Cd {
     #[doc(hidden)]
     _private: (),
 }
 
-#[cfg(feature = "sha1cd")]
+#[cfg(feature = "hash-sha1cd")]
 impl_hash_algorithm!(Sha1Cd, sha1collisiondetection::Sha1CD, "sha1cd");
 
-#[cfg(feature = "sha256")]
+#[cfg(feature = "hash-sha256")]
 /// SHA-256 algorithm.
 pub struct Sha256 {
     #[doc(hidden)]
     _private: (),
 }
 
-#[cfg(feature = "sha256")]
+#[cfg(feature = "hash-sha256")]
 impl_hash_algorithm!(Sha256, sha2::Sha256, "sha256");

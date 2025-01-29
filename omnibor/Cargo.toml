@@ -34,11 +34,9 @@ crate-type = [
 
 gitoid = { version = "0.8.0", path = "../gitoid", default-features = false, features = [
     "async",
-    "hex",
-    "rustcrypto",
-    "sha256",
+    "backend-rustcrypto",
+    "hash-sha256",
     "std",
-    "url",
 ] }
 newline-converter = "0.3.0"
 pathbuf = "1.0.0"
@@ -60,4 +58,4 @@ tokio-test = "0.4.3"
 [features]
 
 # Support serde serialization and deserialization
-serde = ["dep:serde", "gitoid/serde"]
+serde = ["dep:serde", "gitoid/std"]
