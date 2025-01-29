@@ -82,11 +82,14 @@ pub enum Crate {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, derive_more::Display, clap::ValueEnum)]
 pub enum Bump {
     /// Bump the major version.
+    #[display("major")]
     Major,
 
     /// Bump the minor version.
+    #[display("minor")]
     Minor,
 
     /// Bump the patch version.
+    #[display("patch")]
     Patch,
 }
