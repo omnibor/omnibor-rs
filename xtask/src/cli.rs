@@ -1,91 +1,82 @@
 //! The `cargo xtask` Command Line Interface (CLI).
 
-use clap::{arg, builder::PossibleValue, value_parser, ArgMatches, Command, ValueEnum};
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use clap::{arg, Parser as _};
 
 /// Define the CLI and parse arguments from the command line.
-pub fn args() -> ArgMatches {
-    Command::new("xtask")
-        .about("Task runner for the OmniBOR Rust workspace")
-        .help_expected(true)
-        .subcommand(
-            Command::new("release")
-                .about("Release a new version of a workspace crate")
-                .arg(
-                    arg!(-c --crate <CRATE>)
-                        .required(true)
-                        .value_parser(value_parser!(Crate))
-                        .help("the crate to release"),
-                )
-                .arg(
-                    arg!(-b --bump <BUMP>)
-                        .required(true)
-                        .value_parser(value_parser!(Bump))
-                        .help("the version to bump"),
-                )
-                .arg(
-                    arg!(-x - -execute)
-                        .required(false)
-                        .default_value("false")
-                        .value_parser(value_parser!(bool))
-                        .help("not a dry run, actually execute the release"),
-                )
-                .arg(
-                    arg!(--"allow-dirty")
-                        .required(false)
-                        .default_value("false")
-                        .value_parser(value_parser!(bool))
-                        .help("allow Git worktree to be dirty"),
-                ),
-        )
-        .get_matches()
+pub fn args() -> Cli {
+    Cli::parse()
+}
+
+#[derive(Debug, clap::Parser)]
+pub struct Cli {
+    #[clap(subcommand)]
+    pub subcommand: Subcommand,
+}
+
+#[derive(Debug, Clone, clap::Subcommand)]
+pub enum Subcommand {
+    /// Release a new version of a crate.
+    ///
+    /// Runs the following steps:
+    ///
+    /// (1) Verifies external tool dependencies are installed,
+    /// (2) Verifies that Git worktree is ready (unless `--allow-dirty`),
+    /// (3) Verifies you're on the `main` branch,
+    /// (4) Verifies that `git-cliff` agrees about the version bump,
+    /// (5) Generates the `CHANGELOG.md`,
+    /// (6) Commits the `CHANGELOG.md`,
+    /// (7) Runs a dry-run `cargo release` (unless `--execute`).
+    ///
+    /// Unless `--execute`, all steps will be rolled back after completion
+    /// of the pipeline. All previously-executed steps will also be rolled back
+    /// if a prior step fails.
+    ///
+    /// Note that this *does not* account for:
+    ///
+    /// (1) Running more than one instance of this command at the same time,
+    /// (2) Running other programs which may interfere with relevant state (like
+    /// Git repo state) at the same time,
+    /// (3) Terminating the program prematurely, causing rollback to fail.
+    ///
+    /// It is your responsibility to cleanup manually if any of the above
+    /// situations arise.
+    Release(ReleaseArgs),
+}
+
+#[derive(Debug, Clone, clap::Args)]
+pub struct ReleaseArgs {
+    /// The crate to release.
+    #[arg(short = 'c', long = "crate", value_name = "CRATE")]
+    pub krate: Crate,
+
+    /// The version to bump.
+    #[arg(short = 'b', long = "bump")]
+    pub bump: Bump,
+
+    /// Not a dry-run, actually execute the release.
+    #[arg(short = 'x', long = "execute")]
+    pub execute: bool,
+
+    /// Allow Git worktree to be dirty.
+    #[arg(short = 'd', long = "allow-dirty")]
+    pub allow_dirty: bool,
 }
 
 /// The crate to release; can be "gitoid" or "omnibor"
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, derive_more::Display, clap::ValueEnum)]
 pub enum Crate {
     /// The `gitoid` crate, found in the `gitoid` folder.
-    GitOid,
+    Gitoid,
 
     /// The `omnibor` crate, found in the `omnibor` folder.
-    OmniBor,
+    Omnibor,
 
     /// The `omnibor-cli` crate, found in the `omnibor-cli` folder.
-    OmniBorCli,
-}
-
-impl Crate {
-    /// Get the name of the crate, as it should be shown in the CLI
-    /// and as it exists on the filesystem.
-    pub fn name(&self) -> &'static str {
-        match self {
-            Crate::GitOid => "gitoid",
-            Crate::OmniBor => "omnibor",
-            Crate::OmniBorCli => "omnibor-cli",
-        }
-    }
-}
-
-impl Display for Crate {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.name())
-    }
-}
-
-// This is needed for `clap` to be able to parse string values
-// into this `Crate` enum.
-impl ValueEnum for Crate {
-    fn value_variants<'a>() -> &'a [Self] {
-        &[Crate::GitOid, Crate::OmniBor, Crate::OmniBorCli]
-    }
-
-    fn to_possible_value(&self) -> Option<PossibleValue> {
-        Some(PossibleValue::new(self.name()))
-    }
+    OmniborCli,
 }
 
 /// The version to bump; can be "major", "minor", or "patch"
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, derive_more::Display, clap::ValueEnum)]
 pub enum Bump {
     /// Bump the major version.
     Major,
@@ -95,29 +86,4 @@ pub enum Bump {
 
     /// Bump the patch version.
     Patch,
-}
-
-impl Display for Bump {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Bump::Major => write!(f, "major"),
-            Bump::Minor => write!(f, "minor"),
-            Bump::Patch => write!(f, "patch"),
-        }
-    }
-}
-// This is needed for `clap` to be able to parse string values
-// into this `Bump` enum.
-impl ValueEnum for Bump {
-    fn value_variants<'a>() -> &'a [Self] {
-        &[Bump::Major, Bump::Minor, Bump::Patch]
-    }
-
-    fn to_possible_value(&self) -> Option<PossibleValue> {
-        Some(match self {
-            Bump::Major => PossibleValue::new("major"),
-            Bump::Minor => PossibleValue::new("minor"),
-            Bump::Patch => PossibleValue::new("patch"),
-        })
-    }
 }

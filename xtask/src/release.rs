@@ -1,13 +1,12 @@
 //! The `cargo xtask release` subcommand.
 
 use crate::{
-    cli::{Bump, Crate},
+    cli::{Bump, Crate, ReleaseArgs},
+    pipeline,
     pipeline::{Pipeline, Step},
-    step,
 };
 use anyhow::{anyhow, bail, Context as _, Result};
 use cargo_metadata::{Metadata, MetadataCommand, Package};
-use clap::ArgMatches;
 use pathbuf::pathbuf;
 use semver::Version;
 use serde::{de::DeserializeOwned, Deserialize};
@@ -20,27 +19,11 @@ use toml::from_str as from_toml_str;
 use xshell::{cmd, Shell};
 
 /// Run the release command.
-pub fn run(args: &ArgMatches) -> Result<()> {
-    let krate: Crate = *args
-        .get_one("crate")
-        .ok_or_else(|| anyhow!("'--crate' is a required argument"))?;
-
-    let bump: Bump = *args
-        .get_one("bump")
-        .ok_or_else(|| anyhow!("'--bump' is a required argument"))?;
-
-    let execute: bool = *args
-        .get_one("execute")
-        .expect("--execute has a default value, so it should never be missing");
-
-    let allow_dirty: bool = *args
-        .get_one("allow-dirty")
-        .expect("--allow-dirty has a default value, so it should never be missing");
-
+pub fn run(args: &ReleaseArgs) -> Result<()> {
     log::info!(
         "running 'release', bumping the {} version number for crate '{}'",
-        bump,
-        krate
+        args.bump,
+        args.krate
     );
 
     let workspace_metadata = MetadataCommand::new().exec()?;
@@ -50,34 +33,36 @@ pub fn run(args: &ArgMatches) -> Result<()> {
         .clone()
         .into_std_path_buf();
 
-    let pkg = find_pkg(&workspace_metadata, krate)
+    let pkg = find_pkg(&workspace_metadata, args.krate)
         .ok_or_else(|| anyhow!("failed to find package in workspace"))?;
 
-    let mut pipeline = Pipeline::new([
-        step!(CheckDependencies),
-        step!(CheckGitReady { allow_dirty }),
-        step!(CheckGitBranch),
-        step!(CheckChangelogVersionBump {
+    let mut pipeline = pipeline!(
+        CheckDependencies,
+        CheckGitReady {
+            allow_dirty: args.allow_dirty
+        },
+        CheckGitBranch,
+        CheckChangelogVersionBump {
             workspace_root: workspace_root.clone(),
             crate_version: pkg.version.clone(),
-            krate,
-            bump,
-        }),
-        step!(GenerateChangelog {
+            krate: args.krate,
+            bump: args.bump,
+        },
+        GenerateChangelog {
             workspace_root: workspace_root.clone(),
-            krate
-        }),
-        step!(CommitChangelog { krate }),
-        step!(ReleaseCrate {
-            krate,
-            bump,
-            execute
-        }),
-    ]);
+            krate: args.krate
+        },
+        CommitChangelog { krate: args.krate },
+        ReleaseCrate {
+            krate: args.krate,
+            bump: args.bump,
+            execute: args.execute
+        }
+    );
 
     // If we're not executing, force a rollback at the end.
-    if execute.not() {
-        pipeline.force_rollback();
+    if args.execute.not() {
+        pipeline.plan_forced_rollback();
     }
 
     pipeline.run()
@@ -88,7 +73,7 @@ fn find_pkg(workspace_metadata: &Metadata, krate: Crate) -> Option<&Package> {
     for id in &workspace_metadata.workspace_members {
         let pkg = &workspace_metadata[id];
 
-        if pkg.name == krate.name() {
+        if pkg.name == krate.to_string() {
             return Some(pkg);
         }
     }
@@ -218,7 +203,7 @@ impl CheckChangelogVersionBump {
     }
 
     fn include(&self) -> PathBuf {
-        pathbuf![self.krate.name(), "*"]
+        pathbuf![&self.krate.to_string(), "*"]
     }
 }
 
@@ -289,11 +274,11 @@ impl GenerateChangelog {
     }
 
     fn include(&self) -> PathBuf {
-        pathbuf![self.krate.name(), "*"]
+        pathbuf![&self.krate.to_string(), "*"]
     }
 
     fn output(&self) -> PathBuf {
-        pathbuf![self.krate.name(), "CHANGELOG.md"]
+        pathbuf![&self.krate.to_string(), "CHANGELOG.md"]
     }
 }
 
@@ -332,7 +317,7 @@ struct CommitChangelog {
 
 impl CommitChangelog {
     fn commit_msg(&self) -> String {
-        format!("chore: update `{}` crate CHANGELOG.md", self.krate.name())
+        format!("chore: update `{}` crate CHANGELOG.md", self.krate)
     }
 }
 
@@ -344,7 +329,7 @@ impl Step for CommitChangelog {
     fn run(&mut self) -> Result<()> {
         let sh = Shell::new()?;
         let msg = self.commit_msg();
-        let changelog = pathbuf![self.krate.name(), "CHANGELOG.md"];
+        let changelog = pathbuf![&self.krate.to_string(), "CHANGELOG.md"];
         cmd!(sh, "git add {changelog}").run()?;
         cmd!(sh, "git commit --signoff -m {msg}").run()?;
         Ok(())
@@ -377,7 +362,7 @@ impl Step for ReleaseCrate {
 
     fn run(&mut self) -> Result<()> {
         let sh = Shell::new()?;
-        let krate = self.krate.name();
+        let krate = self.krate.to_string();
         let bump = self.bump.to_string();
 
         let execute = if self.execute {
