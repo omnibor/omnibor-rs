@@ -21,7 +21,7 @@ pub struct OpenSSLSha256 {
     hash: sha::Sha256,
 }
 
-#[cfg(all(feature = "sha256", feature = "openssl"))]
+#[cfg(all(feature = "sha256"))]
 impl_hash_algorithm!(Sha256, OpenSSLSha256, "sha256");
 
 impl Update for OpenSSLSha256 {
@@ -69,7 +69,7 @@ pub struct OpenSSLSha1 {
     hash: sha::Sha1,
 }
 
-#[cfg(all(feature = "sha1", feature = "openssl"))]
+#[cfg(all(feature = "sha1"))]
 impl_hash_algorithm!(Sha1, OpenSSLSha1, "sha1");
 
 impl Update for OpenSSLSha1 {

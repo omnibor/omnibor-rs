@@ -21,7 +21,7 @@ pub struct BoringSha256 {
     hash: sha::Sha256,
 }
 
-#[cfg(all(feature = "sha256", feature = "boringssl"))]
+#[cfg(all(feature = "sha256"))]
 impl_hash_algorithm!(Sha256, BoringSha256, "sha256");
 
 impl Update for BoringSha256 {
@@ -69,7 +69,7 @@ pub struct BoringSha1 {
     hash: sha::Sha1,
 }
 
-#[cfg(all(feature = "sha1", feature = "boringssl"))]
+#[cfg(all(feature = "sha1"))]
 impl_hash_algorithm!(Sha1, BoringSha1, "sha1");
 
 impl Update for BoringSha1 {

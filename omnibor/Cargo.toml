@@ -35,7 +35,7 @@ crate-type = [
 gitoid = { version = "0.8.0", path = "../gitoid", default-features = false, features = [
     "async",
     "hex",
-    "rustcrypto",
+    "backend-rustcrypto",
     "sha256",
     "std",
     "url",

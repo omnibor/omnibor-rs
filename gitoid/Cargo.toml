@@ -61,12 +61,11 @@ criterion = { version = "0.5.1" }
 # - Serde: ability to serialize and deserialize a GitOid to and from a URL.
 # - Rustcrypto: use the RustCrypto crates as the cryptography backend.
 default = [
-    "async",
+    "backend-rustcrypto",
     "hex",
     "serde",
     "std",
     "url",
-    "rustcrypto",
     "sha1",
     "sha1cd",
     "sha256",
@@ -110,7 +109,7 @@ std = ["digest/std", "sha1?/std", "sha1collisiondetection?/std", "sha2?/std"]
 url = ["dep:url", "hex", "std"]
 
 # Enable using RustCrypto as a cryptography backend.
-rustcrypto = []
+backend-rustcrypto = []
 
 # Enable using BoringSLL as a cryptography backend.
 #
@@ -119,7 +118,7 @@ rustcrypto = []
 # implementations does not permit conditionally compiling those
 # implementations out. Since they're _always_ present, we might as well
 # use them unconditionally.
-boringssl = ["dep:boring", "sha1", "sha256"]
+backend-boringssl = ["dep:boring", "sha1", "sha256"]
 
 # Enable using OpenSSL as a cryptography backend.
 #
@@ -127,7 +126,7 @@ boringssl = ["dep:boring", "sha1", "sha256"]
 # the "sha1" and "sha256" features, as they're not able to be
 # conditionally compiled out of the dependency, so there's no reason to omit
 # them here.
-openssl = ["dep:openssl", "sha1", "sha256"]
+backend-openssl = ["dep:openssl", "sha1", "sha256"]
 
 [[bench]]
 name = "benchmark"

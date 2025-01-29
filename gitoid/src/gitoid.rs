@@ -1,9 +1,8 @@
 //! A gitoid representing a single artifact.
 
 use crate::{
-    internal::{gitoid_from_async_reader, gitoid_from_buffer, gitoid_from_reader},
-    util::stream_len::{async_stream_len, stream_len},
-    Error, HashAlgorithm, ObjectType, Result,
+    internal::gitoid_from_buffer, util::stream_len::stream_len, Error, HashAlgorithm, ObjectType,
+    Result,
 };
 use core::{
     cmp::Ordering,
@@ -14,7 +13,10 @@ use core::{
 use digest::OutputSizeUser;
 
 #[cfg(feature = "async")]
-use tokio::io::{AsyncRead, AsyncSeek};
+use {
+    crate::{internal::gitoid_from_async_reader, util::stream_len::async_stream_len},
+    tokio::io::{AsyncRead, AsyncSeek},
+};
 
 #[cfg(feature = "hex")]
 use core::fmt::Display;
@@ -29,7 +31,10 @@ use {
 };
 
 #[cfg(feature = "std")]
-use std::io::{Read, Seek};
+use {
+    crate::internal::gitoid_from_reader,
+    std::io::{Read, Seek},
+};
 
 #[cfg(feature = "url")]
 use {crate::gitoid_url_parser::GitOidUrlParser, core::str::FromStr, url::Url};
