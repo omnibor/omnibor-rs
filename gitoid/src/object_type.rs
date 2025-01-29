@@ -1,6 +1,7 @@
 //! The types of objects for which a `GitOid` can be made.
 
 use crate::sealed::Sealed;
+
 #[cfg(doc)]
 use crate::GitOid;
 

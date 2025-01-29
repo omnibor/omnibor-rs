@@ -1,14 +1,11 @@
 //! Trait specifying valid [`GitOid`] hash algorithms.
 
 use crate::sealed::Sealed;
+use core::{fmt::Debug, hash::Hash, ops::Deref};
+use digest::{block_buffer::generic_array::GenericArray, Digest, OutputSizeUser};
+
 #[cfg(doc)]
 use crate::GitOid;
-use core::fmt::Debug;
-use core::hash::Hash;
-use core::ops::Deref;
-use digest::block_buffer::generic_array::GenericArray;
-use digest::Digest;
-use digest::OutputSizeUser;
 
 /// Hash algorithms that can be used to make a [`GitOid`].
 ///

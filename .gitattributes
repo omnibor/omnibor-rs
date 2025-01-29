@@ -1,0 +1,5 @@
+# Windows test file that should _always_ use DOS-style newlines,
+# regardless of the current system. Used for tests to validate
+# newline normalization is working.
+windows_line.txt text eol=crlf
+

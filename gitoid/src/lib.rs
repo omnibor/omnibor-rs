@@ -132,11 +132,14 @@ compile_error!(
 mod backend;
 mod error;
 mod gitoid;
+mod gitoid_url_parser;
 mod hash_algorithm;
+mod internal;
 mod object_type;
 pub(crate) mod sealed;
 #[cfg(test)]
 mod tests;
+mod util;
 
 #[cfg(feature = "boringssl")]
 pub use crate::backend::boringssl;
