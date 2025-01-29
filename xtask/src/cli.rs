@@ -66,12 +66,15 @@ pub struct ReleaseArgs {
 #[derive(Debug, Clone, Copy, derive_more::Display, clap::ValueEnum)]
 pub enum Crate {
     /// The `gitoid` crate, found in the `gitoid` folder.
+    #[display("gitoid")]
     Gitoid,
 
     /// The `omnibor` crate, found in the `omnibor` folder.
+    #[display("omnibor")]
     Omnibor,
 
     /// The `omnibor-cli` crate, found in the `omnibor-cli` folder.
+    #[display("omnibor-cli")]
     OmniborCli,
 }
 
