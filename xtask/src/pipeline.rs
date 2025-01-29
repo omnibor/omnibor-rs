@@ -41,7 +41,7 @@ where
     }
 
     /// Force rollback at the end of the pipeline, regardless of outcome.
-    pub fn force_rollback(&mut self) {
+    pub fn plan_forced_rollback(&mut self) {
         self.force_rollback = true;
     }
 
@@ -90,6 +90,18 @@ pub type DynStep = Box<dyn Step>;
 macro_rules! step {
     ( $step:expr ) => {{
         Box::new($step) as Box<dyn Step>
+    }};
+}
+
+/// Construct a pipeline of steps each implementing the `Step` trait.
+#[macro_export]
+macro_rules! pipeline {
+    ( $($step:expr),* ) => {{
+        Pipeline::new([
+            $(
+                $crate::step!($step)
+            ),*
+        ])
     }};
 }
 

@@ -16,9 +16,8 @@ fn main() -> ExitCode {
 
     let args = cli::args();
 
-    let res = match args.subcommand() {
-        Some(("release", args)) => release::run(args),
-        Some(_) | None => Ok(()),
+    let res = match args.subcommand {
+        cli::Subcommand::Release(args) => release::run(&args),
     };
 
     if let Err(err) = res {
