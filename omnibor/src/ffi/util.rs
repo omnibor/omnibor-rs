@@ -1,10 +1,12 @@
 //! Utility functions for the FFI code.
 
-use crate::ffi::error::Error;
-use crate::ffi::status::Status;
-use core::ffi::c_int;
-use std::ffi::CString;
-use std::io::Write as _;
+use {
+    crate::ffi::{error::Error, status::Status},
+    std::{
+        ffi::{c_int, CString},
+        io::Write as _,
+    },
+};
 
 /// Write a string slice to a C buffer.
 ///

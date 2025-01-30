@@ -103,77 +103,8 @@
 //! [gitoid]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
 //! [omnibor]: https://omnibor.io
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
-#[cfg(not(any(
-    feature = "hash-sha1",
-    feature = "hash-sha1cd",
-    feature = "hash-sha256"
-)))]
-compile_error!(
-    r#"At least one hash algorithm feature must be active: "hash-sha1", "hash-sha1cd", or "hash-sha256""#
-);
-
-#[cfg(all(
-    feature = "hash-sha1cd",
-    feature = "backend-boringssl",
-    not(feature = "backend-rustcrypto")
-))]
-compile_error!(r#"The "backend-boringssl" feature does not support the "hash-sha1cd" algorithm"#);
-
-#[cfg(all(
-    feature = "hash-sha1cd",
-    feature = "backend-openssl",
-    not(feature = "backend-rustcrypto")
-))]
-compile_error!(r#"The "backend-openssl" feature does not support the "hash-sha1cd" algorithm"#);
-
-#[cfg(all(
-    feature = "backend-rustcrypto",
-    not(any(
-        feature = "hash-sha1",
-        feature = "hash-sha1cd",
-        feature = "hash-sha256"
-    ))
-))]
-compile_error!(
-    r#"The "backend-rustcrypto" feature requires at least one of the following algorithms: "hash-sha1", "hash-sha1cd", or "hash-sha256""#
-);
-
-#[cfg(not(any(
-    feature = "backend-rustcrypto",
-    feature = "backend-boringssl",
-    feature = "backend-openssl"
-)))]
-compile_error!(
-    r#"At least one of the "backend-rustcrypto", "backend-boringssl", or "backend-openssl" features must be enabled"#
-);
-
-mod backend;
-mod error;
 mod gitoid;
-#[cfg(feature = "std")]
 mod gitoid_url_parser;
-mod hash_algorithm;
-mod internal;
-mod object_type;
-pub(crate) mod sealed;
-#[cfg(test)]
-mod tests;
-mod util;
+pub(crate) mod internal;
 
-#[cfg(feature = "backend-boringssl")]
-pub use crate::backend::boringssl;
-#[cfg(feature = "backend-openssl")]
-pub use crate::backend::openssl;
-#[cfg(feature = "backend-rustcrypto")]
-pub use crate::backend::rustcrypto;
-pub use crate::error::Error;
-pub(crate) use crate::error::Result;
-pub use crate::gitoid::GitOid;
-pub use crate::hash_algorithm::HashAlgorithm;
-pub use crate::object_type::Blob;
-pub use crate::object_type::Commit;
-pub use crate::object_type::ObjectType;
-pub use crate::object_type::Tag;
-pub use crate::object_type::Tree;
+pub use crate::gitoid::gitoid::GitOid;

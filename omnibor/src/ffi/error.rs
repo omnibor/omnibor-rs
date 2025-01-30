@@ -12,18 +12,18 @@
 //! Together, these provide a consistent mechanism for collecting and reporting
 //! errors to users of the `ArtifactId` FFI.
 
-use crate::error::Error as ArtifactIdError;
-use core::any::Any;
-use core::cell::RefCell;
-use core::fmt::Display;
-use core::fmt::Formatter;
-use core::fmt::Result as FmtResult;
-use core::panic::UnwindSafe;
-use core::str::Utf8Error;
-use std::error::Error as StdError;
-use std::ffi::NulError;
-use std::panic::catch_unwind;
-use url::ParseError as UrlError;
+use {
+    crate::error::Error as ArtifactIdError,
+    core::{
+        any::Any,
+        cell::RefCell,
+        fmt::{Display, Formatter, Result as FmtResult},
+        panic::UnwindSafe,
+        str::Utf8Error,
+    },
+    std::{error::Error as StdError, ffi::NulError, panic::catch_unwind},
+    url::ParseError as UrlError,
+};
 
 thread_local! {
     // The last error to have been reported by the FFI code.

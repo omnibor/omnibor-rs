@@ -1,7 +1,7 @@
 //! Error types.
 
 use async_channel::SendError;
-use omnibor::Error as OmniborError;
+use omnibor::error::Error as OmniborError;
 use serde_json::Error as JsonError;
 use std::{io::Error as IoError, path::PathBuf, result::Result as StdResult};
 use tokio::task::JoinError;

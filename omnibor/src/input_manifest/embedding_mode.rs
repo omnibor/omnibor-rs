@@ -1,7 +1,7 @@
-use crate::sealed::Sealed;
+use {crate::util::sealed::Sealed, core::marker::PhantomData};
+
 #[cfg(doc)]
-use crate::InputManifest;
-use std::marker::PhantomData;
+use crate::input_manifest::InputManifest;
 
 /// The embedding mode to use when making new [`InputManifest`]s.
 pub trait EmbeddingMode: Sealed {

@@ -1,17 +1,55 @@
+//! Error types for OmniBOR.
+
+use {
+    hex::FromHexError as HexError,
+    std::{io::Error as IoError, result::Result as StdResult},
+    url::{ParseError as UrlError, Url},
+};
+
 #[cfg(doc)]
-use crate::ArtifactId;
-#[cfg(doc)]
-use crate::InputManifest;
-use gitoid::Error as GitOidError;
-use std::io::Error as IoError;
-use std::result::Result as StdResult;
-use url::ParseError as UrlError;
+use crate::{artifact_id::ArtifactId, input_manifest::InputManifest};
 
 pub type Result<T> = StdResult<T, Error>;
 
 /// Errors arising from [`ArtifactId`] use or [`InputManifest`] interaction.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("invalid scheme in URL '{0}'")]
+    InvalidScheme(Url),
+
+    #[error("missing object type in URL '{0}'")]
+    MissingObjectType(Url),
+
+    #[error("missing hash algorithm in URL '{0}'")]
+    MissingHashAlgorithm(Url),
+
+    #[error("missing hash in URL '{0}'")]
+    MissingHash(Url),
+
+    #[error("unknown object type")]
+    UnknownObjectType,
+
+    #[error("mismatched object type; expected '{expected}'")]
+    MismatchedObjectType { expected: &'static str },
+
+    #[error("mismatched hash algorithm; expected '{expected}'")]
+    MismatchedHashAlgorithm { expected: &'static str },
+
+    #[error("unexpected hash length; expected '{expected}', got '{observed}'")]
+    UnexpectedHashLength { expected: usize, observed: usize },
+
+    #[error("unexpected read length; expected '{expected}', got '{observed}'")]
+    UnexpectedReadLength { expected: usize, observed: usize },
+
+    #[error("invalid hex string")]
+    InvalidHex(#[from] HexError),
+
+    #[error(transparent)]
+    Url(#[from] UrlError),
+
+    #[error(transparent)]
+    Io(#[from] IoError),
+
     #[error("no storage root found; provide one or set the 'OMNIBOR_DIR' environment variable")]
     NoStorageRoot,
 
@@ -94,11 +132,5 @@ pub enum Error {
     UnknownEmbeddingTarget,
 
     #[error("failed to read input manifest file")]
-    FailedManifestRead(#[from] IoError),
-
-    #[error(transparent)]
-    GitOid(#[from] GitOidError),
-
-    #[error(transparent)]
-    Url(#[from] UrlError),
+    FailedManifestRead(#[source] IoError),
 }

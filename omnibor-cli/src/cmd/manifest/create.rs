@@ -6,10 +6,14 @@ use crate::{
     error::{Error, Result},
 };
 use omnibor::{
-    embedding::{EmbeddingMode, NoEmbed},
-    hashes::Sha256,
+    artifact_id::{ArtifactId, ArtifactIdBuilder},
+    hash_algorithm::Sha256,
+    hash_provider::{HashProvider, RustCrypto},
+    input_manifest::{
+        embedding_mode::{EmbeddingMode, NoEmbed},
+        InputManifestBuilder, ShouldStore,
+    },
     storage::{FileSystemStorage, Storage},
-    ArtifactId, InputManifestBuilder, IntoArtifactId, ShouldStore,
 };
 use pathbuf::pathbuf;
 use std::{
@@ -28,19 +32,21 @@ pub async fn run(app: &App, args: &ManifestCreateArgs) -> Result<()> {
     }
 
     let root = app.args.dir().ok_or(Error::NoRoot)?;
-    let storage = FileSystemStorage::new(root).map_err(Error::StorageInitFailed)?;
-    let builder = InputManifestBuilder::<Sha256, NoEmbed, _>::with_storage(storage);
+    let storage =
+        FileSystemStorage::new(RustCrypto::new(), root).map_err(Error::StorageInitFailed)?;
+    let builder = InputManifestBuilder::<Sha256, NoEmbed, _, _>::new(storage, RustCrypto::new());
     create_with_builder(args, builder)?;
     Ok(())
 }
 
-fn create_with_builder<E, S>(
+fn create_with_builder<E, S, P>(
     args: &ManifestCreateArgs,
-    mut builder: InputManifestBuilder<Sha256, E, S>,
+    mut builder: InputManifestBuilder<Sha256, E, S, P>,
 ) -> Result<()>
 where
     E: EmbeddingMode,
     S: Storage<Sha256>,
+    P: HashProvider<Sha256>,
 {
     for input in &args.inputs {
         let aid = input.clone().into_artifact_id().map_err(Error::IdFailed)?;
@@ -66,8 +72,9 @@ where
             Ok(file) => file,
             Err(source) => {
                 let mut existing_file = File::open(&path).unwrap();
-                let existing_file_aid =
-                    ArtifactId::<Sha256>::id_reader(&mut existing_file).unwrap();
+                let existing_file_aid = ArtifactIdBuilder::with_rustcrypto()
+                    .identify_file(&mut existing_file)
+                    .unwrap();
                 if existing_file_aid == linked_manifest.manifest_aid() {
                     info!("matching manifest already found at '{}'", path.display());
                     return Ok(());
@@ -82,7 +89,7 @@ where
 
         output_file
             // SAFETY: We just constructed the manifest, so we know it's fine.
-            .write_all(&linked_manifest.manifest().as_bytes().unwrap())
+            .write_all(&linked_manifest.manifest().as_bytes())
             .map_err(|source| Error::CantWriteManifest {
                 path: path.to_path_buf(),
                 source,

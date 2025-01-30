@@ -1,9 +1,5 @@
-use crate::Result;
+use {crate::error::Result, std::io::BufRead};
 
-#[cfg(feature = "std")]
-use std::io::BufRead;
-
-#[cfg(feature = "std")]
 /// Helper extension trait to give a convenient way to iterate over
 /// chunks sized to the size of the internal buffer of the reader.
 pub(crate) trait ForEachBufFill: BufRead {
@@ -12,7 +8,6 @@ pub(crate) trait ForEachBufFill: BufRead {
     fn for_each_buf_fill(&mut self, f: impl FnMut(&[u8])) -> Result<usize>;
 }
 
-#[cfg(feature = "std")]
 impl<R: BufRead> ForEachBufFill for R {
     fn for_each_buf_fill(&mut self, mut f: impl FnMut(&[u8])) -> Result<usize> {
         let mut total_read = 0;

@@ -32,30 +32,67 @@ crate-type = [
 
 [dependencies]
 
-gitoid = { version = "0.9.0", path = "../gitoid", default-features = false, features = [
-    "async",
-    "backend-rustcrypto",
-    "hash-sha256",
-    "std",
-] }
-newline-converter = "0.3.0"
-pathbuf = "1.0.0"
-serde = { version = "1.0.197", optional = true }
-thiserror = "1.0.60"
-tokio = { version = "1.36.0", features = ["io-util"] }
+# NOTE: Must match the version used in the hash crate.
+#
+# Technically, we could rely on the re-export from one of those crates,
+# but since all the hash crates are optional dependencies our usage code
+# within the 'gitoid' crate would be more complex to handle the possibility
+# for any/all of them to be missing. It's simpler to just specify it here
+# so we know we always get the crate.
+digest = { version = "0.10.7", features = ["std"] }
+
+# Cryptography Providers.
+boring = { version = "4.6.0", optional = true }
+openssl = { version = "0.10.66", optional = true }
+sha2 = { version = "0.10.8", features = ["std"], optional = true }
+
+# Required crates.
+bytecount = { version = "0.6.8", features = ["runtime-dispatch-simd"] }
+hex = "0.4.3"
+serde = { version = "1.0.197", features = ["derive"] }
+thiserror = "2.0.0"
+tokio = { version = "1.36.0", features = ["io-util", "fs"] }
 tracing = "0.1.40"
-url = "2.5.0"
-walkdir = "2.5.0"
+url = "2.4.1"
+paste = "1.0.15"
+walkdir = { version = "2.5.0" }
 
 [dev-dependencies]
 
+anyhow = "1.0.95"
+criterion = { version = "0.5.1" }
+# NOTE: Match version in "dependencies"
 digest = "0.10.7"
-pathbuf = "1.0.0"
 serde_test = "1.0.176"
-tokio = { version = "1.36.0", features = ["io-util", "fs"] }
+# Need "rt" and "fs" additionally for tests.
+tokio = { version = "1.36.0", features = [
+    "io-util",
+    "fs",
+    "rt",
+    "rt-multi-thread",
+] }
 tokio-test = "0.4.3"
 
 [features]
 
-# Support serde serialization and deserialization
-serde = ["dep:serde", "gitoid/std"]
+# By default, you get:
+#
+# - Async support.
+# - The 'rustcrypto' backend.
+# - Standard library support.
+default = ["backend-rustcrypto"]
+
+# Enable using RustCrypto as a cryptography backend.
+backend-rustcrypto = ["dep:sha2"]
+
+# Enable using BoringSLL as a cryptography backend.
+backend-boringssl = ["dep:boring"]
+
+# Enable using OpenSSL as a cryptography backend.
+backend-openssl = ["dep:openssl"]
+
+# Removed until the benchmark can be properly restored.
+#
+# [[bench]]
+# name = "benchmark"
+# harness = false

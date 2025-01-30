@@ -1,19 +1,19 @@
 //! Benchmarks comparing cryptography backends.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use gitoid::{Blob, GitOid};
+use omnibor::ArtifactId;
 
 #[cfg(all(feature = "backend-boringssl"))]
-use gitoid::boringssl::{Sha1 as BoringSha1, Sha256 as BoringSha256};
+use omnibor::gitoid::boringssl::{Sha1 as BoringSha1, Sha256 as BoringSha256};
 
 #[cfg(all(feature = "backend-openssl"))]
-use gitoid::openssl::{Sha1 as OpenSSLSha1, Sha256 as OpenSSLSha256};
+use omnibor::gitoid::openssl::{Sha1 as OpenSSLSha1, Sha256 as OpenSSLSha256};
 
 #[cfg(all(feature = "backend-rustcrypto", feature = "hash-sha1"))]
-use gitoid::rustcrypto::Sha1 as RustSha1;
+use omnibor::gitoid::rustcrypto::Sha1 as RustSha1;
 
 #[cfg(all(feature = "backend-rustcrypto", feature = "hash-sha256"))]
-use gitoid::rustcrypto::Sha256 as RustSha256;
+use omnibor::gitoid::rustcrypto::Sha256 as RustSha256;
 
 #[cfg(not(any(
     feature = "backend-rustcrypto",
