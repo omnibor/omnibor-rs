@@ -1,33 +1,21 @@
 //! A gitoid representing a single artifact.
 
-use crate::{
-    internal::gitoid_from_buffer, util::stream_len::stream_len, Error, HashAlgorithm, ObjectType,
-    Result,
-};
-use core::{
-    cmp::Ordering,
-    fmt::{Debug, Formatter, Result as FmtResult},
-    hash::{Hash, Hasher},
-    marker::PhantomData,
-};
-use digest::OutputSizeUser;
-
-#[cfg(feature = "async")]
 use {
-    crate::{internal::gitoid_from_async_reader, util::stream_len::async_stream_len},
-    tokio::io::{AsyncRead, AsyncSeek},
-};
-
-#[cfg(feature = "std")]
-use {
-    crate::{gitoid_url_parser::GitOidUrlParser, internal::gitoid_from_reader},
+    crate::{
+        error::{Error, Result},
+        gitoid::gitoid_url_parser::GitOidUrlParser,
+        hash_algorithm::HashAlgorithm,
+        object_type::ObjectType,
+    },
     serde::{
         de::{Deserializer, Error as DeserializeError, Visitor},
         Deserialize, Serialize, Serializer,
     },
     std::{
-        fmt::Display,
-        io::{Read, Seek},
+        cmp::Ordering,
+        fmt::{Debug, Display, Formatter, Result as FmtResult},
+        hash::{Hash, Hasher},
+        marker::PhantomData,
         result::Result as StdResult,
         str::FromStr,
     },
@@ -47,10 +35,9 @@ where
     pub(crate) _phantom: PhantomData<O>,
 
     #[doc(hidden)]
-    pub(crate) value: H::Array,
+    pub(crate) value: <H as HashAlgorithm>::Array,
 }
 
-#[cfg(feature = "std")]
 pub(crate) const GITOID_URL_SCHEME: &str = "gitoid";
 
 impl<H, O> GitOid<H, O>
@@ -58,74 +45,11 @@ where
     H: HashAlgorithm,
     O: ObjectType,
 {
-    /// Create a new `GitOid` based on a slice of bytes.
-    pub fn id_bytes<B: AsRef<[u8]>>(content: B) -> GitOid<H, O> {
-        fn inner<H, O>(content: &[u8]) -> GitOid<H, O>
-        where
-            H: HashAlgorithm,
-            O: ObjectType,
-        {
-            // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
-            gitoid_from_buffer(H::new(), content, content.len()).unwrap()
-        }
-
-        inner(content.as_ref())
-    }
-
-    /// Create a `GitOid` from a UTF-8 string slice.
-    pub fn id_str<S: AsRef<str>>(s: S) -> GitOid<H, O> {
-        fn inner<H, O>(s: &str) -> GitOid<H, O>
-        where
-            H: HashAlgorithm,
-            O: ObjectType,
-        {
-            GitOid::id_bytes(s.as_bytes())
-        }
-
-        inner(s.as_ref())
-    }
-
-    #[cfg(feature = "std")]
-    /// Create a `GitOid` from a reader.
-    pub fn id_reader<R: Read + Seek>(mut reader: R) -> Result<GitOid<H, O>> {
-        let expected_length = stream_len(&mut reader)? as usize;
-        GitOid::id_reader_with_length(reader, expected_length)
-    }
-
-    #[cfg(feature = "std")]
-    /// Generate a `GitOid` from a reader, providing an expected length in bytes.
-    pub fn id_reader_with_length<R>(reader: R, expected_length: usize) -> Result<GitOid<H, O>>
-    where
-        R: Read + Seek,
-    {
-        gitoid_from_reader(H::new(), reader, expected_length)
-    }
-
-    #[cfg(feature = "async")]
-    /// Generate a `GitOid` from an asynchronous reader.
-    pub async fn id_async_reader<R: AsyncRead + AsyncSeek + Unpin>(
-        mut reader: R,
-    ) -> Result<GitOid<H, O>> {
-        let expected_length = async_stream_len(&mut reader).await? as usize;
-        GitOid::id_async_reader_with_length(reader, expected_length).await
-    }
-
-    #[cfg(feature = "async")]
-    /// Generate a `GitOid` from an asynchronous reader, providing an expected length in bytes.
-    pub async fn id_async_reader_with_length<R: AsyncRead + AsyncSeek + Unpin>(
-        reader: R,
-        expected_length: usize,
-    ) -> Result<GitOid<H, O>> {
-        gitoid_from_async_reader(H::new(), reader, expected_length).await
-    }
-
-    #[cfg(feature = "std")]
     /// Construct a new `GitOid` from a `Url`.
     pub fn try_from_url(url: Url) -> Result<GitOid<H, O>> {
         GitOid::try_from(url)
     }
 
-    #[cfg(feature = "std")]
     /// Get a URL for the current `GitOid`.
     pub fn url(&self) -> Url {
         // PANIC SAFETY: We know that this is a valid URL;
@@ -138,7 +62,6 @@ where
         &self.value[..]
     }
 
-    #[cfg(feature = "std")]
     /// Convert the hash to a hexadecimal string.
     pub fn as_hex(&self) -> String {
         hex::encode(self.as_bytes())
@@ -156,11 +79,10 @@ where
 
     /// Get the length of the hash in bytes.
     pub fn hash_len(&self) -> usize {
-        <H::Alg as OutputSizeUser>::output_size()
+        self.value.len()
     }
 }
 
-#[cfg(feature = "std")]
 impl<H, O> FromStr for GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -255,7 +177,6 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<H, O> Display for GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -273,7 +194,6 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<H, O> Serialize for GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -289,7 +209,6 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<'de, H, O> Deserialize<'de> for GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -323,7 +242,6 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<H, O> TryFrom<Url> for GitOid<H, O>
 where
     H: HashAlgorithm,

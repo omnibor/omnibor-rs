@@ -1,9 +1,16 @@
 //! A gitoid representing a single artifact.
 
-use crate::{gitoid::GITOID_URL_SCHEME, Error, GitOid, HashAlgorithm, ObjectType, Result};
-use core::{marker::PhantomData, ops::Not as _};
-use digest::{block_buffer::generic_array::GenericArray, OutputSizeUser};
-use {core::str::Split, digest::block_buffer::generic_array::sequence::GenericSequence, url::Url};
+use {
+    crate::{
+        error::{Error, Result},
+        gitoid::{gitoid::GITOID_URL_SCHEME, GitOid},
+        hash_algorithm::HashAlgorithm,
+        object_type::ObjectType,
+    },
+    std::{marker::PhantomData, ops::Not as _, str::Split},
+    url::Url,
+};
+
 pub(crate) struct GitOidUrlParser<'u, H, O>
 where
     H: HashAlgorithm,
@@ -43,9 +50,9 @@ where
             .and_then(|_| self.validate_object_type())
             .and_then(|_| self.validate_hash_algorithm())
             .and_then(|_| self.parse_hash())
-            .map(|hash| GitOid {
+            .map(|value| GitOid {
                 _phantom: PhantomData,
-                value: H::array_from_generic(hash),
+                value,
             })
     }
 
@@ -85,26 +92,15 @@ where
         Ok(())
     }
 
-    fn parse_hash(&mut self) -> Result<GenericArray<u8, <H::Alg as OutputSizeUser>::OutputSize>> {
+    fn parse_hash(&mut self) -> Result<H::Array> {
         let hex_str = self
             .segments
             .next()
             .and_then(some_if_not_empty)
             .ok_or_else(|| Error::MissingHash(self.url.clone()))?;
 
-        // TODO(alilleybrinker): When `sha1` et al. move to generic-array 1.0,
-        //                       update this to use the `arr!` macro.
-        let mut value = GenericArray::generate(|_| 0);
-        hex::decode_to_slice(hex_str, &mut value)?;
-
-        let expected_size = <H::Alg as OutputSizeUser>::output_size();
-        if value.len() != expected_size {
-            return Err(Error::UnexpectedHashLength {
-                expected: expected_size,
-                observed: value.len(),
-            });
-        }
-
+        let decoded = hex::decode(hex_str)?;
+        let value = <H as HashAlgorithm>::Array::from_iter(decoded);
         Ok(value)
     }
 }

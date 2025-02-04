@@ -1,22 +1,21 @@
 //! [`InputManifest`] type that represents build inputs for an artifact.
 
-use crate::hashes::SupportedHash;
-use crate::ArtifactId;
-use crate::Error;
-use crate::Result;
-use gitoid::Blob;
-use gitoid::HashAlgorithm;
-use gitoid::ObjectType;
-use std::cmp::Ordering;
-use std::fmt::Debug;
-use std::fmt::Formatter;
-use std::fmt::Result as FmtResult;
-use std::fs::File;
-use std::io::BufRead;
-use std::io::BufReader;
-use std::io::Write;
-use std::path::Path;
-use std::str::FromStr;
+use {
+    crate::{
+        artifact_id::ArtifactId,
+        error::{Error, Result},
+        hash_algorithm::HashAlgorithm,
+        object_type::{Blob, ObjectType},
+    },
+    std::{
+        cmp::Ordering,
+        fmt::{Debug, Formatter, Result as FmtResult},
+        fs::File,
+        io::{BufRead, BufReader, Write},
+        path::Path,
+        str::FromStr,
+    },
+};
 
 /// A manifest describing the inputs used to build an artifact.
 ///
@@ -31,7 +30,7 @@ use std::str::FromStr;
 /// Relations may additionally refer to the [`InputManifest`] of the
 /// related artifact.
 #[derive(PartialEq, Eq)]
-pub struct InputManifest<H: SupportedHash> {
+pub struct InputManifest<H: HashAlgorithm> {
     /// The artifact the manifest is describing.
     ///
     /// A manifest without this is "detached" because we don't know
@@ -42,7 +41,7 @@ pub struct InputManifest<H: SupportedHash> {
     relations: Vec<Relation<H>>,
 }
 
-impl<H: SupportedHash> InputManifest<H> {
+impl<H: HashAlgorithm> InputManifest<H> {
     pub(crate) fn with_relations(relations: impl Iterator<Item = Relation<H>>) -> Self {
         InputManifest {
             target: None,
@@ -108,9 +107,9 @@ impl<H: SupportedHash> InputManifest<H> {
             return Err(Error::MissingObjectTypeInHeader);
         }
 
-        if hash_algorithm != H::HashAlgorithm::NAME {
+        if hash_algorithm != H::NAME {
             return Err(Error::WrongHashAlgorithm {
-                expected: H::HashAlgorithm::NAME,
+                expected: H::NAME,
                 got: hash_algorithm.to_owned(),
             });
         }
@@ -129,8 +128,7 @@ impl<H: SupportedHash> InputManifest<H> {
     }
 
     /// Write the manifest out at the given path.
-    #[allow(clippy::write_with_newline)]
-    pub fn as_bytes(&self) -> Result<Vec<u8>> {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes = vec![];
 
         // Per the spec, this prefix is present to substantially shorten
@@ -138,25 +136,25 @@ impl<H: SupportedHash> InputManifest<H> {
         // a manifest if they were written in full form. Instead, only the
         // hex-encoded hashes are recorded elsewhere, because all the metadata
         // is identical in a manifest and only recorded once at the beginning.
-        write!(bytes, "gitoid:{}:{}\n", Blob::NAME, H::HashAlgorithm::NAME)?;
+        let _ = writeln!(bytes, "gitoid:{}:{}", Blob::NAME, H::NAME);
 
         for relation in &self.relations {
             let aid = relation.artifact;
 
-            write!(bytes, "{}", aid.as_hex())?;
+            let _ = write!(bytes, "{}", aid.as_hex());
 
             if let Some(mid) = relation.manifest {
-                write!(bytes, " manifest {}", mid.as_hex())?;
+                let _ = write!(bytes, " manifest {}", mid.as_hex());
             }
 
-            write!(bytes, "\n")?;
+            let _ = writeln!(bytes);
         }
 
-        Ok(bytes)
+        bytes
     }
 }
 
-impl<H: SupportedHash> Debug for InputManifest<H> {
+impl<H: HashAlgorithm> Debug for InputManifest<H> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("InputManifest")
             .field("target", &self.target)
@@ -165,7 +163,7 @@ impl<H: SupportedHash> Debug for InputManifest<H> {
     }
 }
 
-impl<H: SupportedHash> Clone for InputManifest<H> {
+impl<H: HashAlgorithm> Clone for InputManifest<H> {
     fn clone(&self) -> Self {
         InputManifest {
             target: self.target,
@@ -175,7 +173,7 @@ impl<H: SupportedHash> Clone for InputManifest<H> {
 }
 
 /// Parse a single relation line.
-fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
+fn parse_relation<H: HashAlgorithm>(input: &str) -> Result<Relation<H>> {
     let parts = input.split(' ').collect::<Vec<_>>();
 
     if parts.len() < 2 {
@@ -185,12 +183,8 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
     // Panic Safety: we've already checked the length.
     let (aid_hex, manifest_indicator, manifest_aid_hex) = (parts[0], parts.get(1), parts.get(2));
 
-    let artifact = ArtifactId::<H>::from_str(&format!(
-        "gitoid:{}:{}:{}",
-        Blob::NAME,
-        H::HashAlgorithm::NAME,
-        aid_hex
-    ))?;
+    let artifact =
+        ArtifactId::<H>::from_str(&format!("gitoid:{}:{}:{}", Blob::NAME, H::NAME, aid_hex))?;
 
     let manifest = match (manifest_indicator, manifest_aid_hex) {
         (None, None) | (Some(_), None) | (None, Some(_)) => None,
@@ -199,12 +193,7 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
                 return Err(Error::MissingBomIndicatorInRelation);
             }
 
-            let gitoid_url = &format!(
-                "gitoid:{}:{}:{}",
-                Blob::NAME,
-                H::HashAlgorithm::NAME,
-                manifest_aid_hex
-            );
+            let gitoid_url = &format!("gitoid:{}:{}:{}", Blob::NAME, H::NAME, manifest_aid_hex);
 
             ArtifactId::<H>::from_str(gitoid_url).ok()
         }
@@ -215,7 +204,7 @@ fn parse_relation<H: SupportedHash>(input: &str) -> Result<Relation<H>> {
 
 /// A single input artifact represented in a [`InputManifest`].
 #[derive(Copy)]
-pub struct Relation<H: SupportedHash> {
+pub struct Relation<H: HashAlgorithm> {
     /// The ID of the artifact itself.
     artifact: ArtifactId<H>,
 
@@ -229,7 +218,7 @@ pub struct Relation<H: SupportedHash> {
 // isn't actually relevant in this case because we don't _really_
 // store a value of type-`H`, we just use it for type-level
 // programming.
-impl<H: SupportedHash> Debug for Relation<H> {
+impl<H: HashAlgorithm> Debug for Relation<H> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("Relation")
             .field("artifact", &self.artifact)
@@ -238,7 +227,7 @@ impl<H: SupportedHash> Debug for Relation<H> {
     }
 }
 
-impl<H: SupportedHash> Clone for Relation<H> {
+impl<H: HashAlgorithm> Clone for Relation<H> {
     fn clone(&self) -> Self {
         Relation {
             artifact: self.artifact,
@@ -247,27 +236,27 @@ impl<H: SupportedHash> Clone for Relation<H> {
     }
 }
 
-impl<H: SupportedHash> PartialEq for Relation<H> {
+impl<H: HashAlgorithm> PartialEq for Relation<H> {
     fn eq(&self, other: &Self) -> bool {
         self.artifact.eq(&other.artifact) && self.manifest.eq(&other.manifest)
     }
 }
 
-impl<H: SupportedHash> Eq for Relation<H> {}
+impl<H: HashAlgorithm> Eq for Relation<H> {}
 
-impl<H: SupportedHash> PartialOrd for Relation<H> {
+impl<H: HashAlgorithm> PartialOrd for Relation<H> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<H: SupportedHash> Ord for Relation<H> {
+impl<H: HashAlgorithm> Ord for Relation<H> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.artifact.cmp(&other.artifact)
     }
 }
 
-impl<H: SupportedHash> Relation<H> {
+impl<H: HashAlgorithm> Relation<H> {
     pub(crate) fn new(artifact: ArtifactId<H>, manifest: Option<ArtifactId<H>>) -> Relation<H> {
         Relation { artifact, manifest }
     }

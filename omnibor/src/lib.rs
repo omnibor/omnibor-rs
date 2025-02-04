@@ -5,9 +5,11 @@
 //! [OmniBOR][omnibor] is a draft specification which defines two key concepts:
 //!
 //! - __Artifact Identifiers__: independently-reproducible identifiers for
-//!   software artifacts. Use [`ArtifactId`] for these.
+//!   software artifacts. Use [`ArtifactId`](crate::artifact_id::ArtifactId)
+//!   for these.
 //! - __Artifact Input Manifests__: record the IDs of every input used in the
-//!   build process for an artifact. Use [`InputManifest`] for these.
+//!   build process for an artifact. Use
+//!   [`InputManifest`](crate::input_manifest::InputManifest) for these.
 //!
 //! Artifact IDs enable _anyone_ to identify and cross-reference information for
 //! software artifacts without a central authority. Unlike [pURL][purl] or [CPE][cpe],
@@ -41,50 +43,57 @@
 //! [omnibor_spec]: https://github.com/omnibor/spec
 //! [purl]: https://github.com/package-url/purl-spec
 
-// Make this public within the crate to aid with writing sealed
-// traits, a pattern we use repeatedly.
-pub(crate) mod sealed;
+/*===============================================================================================
+ * Lint Configuration
+ */
 
-// This is hidden for now, as we are not yet ready to commit to any
-// stability guarantees for FFI.
-#[doc(hidden)]
-pub mod ffi;
+#![allow(clippy::module_inception)]
 
-// Keep modules private and just re-export the symbols we care about.
-mod artifact_id;
-mod embedding_mode;
-mod error;
-mod input_manifest;
-mod input_manifest_builder;
-mod into_artifact_id;
-pub mod storage;
-mod supported_hash;
+/*===============================================================================================
+ * Compilation Protections
+ */
 
+#[cfg(not(any(
+    feature = "backend-rustcrypto",
+    feature = "backend-boringssl",
+    feature = "backend-openssl"
+)))]
+compile_error!(
+    r#"At least one of the "backend-rustcrypto", "backend-boringssl", \n"#
+    r#"\tor "backend-openssl" features must be enabled"#
+);
+
+/*===============================================================================================
+ * Internal Modules
+ */
+
+pub(crate) mod gitoid;
+pub(crate) mod object_type;
+pub(crate) mod util;
+
+/*===============================================================================================
+ * Testing
+ */
+
+#[cfg(feature = "backend-rustcrypto")]
 #[cfg(test)]
 mod test;
 
-// Only make this public within the crate, for convenience
-// elsewhere since we always expect to be using our own `Error`
-// type anyway.
-pub(crate) use crate::error::Result;
+/*===============================================================================================
+ * FFI
+ */
 
-/// Defines whether data for an [`InputManifest`] is embedded in the artifact itself.
-pub mod embedding {
-    pub use crate::embedding_mode::Embed;
-    pub use crate::embedding_mode::EmbeddingMode;
-    pub use crate::embedding_mode::NoEmbed;
-}
+// Hidden since we don't want to commit to stability.
+#[doc(hidden)]
+pub mod ffi;
 
-/// Defines the hash algorithms supported for [`ArtifactId`]s.
-pub mod hashes {
-    pub use crate::supported_hash::Sha256;
-    pub use crate::supported_hash::SupportedHash;
-}
+/*===============================================================================================
+ * Public API
+ */
 
-pub use crate::artifact_id::ArtifactId;
-pub use crate::error::Error;
-pub use crate::input_manifest::InputManifest;
-pub use crate::input_manifest::Relation;
-pub use crate::input_manifest_builder::InputManifestBuilder;
-pub use crate::input_manifest_builder::ShouldStore;
-pub use crate::into_artifact_id::IntoArtifactId;
+pub mod artifact_id;
+pub mod error;
+pub mod hash_algorithm;
+pub mod hash_provider;
+pub mod input_manifest;
+pub mod storage;

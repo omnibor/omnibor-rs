@@ -9,7 +9,10 @@ use crate::{
 use async_channel::{bounded, Receiver, Sender as WorkSender};
 use async_walkdir::{DirEntry as AsyncDirEntry, WalkDir};
 use futures_util::{pin_mut, StreamExt};
-use omnibor::{hashes::Sha256, ArtifactId};
+use omnibor::{
+    artifact_id::{ArtifactId, ArtifactIdBuilder},
+    hash_algorithm::Sha256,
+};
 use std::path::{Path, PathBuf};
 use tokio::{fs::File as AsyncFile, task::JoinSet};
 use tracing::debug;
@@ -179,7 +182,8 @@ pub async fn open_async_file(path: &Path) -> Result<AsyncFile> {
 
 /// Identify a file using a SHA-256 hash.
 pub async fn sha256_id_async_file(file: &mut AsyncFile, path: &Path) -> Result<ArtifactId<Sha256>> {
-    ArtifactId::id_async_reader(file)
+    ArtifactIdBuilder::with_rustcrypto()
+        .identify_async_file(file)
         .await
         .map_err(|source| Error::FileFailedToId {
             path: path.to_path_buf(),

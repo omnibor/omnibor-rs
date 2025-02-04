@@ -1,10 +1,8 @@
-use crate::Result;
-
-#[cfg(feature = "async")]
-use tokio::io::{AsyncSeek, AsyncSeekExt as _};
-
-#[cfg(feature = "std")]
-use std::io::{Seek, SeekFrom};
+use {
+    crate::error::Result,
+    std::io::{Seek, SeekFrom},
+    tokio::io::{AsyncSeek, AsyncSeekExt as _},
+};
 
 // Adapted from the Rust standard library's unstable implementation
 // of `Seek::stream_len`.
@@ -36,7 +34,6 @@ use std::io::{Seek, SeekFrom};
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
-#[cfg(feature = "std")]
 pub(crate) fn stream_len<R>(mut stream: R) -> Result<u64>
 where
     R: Seek,
@@ -54,7 +51,6 @@ where
 }
 
 /// An async equivalent of `stream_len`.
-#[cfg(feature = "async")]
 pub(crate) async fn async_stream_len<R>(mut stream: R) -> Result<u64>
 where
     R: AsyncSeek + Unpin,

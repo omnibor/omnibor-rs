@@ -1,31 +1,31 @@
 //! The main ArtifactId FFI functions.
 
-use crate::ffi::error::catch_panic;
-use crate::ffi::error::get_error_msg;
-use crate::ffi::error::Error;
-use crate::ffi::status::Status;
-use crate::ffi::util::check_null;
-use crate::ffi::util::write_to_c_buf;
-use crate::hashes::Sha256;
-use crate::ArtifactId;
-use core::ffi::c_char;
-use core::ffi::c_int;
-use core::ffi::CStr;
-use core::ptr::null;
-use core::ptr::null_mut;
-use core::slice::from_raw_parts;
-use core::slice::from_raw_parts_mut;
-use std::ffi::CString;
-use std::fs::File;
+use crate::artifact_id::ArtifactIdBuilder;
+
+use {
+    crate::{
+        artifact_id::ArtifactId,
+        ffi::{
+            error::{catch_panic, get_error_msg, Error},
+            status::Status,
+            util::{check_null, write_to_c_buf},
+        },
+        hash_algorithm::Sha256,
+    },
+    core::{
+        ffi::{c_char, c_int, CStr},
+        ptr::{null, null_mut},
+        slice::{from_raw_parts, from_raw_parts_mut},
+    },
+    std::{ffi::CString, fs::File},
+    url::Url,
+};
+
 #[cfg(target_family = "unix")]
-use std::os::unix::prelude::FromRawFd;
-#[cfg(target_family = "unix")]
-use std::os::unix::prelude::RawFd;
+use std::os::unix::prelude::{FromRawFd, RawFd};
+
 #[cfg(target_family = "windows")]
-use std::os::windows::io::FromRawHandle;
-#[cfg(target_family = "windows")]
-use std::os::windows::prelude::RawHandle;
-use url::Url;
+use std::os::windows::{io::FromRawHandle, prelude::RawHandle};
 
 /// Get the last-written error message written to a buffer.
 ///
@@ -103,7 +103,8 @@ pub unsafe extern "C" fn ob_aid_sha256_id_bytes(
     let output = catch_panic(|| {
         check_null(content, Error::ContentPtrIsNull)?;
         let content = unsafe { from_raw_parts(content, content_len) };
-        let artifact_id = ArtifactIdSha256(ArtifactId::<Sha256>::id_bytes(content));
+        let artifact_id =
+            ArtifactIdSha256(ArtifactIdBuilder::with_rustcrypto().identify_bytes(content));
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
     });
@@ -123,7 +124,7 @@ pub unsafe extern "C" fn ob_aid_sha256_id_str(s: *const c_char) -> *const Artifa
     let output = catch_panic(|| {
         check_null(s, Error::StringPtrIsNull)?;
         let s = unsafe { CStr::from_ptr(s) }.to_str()?;
-        let artifact_id = ArtifactIdSha256(ArtifactId::<Sha256>::id_str(s));
+        let artifact_id = ArtifactIdSha256(ArtifactIdBuilder::with_rustcrypto().identify_string(s));
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
     });
@@ -163,35 +164,9 @@ pub unsafe extern "C" fn ob_aid_sha256_try_from_url(s: *const c_char) -> *const 
 #[no_mangle]
 pub unsafe extern "C" fn ob_aid_sha256_id_reader(fd: RawFd) -> *const ArtifactIdSha256 {
     let output = catch_panic(|| {
-        let file = unsafe { File::from_raw_fd(fd) };
-        let artifact_id = ArtifactIdSha256(ArtifactId::<Sha256>::id_reader(file)?);
-        let boxed = Box::new(artifact_id);
-        Ok(Box::into_raw(boxed) as *const _)
-    });
-
-    output.unwrap_or_else(null)
-}
-
-/// Create a new `ArtifactId` by reading data from a file.
-///
-/// # Safety
-///
-/// The provided file descriptor must be valid and open for reading.
-///
-/// Returns an invalid `ArtifactId` if construction fails.
-#[cfg(target_family = "unix")]
-#[no_mangle]
-pub unsafe extern "C" fn ob_aid_sha256_id_reader_with_length(
-    fd: RawFd,
-    expected_length: c_int,
-) -> *const ArtifactIdSha256 {
-    let output = catch_panic(|| {
-        let file = unsafe { File::from_raw_fd(fd) };
-        let expected_length = expected_length as usize;
-        let artifact_id = ArtifactIdSha256(ArtifactId::<Sha256>::id_reader_with_length(
-            file,
-            expected_length,
-        )?);
+        let mut file = unsafe { File::from_raw_fd(fd) };
+        let artifact_id =
+            ArtifactIdSha256(ArtifactIdBuilder::with_rustcrypto().identify_file(&mut file)?);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
     });
@@ -211,36 +186,9 @@ pub unsafe extern "C" fn ob_aid_sha256_id_reader_with_length(
 /// cbindgen:ignore
 pub unsafe extern "C" fn ob_aid_sha256_id_reader(handle: RawHandle) -> *const ArtifactIdSha256 {
     let output = catch_panic(|| {
-        let file = unsafe { File::from_raw_handle(handle) };
-        let artifact_id = ArtifactIdSha256(ArtifactId::<Sha256>::id_reader(file)?);
-        let boxed = Box::new(artifact_id);
-        Ok(Box::into_raw(boxed) as *const _)
-    });
-
-    output.unwrap_or_else(null)
-}
-
-/// Create a new `ArtifactId` by reading data from a file.
-///
-/// # Safety
-///
-/// The provided file handle must be valid and open for reading.
-///
-/// Returns an invalid `ArtifactId` if construction fails.
-#[cfg(target_family = "windows")]
-#[no_mangle]
-/// cbindgen:ignore
-pub unsafe extern "C" fn ob_aid_sha256_id_reader_with_length(
-    handle: RawHandle,
-    expected_length: c_int,
-) -> *const ArtifactIdSha256 {
-    let output = catch_panic(|| {
-        let file = unsafe { File::from_raw_handle(handle) };
-        let expected_length = expected_length as usize;
-        let artifact_id = ArtifactIdSha256(ArtifactId::<Sha256>::id_reader_with_length(
-            file,
-            expected_length,
-        )?);
+        let mut file = unsafe { File::from_raw_handle(handle) };
+        let artifact_id =
+            ArtifactIdSha256(ArtifactIdBuilder::with_rustcrypto().identify_file(&mut file)?);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
     });

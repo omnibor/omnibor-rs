@@ -2,7 +2,7 @@
 # Overall workspace configuration.
 [workspace]
 
-members = ["gitoid", "omnibor", "omnibor-cli", "xtask"]
+members = ["omnibor", "omnibor-cli", "xtask"]
 resolver = "2"
 
 # Shared settings across packages in the workspace.

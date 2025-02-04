@@ -48,7 +48,6 @@ Analysis."][cisa_report]
 |:--------------|:----------------------------------------------------------|:------------------------------------------|:----------------------------------------------------------------------------------------------------------------|
 | `omnibor`     | ![Library](https://img.shields.io/badge/Library-darkblue) | OmniBOR Identifiers and Manifests         | [README][omnibor_r] &middot; [Changelog][omnibor_c] &middot; [API Docs][omnibor_d] &middot; [Crate][omnibor_cr] |
 | `omnibor-cli` | ![Binary](https://img.shields.io/badge/Binary-darkgreen)  | CLI for OmniBOR Identifiers and Manifests | [README][omnibor_cli_r] &middot; [Changelog][omnibor_cli_c] &middot; [Crate][omnibor_cli_cr]                    |
-| `gitoid`      | ![Library](https://img.shields.io/badge/Library-darkblue) | Git Object Identifiers (GitOIDs)          | [README][gitoid_r] &middot; [Changelog][gitoid_c] &middot; [API Docs][gitoid_d] &middot; [Crate][gitoid_cr]     |
 | `xtask`       | ![Binary](https://img.shields.io/badge/Binary-darkgreen)  | OmniBOR Rust Workspace Automation         | [README][xtask_r]                                                                                               |
 
 ## Contributing
@@ -101,10 +100,6 @@ license text in the [`LICENSE`][license] file.
 [cisa_report]: https://www.cisa.gov/sites/default/files/2023-10/Software-Identification-Ecosystem-Option-Analysis-508c.pdf
 [cpe]: https://nvd.nist.gov/products/cpe
 [gitoid]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
-[gitoid_cr]: https://crates.io/crates/gitoid
-[gitoid_r]: https://github.com/omnibor/omnibor-rs/blob/main/gitoid/README.md
-[gitoid_c]: https://github.com/omnibor/omnibor-rs/blob/main/gitoid/CHANGELOG.md
-[gitoid_d]: https://docs.rs/crate/gitoid/latest
 [license]: https://github.com/omnibor/omnibor-rs/blob/main/LICENSE
 [omnibor]: https://omnibor.io
 [omnibor_cr]: https://crates.io/crates/omnibor

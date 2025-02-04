@@ -1,34 +1,31 @@
 //! Defines how manifests are stored and accessed.
 
-use crate::hashes::SupportedHash;
-use crate::supported_hash::Sha256;
-use crate::ArtifactId;
-use crate::Error;
-use crate::InputManifest;
-use crate::Result;
-use pathbuf::pathbuf;
-use std::collections::HashMap;
-use std::env::var_os;
-use std::fmt::Debug;
-use std::fs;
-use std::fs::create_dir_all;
-use std::fs::write;
-use std::fs::File;
-use std::io::BufRead as _;
-use std::io::BufReader;
-use std::io::BufWriter;
-use std::io::Write as _;
-use std::ops::Not as _;
-use std::path::Path;
-use std::path::PathBuf;
-use std::str::FromStr;
-use tracing::debug;
-use tracing::info;
-use walkdir::DirEntry;
-use walkdir::WalkDir;
+use {
+    crate::{
+        artifact_id::{ArtifactId, ArtifactIdBuilder},
+        error::{Error, Result},
+        hash_algorithm::{HashAlgorithm, Sha256},
+        hash_provider::HashProvider,
+        input_manifest::InputManifest,
+        pathbuf,
+    },
+    std::{
+        collections::HashMap,
+        env::var_os,
+        fmt::Debug,
+        fs::{self, create_dir_all, write, File},
+        io::{BufRead as _, BufReader, BufWriter, Write as _},
+        marker::PhantomData,
+        ops::Not as _,
+        path::{Path, PathBuf},
+        str::FromStr,
+    },
+    tracing::{debug, info},
+    walkdir::{DirEntry, WalkDir},
+};
 
 /// Represents the interface for storing and querying manifests.
-pub trait Storage<H: SupportedHash> {
+pub trait Storage<H: HashAlgorithm> {
     /// Check if we have the manifest for a specific artifact.
     fn has_manifest_for_artifact(&self, target_aid: ArtifactId<H>) -> bool;
 
@@ -58,7 +55,7 @@ pub trait Storage<H: SupportedHash> {
     fn get_manifests(&self) -> Result<Vec<InputManifest<H>>>;
 }
 
-impl<H: SupportedHash, S: Storage<H>> Storage<H> for &mut S {
+impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
     fn has_manifest_for_artifact(&self, target_aid: ArtifactId<H>) -> bool {
         (**self).has_manifest_for_artifact(target_aid)
     }
@@ -96,13 +93,15 @@ impl<H: SupportedHash, S: Storage<H>> Storage<H> for &mut S {
 
 /// File system storage for [`InputManifest`]s.
 #[derive(Debug)]
-pub struct FileSystemStorage {
+pub struct FileSystemStorage<H: HashAlgorithm, P: HashProvider<H>> {
+    _hash_algorithm: PhantomData<H>,
+    hash_provider: P,
     root: PathBuf,
 }
 
-impl FileSystemStorage {
+impl<H: HashAlgorithm, P: HashProvider<H>> FileSystemStorage<H, P> {
     /// Start building a new [`FileSystemStorage`].
-    pub fn new(root: impl AsRef<Path>) -> Result<FileSystemStorage> {
+    pub fn new(hash_provider: P, root: impl AsRef<Path>) -> Result<FileSystemStorage<H, P>> {
         let root = root.as_ref().to_owned();
 
         if root.exists() {
@@ -117,15 +116,21 @@ impl FileSystemStorage {
                 .map_err(|e| Error::CantCreateObjectStoreDir(root.display().to_string(), e))?;
         }
 
-        Ok(FileSystemStorage { root })
+        Ok(FileSystemStorage {
+            _hash_algorithm: PhantomData,
+            hash_provider,
+            root,
+        })
     }
 
     /// Build a [`FileSystemStorage`] with a root set from
     /// the `OMNIBOR_DIR` environment variable.
-    pub fn from_env() -> Result<FileSystemStorage> {
+    pub fn from_env(hash_provider: P) -> Result<FileSystemStorage<H, P>> {
         var_os("OMNIBOR_DIR")
             .ok_or(Error::NoStorageRoot)
             .map(|root| FileSystemStorage {
+                _hash_algorithm: PhantomData,
+                hash_provider,
                 root: PathBuf::from(root),
             })
     }
@@ -156,7 +161,7 @@ impl FileSystemStorage {
     }
 
     /// Get the path for storing a manifest with this [`ArtifactId`].
-    fn manifest_path<H: SupportedHash>(&self, aid: ArtifactId<H>) -> PathBuf {
+    fn manifest_path(&self, aid: ArtifactId<H>) -> PathBuf {
         let kind = format!("gitoid_{}_{}", aid.object_type(), aid.hash_algorithm());
         let hash = aid.as_hex();
         let (prefix, remainder) = hash.split_at(2);
@@ -164,7 +169,7 @@ impl FileSystemStorage {
     }
 
     /// Iterate over the targets of manifests currently in the object store.
-    fn manifests<H: SupportedHash>(&self) -> impl Iterator<Item = ManifestsEntry<H>> + '_ {
+    fn manifests(&self) -> impl Iterator<Item = ManifestsEntry<H>> + '_ {
         WalkDir::new(self.manifests_path())
             .into_iter()
             .filter_map(|result| result.ok())
@@ -183,7 +188,7 @@ impl FileSystemStorage {
     }
 }
 
-impl<H: SupportedHash> Storage<H> for FileSystemStorage {
+impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P> {
     fn has_manifest_for_artifact(&self, target_aid: ArtifactId<H>) -> bool {
         self.manifests()
             .any(|entry| entry.target_aid == Some(target_aid))
@@ -207,14 +212,17 @@ impl<H: SupportedHash> Storage<H> for FileSystemStorage {
         target_aid: ArtifactId<H>,
     ) -> Result<Option<ArtifactId<H>>> {
         match self.get_manifest_for_artifact(target_aid) {
-            Ok(Some(manifest)) => ArtifactId::id_manifest(&manifest).map(Some),
+            Ok(Some(manifest)) => Ok(Some(
+                ArtifactIdBuilder::with_provider(self.hash_provider).identify_manifest(&manifest),
+            )),
             Ok(None) => Ok(None),
             Err(e) => Err(e),
         }
     }
 
     fn write_manifest(&mut self, manifest: &InputManifest<H>) -> Result<ArtifactId<H>> {
-        let manifest_aid = ArtifactId::<H>::id_manifest(manifest)?;
+        let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
+        let manifest_aid = builder.identify_manifest(manifest);
         let path = self.manifest_path(manifest_aid);
         let parent_dirs = path
             .parent()
@@ -223,7 +231,7 @@ impl<H: SupportedHash> Storage<H> for FileSystemStorage {
         create_dir_all(parent_dirs)
             .map_err(|e| Error::CantWriteManifestDir(parent_dirs.display().to_string(), e))?;
 
-        write(&path, manifest.as_bytes()?)
+        write(&path, manifest.as_bytes())
             .map_err(|e| Error::CantWriteManifest(path.display().to_string(), e))?;
 
         info!("wrote manifest '{}' to store", manifest_aid);
@@ -250,7 +258,7 @@ impl<H: SupportedHash> Storage<H> for FileSystemStorage {
     }
 }
 
-fn artifact_id_from_dir_entry<H: SupportedHash>(entry: &DirEntry) -> Option<ArtifactId<H>> {
+fn artifact_id_from_dir_entry<H: HashAlgorithm>(entry: &DirEntry) -> Option<ArtifactId<H>> {
     let gitoid_url = {
         let path_components = entry
             .path()
@@ -273,7 +281,7 @@ fn artifact_id_from_dir_entry<H: SupportedHash>(entry: &DirEntry) -> Option<Arti
 }
 
 /// An entry when iterating over manifests in the manifest store.
-struct ManifestsEntry<H: SupportedHash> {
+struct ManifestsEntry<H: HashAlgorithm> {
     /// The [`ArtifactId`] of the target artifact.
     target_aid: Option<ArtifactId<H>>,
 
@@ -281,7 +289,7 @@ struct ManifestsEntry<H: SupportedHash> {
     manifest_path: PathBuf,
 }
 
-impl<H: SupportedHash> ManifestsEntry<H> {
+impl<H: HashAlgorithm> ManifestsEntry<H> {
     /// Load the [`InputManifest`] represented by this entry.
     fn manifest(&self) -> Result<InputManifest<H>> {
         let mut manifest = InputManifest::from_path(&self.manifest_path)?;
@@ -310,7 +318,7 @@ impl TargetIndex {
     }
 
     /// Find an entry for a specific manifest [`ArtifactId`].
-    fn find<H: SupportedHash>(&self, manifest_aid: ArtifactId<H>) -> Result<Option<ArtifactId<H>>> {
+    fn find<H: HashAlgorithm>(&self, manifest_aid: ArtifactId<H>) -> Result<Option<ArtifactId<H>>> {
         let file = File::open(&self.path)
             .map_err(|e| Error::CantOpenTargetIndex(self.path.display().to_string(), e))?;
 
@@ -337,19 +345,19 @@ impl TargetIndex {
     // Begin an "upsert" operation in the [`TargetIndex`].
     //
     // This either updates or inserts, as appropriate, into the index.
-    fn upsert<H: SupportedHash>(&self) -> TargetIndexUpsert<H> {
+    fn upsert<H: HashAlgorithm>(&self) -> TargetIndexUpsert<H> {
         let root = self.path.parent().unwrap();
         TargetIndexUpsert::new(root)
     }
 }
 
-struct TargetIndexUpsert<H: SupportedHash> {
+struct TargetIndexUpsert<H: HashAlgorithm> {
     root: PathBuf,
     manifest_aid: Option<ArtifactId<H>>,
     target_aid: Option<ArtifactId<H>>,
 }
 
-impl<H: SupportedHash> TargetIndexUpsert<H> {
+impl<H: HashAlgorithm> TargetIndexUpsert<H> {
     /// Start a new upsert operation.
     fn new(root: impl AsRef<Path>) -> Self {
         TargetIndexUpsert {
@@ -445,16 +453,22 @@ impl<H: SupportedHash> TargetIndexUpsert<H> {
 /// may be useful in other applications where you only care about producing and using
 /// manifests in the short-term, and not in persisting them to a disk or some other
 /// durable location.
-#[derive(Debug, Default)]
-pub struct InMemoryStorage {
+#[derive(Debug)]
+pub struct InMemoryStorage<P: HashProvider<Sha256>> {
+    /// The cryptography library providing a hash implementation.
+    hash_provider: P,
+
     /// Stored SHA-256 [`InputManifest`]s.
     sha256_manifests: Vec<ManifestEntry<Sha256>>,
 }
 
-impl InMemoryStorage {
+impl<P: HashProvider<Sha256>> InMemoryStorage<P> {
     /// Construct a new `InMemoryStorage` instance.
-    pub fn new() -> Self {
-        InMemoryStorage::default()
+    pub fn new(hash_provider: P) -> Self {
+        Self {
+            hash_provider,
+            sha256_manifests: Vec::new(),
+        }
     }
 
     /// Find the manifest entry that matches the target [`ArtifactId`]
@@ -468,7 +482,7 @@ impl InMemoryStorage {
     }
 }
 
-impl Storage<Sha256> for InMemoryStorage {
+impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
     fn has_manifest_for_artifact(&self, target_aid: ArtifactId<Sha256>) -> bool {
         self.match_by_target_aid(target_aid).is_some()
     }
@@ -492,7 +506,8 @@ impl Storage<Sha256> for InMemoryStorage {
     }
 
     fn write_manifest(&mut self, manifest: &InputManifest<Sha256>) -> Result<ArtifactId<Sha256>> {
-        let manifest_aid = ArtifactId::<Sha256>::id_manifest(manifest)?;
+        let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
+        let manifest_aid = builder.identify_manifest(manifest);
 
         self.sha256_manifests.push(ManifestEntry {
             manifest_aid,
@@ -525,7 +540,7 @@ impl Storage<Sha256> for InMemoryStorage {
 }
 
 /// An entry in the in-memory manifest storage.
-struct ManifestEntry<H: SupportedHash> {
+struct ManifestEntry<H: HashAlgorithm> {
     /// The [`ArtifactId`] of the manifest.
     manifest_aid: ArtifactId<H>,
 
@@ -533,7 +548,7 @@ struct ManifestEntry<H: SupportedHash> {
     manifest: InputManifest<H>,
 }
 
-impl<H: SupportedHash> Debug for ManifestEntry<H> {
+impl<H: HashAlgorithm> Debug for ManifestEntry<H> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ManifestEntry")
             .field("manifest_aid", &self.manifest_aid)
@@ -542,7 +557,7 @@ impl<H: SupportedHash> Debug for ManifestEntry<H> {
     }
 }
 
-impl<H: SupportedHash> Clone for ManifestEntry<H> {
+impl<H: HashAlgorithm> Clone for ManifestEntry<H> {
     fn clone(&self) -> Self {
         ManifestEntry {
             manifest_aid: self.manifest_aid,
@@ -554,15 +569,16 @@ impl<H: SupportedHash> Clone for ManifestEntry<H> {
 #[cfg(test)]
 mod tests {
     use super::FileSystemStorage;
-    use crate::hashes::Sha256;
-    use crate::ArtifactId;
-    use pathbuf::pathbuf;
+    use crate::{artifact_id::ArtifactId, hash_algorithm::Sha256, pathbuf};
     use std::str::FromStr;
 
+    #[cfg(feature = "backend-rustcrypto")]
     #[test]
     fn correct_aid_storage_path() {
+        use crate::hash_provider::RustCrypto;
+
         let root = pathbuf![env!("CARGO_MANIFEST_DIR"), "test", "fs_storage"];
-        let storage = FileSystemStorage::new(&root).unwrap();
+        let storage = FileSystemStorage::new(RustCrypto::new(), &root).unwrap();
 
         let aid = ArtifactId::<Sha256>::from_str(
             "gitoid:blob:sha256:9d09789f20162dca6d80d2d884f46af22c824f6409d4f447332d079a2d1e364f",
