@@ -91,8 +91,6 @@ backend-boringssl = ["dep:boring"]
 # Enable using OpenSSL as a cryptography backend.
 backend-openssl = ["dep:openssl"]
 
-# Removed until the benchmark can be properly restored.
-#
-# [[bench]]
-# name = "benchmark"
-# harness = false
+[[bench]]
+name = "benchmark"
+harness = false
