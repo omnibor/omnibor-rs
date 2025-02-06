@@ -10,6 +10,7 @@ use {
 };
 
 /// Use the BoringSSL hash implementation.
+#[cfg_attr(docsrs, doc(cfg(feature = "backend-boringssl")))]
 #[derive(Clone, Copy)]
 pub struct BoringSsl {
     #[doc(hidden)]

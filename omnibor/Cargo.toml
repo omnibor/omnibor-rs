@@ -94,3 +94,11 @@ backend-openssl = ["dep:openssl"]
 [[bench]]
 name = "benchmark"
 harness = false
+
+[package.metadata.docs.rs]
+
+# Whether to pass `--all-features` to Cargo (default: false)
+all-features = true
+
+# Defines the configuration attribute `docsrs`
+rustdoc-args = ["--cfg", "docsrs"]
