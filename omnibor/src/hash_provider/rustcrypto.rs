@@ -11,6 +11,7 @@ use {
 };
 
 /// Use the RustCrypto hash implementation.
+#[cfg_attr(docsrs, doc(cfg(feature = "backend-rustcrypto")))]
 #[derive(Clone, Copy)]
 pub struct RustCrypto {
     #[doc(hidden)]

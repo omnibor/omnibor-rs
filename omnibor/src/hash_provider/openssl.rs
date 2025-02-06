@@ -10,6 +10,7 @@ use {
 };
 
 /// Use the OpenSSL hash implementation.
+#[cfg_attr(docsrs, doc(cfg(feature = "backend-openssl")))]
 #[derive(Clone, Copy)]
 pub struct OpenSsl {
     #[doc(hidden)]
