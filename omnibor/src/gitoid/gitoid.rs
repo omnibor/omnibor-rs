@@ -2,9 +2,7 @@
 
 use {
     crate::{
-        error::{Error, Result},
-        gitoid::gitoid_url_parser::GitOidUrlParser,
-        hash_algorithm::HashAlgorithm,
+        error::Error, gitoid::gitoid_url_parser::GitOidUrlParser, hash_algorithm::HashAlgorithm,
         object_type::ObjectType,
     },
     serde::{
@@ -46,7 +44,7 @@ where
     O: ObjectType,
 {
     /// Construct a new `GitOid` from a `Url`.
-    pub fn try_from_url(url: Url) -> Result<GitOid<H, O>> {
+    pub fn try_from_url(url: Url) -> Result<GitOid<H, O>, Error> {
         GitOid::try_from(url)
     }
 
@@ -90,7 +88,7 @@ where
 {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<GitOid<H, O>> {
+    fn from_str(s: &str) -> Result<GitOid<H, O>, Error> {
         let url = Url::parse(s)?;
         GitOid::try_from_url(url)
     }
@@ -249,7 +247,7 @@ where
 {
     type Error = Error;
 
-    fn try_from(url: Url) -> Result<GitOid<H, O>> {
+    fn try_from(url: Url) -> Result<GitOid<H, O>, Error> {
         GitOidUrlParser::new(&url).parse()
     }
 }

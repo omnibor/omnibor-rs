@@ -10,6 +10,7 @@ use {
     sha2 as sha,
 };
 
+/// Use the RustCrypto hash implementation.
 #[derive(Clone, Copy)]
 pub struct RustCrypto {
     #[doc(hidden)]

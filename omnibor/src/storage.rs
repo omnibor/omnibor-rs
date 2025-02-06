@@ -1,9 +1,9 @@
-//! Defines how manifests are stored and accessed.
+//! How manifests are stored and accessed.
 
 use {
     crate::{
         artifact_id::{ArtifactId, ArtifactIdBuilder},
-        error::{Error, Result},
+        error::Error,
         hash_algorithm::{HashAlgorithm, Sha256},
         hash_provider::HashProvider,
         input_manifest::InputManifest,
@@ -33,26 +33,26 @@ pub trait Storage<H: HashAlgorithm> {
     fn get_manifest_for_artifact(
         &self,
         target_aid: ArtifactId<H>,
-    ) -> Result<Option<InputManifest<H>>>;
+    ) -> Result<Option<InputManifest<H>>, Error>;
 
     /// Get the ID of the manifest for the artifact.
     fn get_manifest_id_for_artifact(
         &self,
         target_aid: ArtifactId<H>,
-    ) -> Result<Option<ArtifactId<H>>>;
+    ) -> Result<Option<ArtifactId<H>>, Error>;
 
     /// Write a manifest to the storage.
-    fn write_manifest(&mut self, manifest: &InputManifest<H>) -> Result<ArtifactId<H>>;
+    fn write_manifest(&mut self, manifest: &InputManifest<H>) -> Result<ArtifactId<H>, Error>;
 
     /// Update the manifest file to reflect the target ID.
     fn update_target_for_manifest(
         &mut self,
         manifest_aid: ArtifactId<H>,
         target_aid: ArtifactId<H>,
-    ) -> Result<()>;
+    ) -> Result<(), Error>;
 
     /// Get all manifests from the storage.
-    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>>;
+    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, Error>;
 }
 
 impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
@@ -63,18 +63,18 @@ impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
     fn get_manifest_for_artifact(
         &self,
         target_aid: ArtifactId<H>,
-    ) -> Result<Option<InputManifest<H>>> {
+    ) -> Result<Option<InputManifest<H>>, Error> {
         (**self).get_manifest_for_artifact(target_aid)
     }
 
     fn get_manifest_id_for_artifact(
         &self,
         target_aid: ArtifactId<H>,
-    ) -> Result<Option<ArtifactId<H>>> {
+    ) -> Result<Option<ArtifactId<H>>, Error> {
         (**self).get_manifest_id_for_artifact(target_aid)
     }
 
-    fn write_manifest(&mut self, manifest: &InputManifest<H>) -> Result<ArtifactId<H>> {
+    fn write_manifest(&mut self, manifest: &InputManifest<H>) -> Result<ArtifactId<H>, Error> {
         (**self).write_manifest(manifest)
     }
 
@@ -82,11 +82,11 @@ impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
         &mut self,
         manifest_aid: ArtifactId<H>,
         target_aid: ArtifactId<H>,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         (**self).update_target_for_manifest(manifest_aid, target_aid)
     }
 
-    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>> {
+    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, Error> {
         (**self).get_manifests()
     }
 }
@@ -101,7 +101,7 @@ pub struct FileSystemStorage<H: HashAlgorithm, P: HashProvider<H>> {
 
 impl<H: HashAlgorithm, P: HashProvider<H>> FileSystemStorage<H, P> {
     /// Start building a new [`FileSystemStorage`].
-    pub fn new(hash_provider: P, root: impl AsRef<Path>) -> Result<FileSystemStorage<H, P>> {
+    pub fn new(hash_provider: P, root: impl AsRef<Path>) -> Result<FileSystemStorage<H, P>, Error> {
         let root = root.as_ref().to_owned();
 
         if root.exists() {
@@ -125,7 +125,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> FileSystemStorage<H, P> {
 
     /// Build a [`FileSystemStorage`] with a root set from
     /// the `OMNIBOR_DIR` environment variable.
-    pub fn from_env(hash_provider: P) -> Result<FileSystemStorage<H, P>> {
+    pub fn from_env(hash_provider: P) -> Result<FileSystemStorage<H, P>, Error> {
         var_os("OMNIBOR_DIR")
             .ok_or(Error::NoStorageRoot)
             .map(|root| FileSystemStorage {
@@ -139,7 +139,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> FileSystemStorage<H, P> {
     ///
     /// This is just used for tests to ensure idempotency.
     #[cfg(test)]
-    pub fn cleanup(self) -> Result<()> {
+    pub fn cleanup(self) -> Result<(), Error> {
         fs::remove_dir_all(&self.root)?;
         fs::create_dir_all(&self.root)?;
         Ok(())
@@ -156,7 +156,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> FileSystemStorage<H, P> {
     }
 
     /// Open the target index file
-    fn target_index(&self) -> Result<TargetIndex> {
+    fn target_index(&self) -> Result<TargetIndex, Error> {
         TargetIndex::new(self.target_file_path())
     }
 
@@ -197,7 +197,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
     fn get_manifest_for_artifact(
         &self,
         target_aid: ArtifactId<H>,
-    ) -> Result<Option<InputManifest<H>>> {
+    ) -> Result<Option<InputManifest<H>>, Error> {
         match self
             .manifests()
             .find(|entry| entry.target_aid == Some(target_aid))
@@ -210,7 +210,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
     fn get_manifest_id_for_artifact(
         &self,
         target_aid: ArtifactId<H>,
-    ) -> Result<Option<ArtifactId<H>>> {
+    ) -> Result<Option<ArtifactId<H>>, Error> {
         match self.get_manifest_for_artifact(target_aid) {
             Ok(Some(manifest)) => Ok(Some(
                 ArtifactIdBuilder::with_provider(self.hash_provider).identify_manifest(&manifest),
@@ -220,7 +220,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         }
     }
 
-    fn write_manifest(&mut self, manifest: &InputManifest<H>) -> Result<ArtifactId<H>> {
+    fn write_manifest(&mut self, manifest: &InputManifest<H>) -> Result<ArtifactId<H>, Error> {
         let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
         let manifest_aid = builder.identify_manifest(manifest);
         let path = self.manifest_path(manifest_aid);
@@ -243,7 +243,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         &mut self,
         manifest_aid: ArtifactId<H>,
         target_aid: ArtifactId<H>,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         self.target_index()?
             .upsert()
             .manifest_aid(manifest_aid)
@@ -251,7 +251,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
             .run()
     }
 
-    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>> {
+    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, Error> {
         self.manifests()
             .map(|entry: ManifestsEntry<H>| InputManifest::from_path(&entry.manifest_path))
             .collect()
@@ -291,7 +291,7 @@ struct ManifestsEntry<H: HashAlgorithm> {
 
 impl<H: HashAlgorithm> ManifestsEntry<H> {
     /// Load the [`InputManifest`] represented by this entry.
-    fn manifest(&self) -> Result<InputManifest<H>> {
+    fn manifest(&self) -> Result<InputManifest<H>, Error> {
         let mut manifest = InputManifest::from_path(&self.manifest_path)?;
         manifest.set_target(self.target_aid);
         Ok(manifest)
@@ -305,7 +305,7 @@ struct TargetIndex {
 
 impl TargetIndex {
     /// Create a new [`TargetIndex`]
-    fn new(path: impl AsRef<Path>) -> Result<Self> {
+    fn new(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
 
         if path.exists().not() {
@@ -318,7 +318,10 @@ impl TargetIndex {
     }
 
     /// Find an entry for a specific manifest [`ArtifactId`].
-    fn find<H: HashAlgorithm>(&self, manifest_aid: ArtifactId<H>) -> Result<Option<ArtifactId<H>>> {
+    fn find<H: HashAlgorithm>(
+        &self,
+        manifest_aid: ArtifactId<H>,
+    ) -> Result<Option<ArtifactId<H>>, Error> {
         let file = File::open(&self.path)
             .map_err(|e| Error::CantOpenTargetIndex(self.path.display().to_string(), e))?;
 
@@ -389,7 +392,7 @@ impl<H: HashAlgorithm> TargetIndexUpsert<H> {
     }
 
     /// Run the upsert operation.
-    fn run(self) -> Result<()> {
+    fn run(self) -> Result<(), Error> {
         let manifest_aid = self.manifest_aid.ok_or(Error::InvalidTargetIndexUpsert)?;
         let target_aid = self.target_aid.ok_or(Error::InvalidTargetIndexUpsert)?;
 
@@ -490,7 +493,7 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
     fn get_manifest_for_artifact(
         &self,
         target_aid: ArtifactId<Sha256>,
-    ) -> Result<Option<InputManifest<Sha256>>> {
+    ) -> Result<Option<InputManifest<Sha256>>, Error> {
         Ok(self
             .match_by_target_aid(target_aid)
             .map(|entry| entry.manifest.clone()))
@@ -499,13 +502,16 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
     fn get_manifest_id_for_artifact(
         &self,
         target_aid: ArtifactId<Sha256>,
-    ) -> Result<Option<ArtifactId<Sha256>>> {
+    ) -> Result<Option<ArtifactId<Sha256>>, Error> {
         Ok(self
             .match_by_target_aid(target_aid)
             .and_then(|entry| entry.manifest.target()))
     }
 
-    fn write_manifest(&mut self, manifest: &InputManifest<Sha256>) -> Result<ArtifactId<Sha256>> {
+    fn write_manifest(
+        &mut self,
+        manifest: &InputManifest<Sha256>,
+    ) -> Result<ArtifactId<Sha256>, Error> {
         let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
         let manifest_aid = builder.identify_manifest(manifest);
 
@@ -521,7 +527,7 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
         &mut self,
         manifest_aid: ArtifactId<Sha256>,
         target_aid: ArtifactId<Sha256>,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         self.sha256_manifests
             .iter_mut()
             .find(|entry| entry.manifest_aid == manifest_aid)
@@ -530,7 +536,7 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
         Ok(())
     }
 
-    fn get_manifests(&self) -> Result<Vec<InputManifest<Sha256>>> {
+    fn get_manifests(&self) -> Result<Vec<InputManifest<Sha256>>, Error> {
         Ok(self
             .sha256_manifests
             .iter()

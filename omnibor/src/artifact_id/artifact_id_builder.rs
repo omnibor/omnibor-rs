@@ -1,7 +1,7 @@
 use {
     crate::{
         artifact_id::ArtifactId,
-        error::Result,
+        error::Error,
         gitoid::internal::{gitoid_from_async_reader, gitoid_from_buffer, gitoid_from_reader},
         hash_algorithm::{HashAlgorithm, Sha256},
         hash_provider::HashProvider,
@@ -20,6 +20,7 @@ use {
     },
 };
 
+/// A builder for [`ArtifactId`]s.
 pub struct ArtifactIdBuilder<H: HashAlgorithm, P: HashProvider<H>> {
     _hash_algorithm: PhantomData<H>,
     provider: P,
@@ -73,25 +74,25 @@ impl<H: HashAlgorithm, P: HashProvider<H>> ArtifactIdBuilder<H, P> {
         self.identify_bytes(s.as_bytes())
     }
 
-    pub fn identify_file(&self, file: &mut File) -> Result<ArtifactId<H>> {
+    pub fn identify_file(&self, file: &mut File) -> Result<ArtifactId<H>, Error> {
         self.identify_reader(file)
     }
 
-    pub fn identify_path(&self, path: &Path) -> Result<ArtifactId<H>> {
+    pub fn identify_path(&self, path: &Path) -> Result<ArtifactId<H>, Error> {
         let mut file = File::open(path)?;
         self.identify_file(&mut file)
     }
 
-    pub fn identify_reader<R: Read + Seek>(&self, reader: R) -> Result<ArtifactId<H>> {
+    pub fn identify_reader<R: Read + Seek>(&self, reader: R) -> Result<ArtifactId<H>, Error> {
         let gitoid = gitoid_from_reader::<H, Blob, _>(self.provider.digester(), reader)?;
         Ok(ArtifactId::from_gitoid(gitoid))
     }
 
-    pub async fn identify_async_file(&self, file: &mut AsyncFile) -> Result<ArtifactId<H>> {
+    pub async fn identify_async_file(&self, file: &mut AsyncFile) -> Result<ArtifactId<H>, Error> {
         self.identify_async_reader(file).await
     }
 
-    pub async fn identify_async_path(&self, path: &Path) -> Result<ArtifactId<H>> {
+    pub async fn identify_async_path(&self, path: &Path) -> Result<ArtifactId<H>, Error> {
         let mut file = AsyncFile::open(path).await?;
         self.identify_async_file(&mut file).await
     }
@@ -99,7 +100,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> ArtifactIdBuilder<H, P> {
     pub async fn identify_async_reader<R: AsyncRead + AsyncSeek + Unpin>(
         &self,
         reader: R,
-    ) -> Result<ArtifactId<H>> {
+    ) -> Result<ArtifactId<H>, Error> {
         let gitoid =
             gitoid_from_async_reader::<H, Blob, _>(self.provider.digester(), reader).await?;
         Ok(ArtifactId::from_gitoid(gitoid))

@@ -1,7 +1,7 @@
 //! Error types.
 
 use async_channel::SendError;
-use omnibor::error::Error as OmniborError;
+use omnibor::Error as OmniborError;
 use serde_json::Error as JsonError;
 use std::{io::Error as IoError, path::PathBuf, result::Result as StdResult};
 use tokio::task::JoinError;
@@ -10,9 +10,6 @@ use tokio::task::JoinError;
 pub enum Error {
     #[error("could not identify '{0}'")]
     NotIdentifiable(String),
-
-    #[error("can't specify both --no-store and --no-out")]
-    NoStoreAndNoOut,
 
     #[error("could not find root directory")]
     NoRoot,

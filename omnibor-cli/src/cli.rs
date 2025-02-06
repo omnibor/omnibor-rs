@@ -3,10 +3,7 @@
 use crate::error::Error;
 use clap::{builder::PossibleValue, ValueEnum};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
-use omnibor::{
-    artifact_id::{ArtifactId, ArtifactIdBuilder},
-    hash_algorithm::Sha256,
-};
+use omnibor::{hash_algorithm::Sha256, ArtifactId, ArtifactIdBuilder};
 use pathbuf::pathbuf;
 use std::{
     default::Default,
@@ -204,10 +201,6 @@ pub struct ManifestCreateArgs {
     #[arg(short = 't', long = "target", help_heading = IMPORTANT)]
     pub target: PathBuf,
 
-    /// Do not store the manifest in the local store.
-    #[arg(long = "no-store", help_heading = IMPORTANT)]
-    pub no_store: bool,
-
     /// Do not write the manifest to a local directory.
     #[arg(long = "no-out", help_heading = IMPORTANT)]
     pub no_out: bool,
@@ -294,7 +287,7 @@ impl FromStr for IdentifiableArg {
 }
 
 impl IdentifiableArg {
-    pub fn into_artifact_id(self) -> Result<ArtifactId<Sha256>, omnibor::error::Error> {
+    pub fn into_artifact_id(self) -> Result<ArtifactId<Sha256>, omnibor::Error> {
         match self {
             IdentifiableArg::ArtifactId(aid) => Ok(aid),
             IdentifiableArg::Path(path) => {

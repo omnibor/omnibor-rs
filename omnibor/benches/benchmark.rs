@@ -1,7 +1,7 @@
 //! Benchmarks comparing cryptography backends.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use omnibor::artifact_id::ArtifactIdBuilder;
+use omnibor::ArtifactIdBuilder;
 
 #[cfg(not(any(
     feature = "backend-rustcrypto",

@@ -9,10 +9,7 @@ use crate::{
 use async_channel::{bounded, Receiver, Sender as WorkSender};
 use async_walkdir::{DirEntry as AsyncDirEntry, WalkDir};
 use futures_util::{pin_mut, StreamExt};
-use omnibor::{
-    artifact_id::{ArtifactId, ArtifactIdBuilder},
-    hash_algorithm::Sha256,
-};
+use omnibor::{hash_algorithm::Sha256, ArtifactId, ArtifactIdBuilder};
 use std::path::{Path, PathBuf};
 use tokio::{fs::File as AsyncFile, task::JoinSet};
 use tracing::debug;

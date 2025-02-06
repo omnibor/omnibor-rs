@@ -9,6 +9,7 @@ use {
     digest::{consts::U32, FixedOutput, HashMarker, Output, OutputSizeUser, Update},
 };
 
+/// Use the BoringSSL hash implementation.
 #[derive(Clone, Copy)]
 pub struct BoringSsl {
     #[doc(hidden)]
