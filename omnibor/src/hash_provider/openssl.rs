@@ -9,6 +9,7 @@ use {
     openssl::sha,
 };
 
+/// Use the OpenSSL hash implementation.
 #[derive(Clone, Copy)]
 pub struct OpenSsl {
     #[doc(hidden)]

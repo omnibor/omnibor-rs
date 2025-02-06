@@ -1,7 +1,7 @@
 //! A gitoid representing a single artifact.
 
 use crate::{
-    error::Result,
+    error::Error,
     gitoid::GitOid,
     hash_algorithm::HashAlgorithm,
     object_type::ObjectType,
@@ -26,7 +26,7 @@ use tokio::io::{
 pub(crate) fn gitoid_from_buffer<H, O>(
     mut digester: impl Digest,
     buffer: &[u8],
-) -> Result<GitOid<H, O>>
+) -> Result<GitOid<H, O>, Error>
 where
     H: HashAlgorithm,
     O: ObjectType,
@@ -45,7 +45,7 @@ where
 pub(crate) fn gitoid_from_reader<H, O, R>(
     mut digester: impl Digest,
     mut reader: R,
-) -> Result<GitOid<H, O>>
+) -> Result<GitOid<H, O>, Error>
 where
     H: HashAlgorithm,
     O: ObjectType,
@@ -71,7 +71,7 @@ where
 pub(crate) async fn gitoid_from_async_reader<H, O, R>(
     mut digester: impl Digest,
     mut reader: R,
-) -> Result<GitOid<H, O>>
+) -> Result<GitOid<H, O>, Error>
 where
     H: HashAlgorithm,
     O: ObjectType,
@@ -137,10 +137,10 @@ fn num_carriage_returns_in_buffer(buffer: &[u8]) -> usize {
 }
 
 /// Read a seek-able stream and reset to the beginning when done.
-fn read_and_reset<R, F>(reader: R, f: F) -> Result<(usize, R)>
+fn read_and_reset<R, F>(reader: R, f: F) -> Result<(usize, R), Error>
 where
     R: Read + Seek,
-    F: Fn(R) -> Result<(usize, R)>,
+    F: Fn(R) -> Result<(usize, R), Error>,
 {
     let (data, mut reader) = f(reader)?;
     reader.seek(SeekFrom::Start(0))?;
@@ -148,7 +148,7 @@ where
 }
 
 /// Count carriage returns in a reader.
-fn num_carriage_returns_in_reader<R>(reader: R) -> Result<(usize, R)>
+fn num_carriage_returns_in_reader<R>(reader: R) -> Result<(usize, R), Error>
 where
     R: Read + Seek,
 {
@@ -166,7 +166,7 @@ where
 }
 
 /// Count carriage returns in a reader.
-async fn num_carriage_returns_in_async_reader<R>(reader: R) -> Result<(usize, R)>
+async fn num_carriage_returns_in_async_reader<R>(reader: R) -> Result<(usize, R), Error>
 where
     R: AsyncRead + AsyncSeek + Unpin,
 {

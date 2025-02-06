@@ -1,8 +1,7 @@
 use {
+    super::ArtifactIdBuilder,
     crate::{
-        error::{Error, Result},
-        gitoid::GitOid,
-        hash_algorithm::HashAlgorithm,
+        error::Error, gitoid::GitOid, hash_algorithm::HashAlgorithm, hash_provider::HashProvider,
         object_type::Blob,
     },
     core::{
@@ -18,7 +17,7 @@ use {
 #[cfg(doc)]
 use crate::hash_algorithm::Sha256;
 
-/// An OmniBOR Artifact Identifier.
+/// A universally reproducible software identifier.
 ///
 /// This is a content-based unique identifier for any software artifact.
 ///
@@ -30,12 +29,17 @@ pub struct ArtifactId<H: HashAlgorithm> {
 }
 
 impl<H: HashAlgorithm> ArtifactId<H> {
-    /// Construct an [`ArtifactId`] from an existing [`GitOid`].
+    /// Get a builder based on the chosen hash provider.
+    pub fn builder<P: HashProvider<H>>(provider: P) -> ArtifactIdBuilder<H, P> {
+        ArtifactIdBuilder::with_provider(provider)
+    }
+
+    /// Construct an [`ArtifactId`] from an existing `GitOid`.
     ///
-    /// This produces an identifier using the provided [`GitOid`] directly,
-    /// without additional validation. The type system ensures the [`GitOid`]
+    /// This produces an identifier using the provided `GitOid` directly,
+    /// without additional validation. The type system ensures the `GitOid`
     /// hash algorithm is one supported for an [`ArtifactId`], and that the
-    /// object type is [`gitoid::Blob`].
+    /// object type is "blob".
     ///
     /// # Note
     ///
@@ -66,19 +70,19 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::artifact_id::ArtifactId;
+    /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
     /// # use url::Url;
     /// let url = Url::parse("gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03").unwrap();
     /// let id: ArtifactId<Sha256> = ArtifactId::try_from_url(url).unwrap();
     /// println!("Artifact ID: {}", id);
     /// ```
-    pub fn try_from_url(url: Url) -> Result<ArtifactId<H>> {
+    pub fn try_from_url(url: Url) -> Result<ArtifactId<H>, Error> {
         ArtifactId::try_from(url)
     }
 
     /// Try to construct an [`ArtifactId`] from a filesystem-safe representation.
-    pub fn try_from_safe_name(s: &str) -> Result<ArtifactId<H>> {
+    pub fn try_from_safe_name(s: &str) -> Result<ArtifactId<H>, Error> {
         ArtifactId::from_str(&s.replace('_', ":"))
     }
 
@@ -89,7 +93,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::artifact_id::{ArtifactId, ArtifactIdBuilder};
+    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
     /// # use omnibor::hash_algorithm::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
     /// println!("Artifact ID URL: {}", id.url());
@@ -120,7 +124,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::artifact_id::{ArtifactId, ArtifactIdBuilder};
+    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
     /// # use omnibor::hash_algorithm::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
     /// println!("Artifact ID bytes: {:?}", id.as_bytes());
@@ -138,7 +142,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::artifact_id::{ArtifactId, ArtifactIdBuilder};
+    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
     /// # use omnibor::hash_algorithm::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
     /// println!("Artifact ID bytes as hex: {}", id.as_hex());
@@ -154,7 +158,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::artifact_id::{ArtifactId, ArtifactIdBuilder};
+    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
     /// # use omnibor::hash_algorithm::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
     /// println!("Artifact ID hash algorithm: {}", id.hash_algorithm());
@@ -171,7 +175,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::artifact_id::{ArtifactId, ArtifactIdBuilder};
+    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
     /// # use omnibor::hash_algorithm::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
     /// println!("Artifact ID object type: {}", id.object_type());
@@ -189,7 +193,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::artifact_id::{ArtifactId, ArtifactIdBuilder};
+    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
     /// # use omnibor::hash_algorithm::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
     /// println!("Artifact ID hash length in bytes: {}", id.hash_len());
@@ -202,7 +206,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
 impl<H: HashAlgorithm> FromStr for ArtifactId<H> {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<ArtifactId<H>> {
+    fn from_str(s: &str) -> Result<ArtifactId<H>, Error> {
         let url = Url::parse(s)?;
         ArtifactId::try_from_url(url)
     }
@@ -268,7 +272,7 @@ impl<H: HashAlgorithm> From<GitOid<H, Blob>> for ArtifactId<H> {
 impl<'r, H: HashAlgorithm> TryFrom<&'r str> for ArtifactId<H> {
     type Error = Error;
 
-    fn try_from(s: &'r str) -> Result<Self> {
+    fn try_from(s: &'r str) -> Result<Self, Error> {
         ArtifactId::from_str(s)
     }
 }
@@ -276,7 +280,7 @@ impl<'r, H: HashAlgorithm> TryFrom<&'r str> for ArtifactId<H> {
 impl<H: HashAlgorithm> TryFrom<Url> for ArtifactId<H> {
     type Error = Error;
 
-    fn try_from(url: Url) -> Result<ArtifactId<H>> {
+    fn try_from(url: Url) -> Result<ArtifactId<H>, Error> {
         let gitoid = GitOid::try_from_url(url)?;
         Ok(ArtifactId::from_gitoid(gitoid))
     }

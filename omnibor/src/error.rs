@@ -1,17 +1,15 @@
-//! Error types for OmniBOR.
+//! Error type.
 
 use {
     hex::FromHexError as HexError,
-    std::{io::Error as IoError, result::Result as StdResult},
+    std::io::Error as IoError,
     url::{ParseError as UrlError, Url},
 };
 
 #[cfg(doc)]
 use crate::{artifact_id::ArtifactId, input_manifest::InputManifest};
 
-pub type Result<T> = StdResult<T, Error>;
-
-/// Errors arising from [`ArtifactId`] use or [`InputManifest`] interaction.
+/// Represents any errors from the `omnibor` crate.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("invalid scheme in URL '{0}'")]

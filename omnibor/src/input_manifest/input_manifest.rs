@@ -3,7 +3,7 @@
 use {
     crate::{
         artifact_id::ArtifactId,
-        error::{Error, Result},
+        error::Error,
         hash_algorithm::HashAlgorithm,
         object_type::{Blob, ObjectType},
     },
@@ -38,11 +38,13 @@ pub struct InputManifest<H: HashAlgorithm> {
     target: Option<ArtifactId<H>>,
 
     /// The relations recorded in the manifest.
-    relations: Vec<Relation<H>>,
+    relations: Vec<InputManifestRelation<H>>,
 }
 
 impl<H: HashAlgorithm> InputManifest<H> {
-    pub(crate) fn with_relations(relations: impl Iterator<Item = Relation<H>>) -> Self {
+    pub(crate) fn with_relations(
+        relations: impl Iterator<Item = InputManifestRelation<H>>,
+    ) -> Self {
         InputManifest {
             target: None,
             relations: relations.collect(),
@@ -76,12 +78,12 @@ impl<H: HashAlgorithm> InputManifest<H> {
 
     /// Get the relations inside an [`InputManifest`].
     #[inline]
-    pub fn relations(&self) -> &[Relation<H>] {
+    pub fn relations(&self) -> &[InputManifestRelation<H>] {
         &self.relations[..]
     }
 
     /// Construct an [`InputManifest`] from a file at a specified path.
-    pub fn from_path(path: &Path) -> Result<Self> {
+    pub fn from_path(path: &Path) -> Result<Self, Error> {
         let file = BufReader::new(File::open(path)?);
         let mut lines = file.lines();
 
@@ -173,7 +175,7 @@ impl<H: HashAlgorithm> Clone for InputManifest<H> {
 }
 
 /// Parse a single relation line.
-fn parse_relation<H: HashAlgorithm>(input: &str) -> Result<Relation<H>> {
+fn parse_relation<H: HashAlgorithm>(input: &str) -> Result<InputManifestRelation<H>, Error> {
     let parts = input.split(' ').collect::<Vec<_>>();
 
     if parts.len() < 2 {
@@ -199,12 +201,12 @@ fn parse_relation<H: HashAlgorithm>(input: &str) -> Result<Relation<H>> {
         }
     };
 
-    Ok(Relation { artifact, manifest })
+    Ok(InputManifestRelation { artifact, manifest })
 }
 
-/// A single input artifact represented in a [`InputManifest`].
+/// A single row in an [`InputManifest`].
 #[derive(Copy)]
-pub struct Relation<H: HashAlgorithm> {
+pub struct InputManifestRelation<H: HashAlgorithm> {
     /// The ID of the artifact itself.
     artifact: ArtifactId<H>,
 
@@ -218,7 +220,7 @@ pub struct Relation<H: HashAlgorithm> {
 // isn't actually relevant in this case because we don't _really_
 // store a value of type-`H`, we just use it for type-level
 // programming.
-impl<H: HashAlgorithm> Debug for Relation<H> {
+impl<H: HashAlgorithm> Debug for InputManifestRelation<H> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("Relation")
             .field("artifact", &self.artifact)
@@ -227,38 +229,41 @@ impl<H: HashAlgorithm> Debug for Relation<H> {
     }
 }
 
-impl<H: HashAlgorithm> Clone for Relation<H> {
+impl<H: HashAlgorithm> Clone for InputManifestRelation<H> {
     fn clone(&self) -> Self {
-        Relation {
+        InputManifestRelation {
             artifact: self.artifact,
             manifest: self.manifest,
         }
     }
 }
 
-impl<H: HashAlgorithm> PartialEq for Relation<H> {
+impl<H: HashAlgorithm> PartialEq for InputManifestRelation<H> {
     fn eq(&self, other: &Self) -> bool {
         self.artifact.eq(&other.artifact) && self.manifest.eq(&other.manifest)
     }
 }
 
-impl<H: HashAlgorithm> Eq for Relation<H> {}
+impl<H: HashAlgorithm> Eq for InputManifestRelation<H> {}
 
-impl<H: HashAlgorithm> PartialOrd for Relation<H> {
+impl<H: HashAlgorithm> PartialOrd for InputManifestRelation<H> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<H: HashAlgorithm> Ord for Relation<H> {
+impl<H: HashAlgorithm> Ord for InputManifestRelation<H> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.artifact.cmp(&other.artifact)
     }
 }
 
-impl<H: HashAlgorithm> Relation<H> {
-    pub(crate) fn new(artifact: ArtifactId<H>, manifest: Option<ArtifactId<H>>) -> Relation<H> {
-        Relation { artifact, manifest }
+impl<H: HashAlgorithm> InputManifestRelation<H> {
+    pub(crate) fn new(
+        artifact: ArtifactId<H>,
+        manifest: Option<ArtifactId<H>>,
+    ) -> InputManifestRelation<H> {
+        InputManifestRelation { artifact, manifest }
     }
 
     /// Get the ID of the artifact.

@@ -1,5 +1,5 @@
 use {
-    crate::error::Result,
+    crate::error::Error,
     std::io::{Seek, SeekFrom},
     tokio::io::{AsyncSeek, AsyncSeekExt as _},
 };
@@ -34,7 +34,7 @@ use {
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
-pub(crate) fn stream_len<R>(mut stream: R) -> Result<u64>
+pub(crate) fn stream_len<R>(mut stream: R) -> Result<u64, Error>
 where
     R: Seek,
 {
@@ -51,7 +51,7 @@ where
 }
 
 /// An async equivalent of `stream_len`.
-pub(crate) async fn async_stream_len<R>(mut stream: R) -> Result<u64>
+pub(crate) async fn async_stream_len<R>(mut stream: R) -> Result<u64, Error>
 where
     R: AsyncSeek + Unpin,
 {

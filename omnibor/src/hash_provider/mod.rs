@@ -1,3 +1,5 @@
+//! Cryptography libraries providing hash function implementations.
+
 #[cfg(doc)]
 use crate::artifact_id::ArtifactId;
 use crate::hash_algorithm::HashAlgorithm;

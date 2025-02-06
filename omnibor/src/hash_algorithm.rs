@@ -1,3 +1,5 @@
+//! Hash algorithms supported for Artifact IDs.
+
 use {
     crate::util::sealed::Sealed,
     digest::{

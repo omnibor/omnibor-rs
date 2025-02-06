@@ -2,7 +2,7 @@
 
 use {
     crate::{
-        error::{Error, Result},
+        error::Error,
         gitoid::{gitoid::GITOID_URL_SCHEME, GitOid},
         hash_algorithm::HashAlgorithm,
         object_type::ObjectType,
@@ -45,7 +45,7 @@ where
         }
     }
 
-    pub(crate) fn parse(&mut self) -> Result<GitOid<H, O>> {
+    pub(crate) fn parse(&mut self) -> Result<GitOid<H, O>, Error> {
         self.validate_url_scheme()
             .and_then(|_| self.validate_object_type())
             .and_then(|_| self.validate_hash_algorithm())
@@ -56,7 +56,7 @@ where
             })
     }
 
-    fn validate_url_scheme(&self) -> Result<()> {
+    fn validate_url_scheme(&self) -> Result<(), Error> {
         if self.url.scheme() != GITOID_URL_SCHEME {
             return Err(Error::InvalidScheme(self.url.clone()));
         }
@@ -64,7 +64,7 @@ where
         Ok(())
     }
 
-    fn validate_object_type(&mut self) -> Result<()> {
+    fn validate_object_type(&mut self) -> Result<(), Error> {
         let object_type = self
             .segments
             .next()
@@ -78,7 +78,7 @@ where
         Ok(())
     }
 
-    fn validate_hash_algorithm(&mut self) -> Result<()> {
+    fn validate_hash_algorithm(&mut self) -> Result<(), Error> {
         let hash_algorithm = self
             .segments
             .next()
@@ -92,7 +92,7 @@ where
         Ok(())
     }
 
-    fn parse_hash(&mut self) -> Result<H::Array> {
+    fn parse_hash(&mut self) -> Result<H::Array, Error> {
         let hex_str = self
             .segments
             .next()
