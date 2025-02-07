@@ -34,6 +34,7 @@
 //! 4. [Foreign Function Interface](#foreign-function-interface)
 //! 5. [Specification Compliance](#specification-compliance)
 //! 6. [Comparison with Other Software Identifiers](#comparison-with-other-software-identifiers)
+//! 7. [What's Missing for 1.0.0](#whats-missing-for-100)
 //!
 //! # Examples
 //!
@@ -351,9 +352,34 @@
 //!   same inputs is not guaranteed, and will not be detectable by Derivation
 //!   Store Path alone).
 //!
+//! # What's Missing for 1.0.0
+//!
+//! The following items are things we'd want to complete before committing to
+//! stability in this crate with a 1.0.0 release:
+//!
+//! - [ ] Embedding Support
+//!   - [ ] Support for automated filetype inference
+//!   - [ ] Support for embedding for known text file types
+//!   - [ ] Support for embedding in ELF files
+//!   - [ ] Support for custom caller-provided embedding
+//! - [ ] FFI Support
+//!   - [ ] Exposing the `InputManifestBuilder` API over FFI
+//!   - [ ] Exposing the `InputManifest` API over FFI
+//!   - [ ] Exposing the `FileSystemStorage` API over FFI
+//!   - [ ] Exposing the `InMemoryStorage` API over FFI
+//! - [ ] Hash Provider Flexibility
+//!   - [ ] Support linking with system-provided OpenSSL
+//!   - [ ] Support linking with system-provided BoringSSL
+//! - [ ] Documentation
+//!   - [ ] Documenting the cancellation safety of all async APIs
+//!   - [ ] Adding examples to all public methods.
+//!
+//! If helping build out any of this sounds appealing to you, we love getting
+//! contributions!
+//!
+//! Check out our [Issue Tracker] and [Contributor Guide].
+//!
 //! [Merkle Tree]: https://en.wikipedia.org/wiki/Merkle_tree
-//! [contributing]: CONTRIBUTING.md
-//! [cbindgen]: https://github.com/eqrion/cbindgen
 //! [cisa_report]: https://www.cisa.gov/sites/default/files/2023-10/Software-Identification-Ecosystem-Option-Analysis-508c.pdf
 //! [cpe]: https://nvd.nist.gov/products/cpe
 //! [gitoid]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
@@ -366,6 +392,8 @@
 //! [swid]: https://csrc.nist.gov/projects/software-identification-swid
 //! [nix]: https://www.tweag.io/blog/2024-03-12-nix-as-software-identifier/
 //! [swhid]: https://www.swhid.org/
+//! [Issue Tracker]: https://github.com/omnibor/omnibor-rs/issues
+//! [Contributor Guide]: https://github.com/omnibor/omnibor-rs/blob/main/CONTRIBUTING.md
 
 /*===============================================================================================
  * Lint Configuration
