@@ -20,7 +20,6 @@ use {
         path::{Path, PathBuf},
         str::FromStr,
     },
-    tracing::{debug, info},
     walkdir::{DirEntry, WalkDir},
 };
 
@@ -194,8 +193,6 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
             InputManifestError::CantWriteManifest(path.clone_as_boxstr(), Box::new(source))
         })?;
 
-        info!("wrote manifest '{}' to store", manifest_aid);
-
         Ok(manifest_aid)
     }
 
@@ -234,8 +231,6 @@ fn artifact_id_from_dir_entry<H: HashAlgorithm>(entry: &DirEntry) -> Option<Arti
         let front = meta.replace('_', ":");
         format!("{}:{}", front, hash)
     };
-
-    debug!(gitoid_url = %gitoid_url);
 
     ArtifactId::<H>::from_str(&gitoid_url).ok()
 }
