@@ -2,8 +2,9 @@
 
 use {
     crate::{
-        error::Error, gitoid::gitoid_url_parser::GitOidUrlParser, hash_algorithm::HashAlgorithm,
-        object_type::ObjectType,
+        error::ArtifactIdError, gitoid::gitoid_url_parser::GitOidUrlParser,
+        hash_algorithm::HashAlgorithm, object_type::ObjectType,
+        util::clone_as_boxstr::CloneAsBoxstr,
     },
     serde::{
         de::{Deserializer, Error as DeserializeError, Visitor},
@@ -44,7 +45,7 @@ where
     O: ObjectType,
 {
     /// Construct a new `GitOid` from a `Url`.
-    pub fn try_from_url(url: Url) -> Result<GitOid<H, O>, Error> {
+    pub fn try_from_url(url: Url) -> Result<GitOid<H, O>, ArtifactIdError> {
         GitOid::try_from(url)
     }
 
@@ -86,10 +87,12 @@ where
     H: HashAlgorithm,
     O: ObjectType,
 {
-    type Err = Error;
+    type Err = ArtifactIdError;
 
-    fn from_str(s: &str) -> Result<GitOid<H, O>, Error> {
-        let url = Url::parse(s)?;
+    fn from_str(s: &str) -> Result<GitOid<H, O>, ArtifactIdError> {
+        let url = Url::parse(s).map_err(|source| {
+            ArtifactIdError::FailedToParseUrl(s.clone_as_boxstr(), Box::new(source))
+        })?;
         GitOid::try_from_url(url)
     }
 }
@@ -245,9 +248,9 @@ where
     H: HashAlgorithm,
     O: ObjectType,
 {
-    type Error = Error;
+    type Error = ArtifactIdError;
 
-    fn try_from(url: Url) -> Result<GitOid<H, O>, Error> {
+    fn try_from(url: Url) -> Result<GitOid<H, O>, ArtifactIdError> {
         GitOidUrlParser::new(&url).parse()
     }
 }

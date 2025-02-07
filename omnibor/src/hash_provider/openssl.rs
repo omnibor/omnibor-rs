@@ -18,6 +18,7 @@ pub struct OpenSsl {
 }
 
 impl OpenSsl {
+    /// Construct a new `OpenSsl` provider.
     pub fn new() -> Self {
         OpenSsl { _phantom: () }
     }

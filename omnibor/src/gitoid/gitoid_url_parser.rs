@@ -2,10 +2,11 @@
 
 use {
     crate::{
-        error::Error,
+        error::ArtifactIdError,
         gitoid::{gitoid::GITOID_URL_SCHEME, GitOid},
         hash_algorithm::HashAlgorithm,
         object_type::ObjectType,
+        util::clone_as_boxstr::CloneAsBoxstr,
     },
     std::{marker::PhantomData, ops::Not as _, str::Split},
     url::Url,
@@ -45,7 +46,7 @@ where
         }
     }
 
-    pub(crate) fn parse(&mut self) -> Result<GitOid<H, O>, Error> {
+    pub(crate) fn parse(&mut self) -> Result<GitOid<H, O>, ArtifactIdError> {
         self.validate_url_scheme()
             .and_then(|_| self.validate_object_type())
             .and_then(|_| self.validate_hash_algorithm())
@@ -56,51 +57,61 @@ where
             })
     }
 
-    fn validate_url_scheme(&self) -> Result<(), Error> {
+    fn validate_url_scheme(&self) -> Result<(), ArtifactIdError> {
         if self.url.scheme() != GITOID_URL_SCHEME {
-            return Err(Error::InvalidScheme(self.url.clone()));
+            return Err(ArtifactIdError::InvalidScheme(self.url.clone_as_boxstr()));
         }
 
         Ok(())
     }
 
-    fn validate_object_type(&mut self) -> Result<(), Error> {
+    fn validate_object_type(&mut self) -> Result<(), ArtifactIdError> {
         let object_type = self
             .segments
             .next()
             .and_then(some_if_not_empty)
-            .ok_or_else(|| Error::MissingObjectType(self.url.clone()))?;
+            .ok_or_else(|| ArtifactIdError::MissingObjectType(self.url.clone_as_boxstr()))?;
 
         if object_type != O::NAME {
-            return Err(Error::MismatchedObjectType { expected: O::NAME });
+            return Err(ArtifactIdError::MismatchedObjectType {
+                expected: O::NAME.clone_as_boxstr(),
+                got: object_type.clone_as_boxstr(),
+            });
         }
 
         Ok(())
     }
 
-    fn validate_hash_algorithm(&mut self) -> Result<(), Error> {
+    fn validate_hash_algorithm(&mut self) -> Result<(), ArtifactIdError> {
         let hash_algorithm = self
             .segments
             .next()
             .and_then(some_if_not_empty)
-            .ok_or_else(|| Error::MissingHashAlgorithm(self.url.clone()))?;
+            .ok_or_else(|| ArtifactIdError::MissingHashAlgorithm(self.url.clone_as_boxstr()))?;
 
         if hash_algorithm != H::NAME {
-            return Err(Error::MismatchedHashAlgorithm { expected: H::NAME });
+            return Err(ArtifactIdError::MismatchedHashAlgorithm {
+                expected: H::NAME.clone_as_boxstr(),
+                got: hash_algorithm.clone_as_boxstr(),
+            });
         }
 
         Ok(())
     }
 
-    fn parse_hash(&mut self) -> Result<H::Array, Error> {
+    fn parse_hash(&mut self) -> Result<H::Array, ArtifactIdError> {
         let hex_str = self
             .segments
             .next()
             .and_then(some_if_not_empty)
-            .ok_or_else(|| Error::MissingHash(self.url.clone()))?;
+            .ok_or_else(|| ArtifactIdError::MissingHash(self.url.clone_as_boxstr()))?;
 
-        let decoded = hex::decode(hex_str)?;
+        let decoded = hex::decode(hex_str).map_err(|source| {
+            ArtifactIdError::InvalidHex(hex_str.clone_as_boxstr(), Box::new(source))
+        })?;
+
         let value = <H as HashAlgorithm>::Array::from_iter(decoded);
+
         Ok(value)
     }
 }

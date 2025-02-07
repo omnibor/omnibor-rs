@@ -19,6 +19,7 @@ pub struct RustCrypto {
 }
 
 impl RustCrypto {
+    /// Construct a new `RustCrypto` provider.
     pub fn new() -> Self {
         RustCrypto { _phantom: () }
     }

@@ -2,7 +2,7 @@ use {
     crate::{
         artifact_id::{ArtifactId, ArtifactIdBuilder},
         embedding_mode::EmbeddingMode,
-        error::Error,
+        error::InputManifestError,
         hash_algorithm::HashAlgorithm,
         hash_provider::HashProvider,
         input_manifest::{InputManifest, InputManifestRelation},
@@ -56,7 +56,10 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
     /// If an Input Manifest for the given `ArtifactId` is found in the storage
     /// this builder is using, then this relation will also include the
     /// `ArtifactId` of that Input Manifest.
-    pub fn add_relation(&mut self, artifact: ArtifactId<H>) -> Result<&mut Self, Error> {
+    pub fn add_relation(
+        &mut self,
+        artifact: ArtifactId<H>,
+    ) -> Result<&mut Self, InputManifestError> {
         let manifest = self.storage.get_manifest_id_for_artifact(artifact)?;
         self.relations
             .insert(InputManifestRelation::new(artifact, manifest));
@@ -64,7 +67,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
     }
 
     /// Finish building the manifest, updating the artifact if embedding is on.
-    pub fn finish(&mut self, target: &Path) -> Result<InputManifest<H>, Error> {
+    pub fn finish(&mut self, target: &Path) -> Result<InputManifest<H>, InputManifestError> {
         let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
 
         // Construct a new input manifest.
@@ -77,12 +80,20 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
         // manifest ArtifactID into the target first.
         let target_aid = match self.mode {
             EmbeddingMode::Embed => {
-                let mut file = OpenOptions::new().read(true).write(true).open(target)?;
+                let mut file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(target)
+                    .map_err(|source| {
+                        InputManifestError::FailedTargetArtifactRead(Box::new(source))
+                    })?;
                 embed_manifest_in_target(target, &mut file, manifest_aid)?;
                 builder.identify_file(&mut file)?
             }
             EmbeddingMode::NoEmbed => {
-                let mut file = File::open(target)?;
+                let mut file = File::open(target).map_err(|source| {
+                    InputManifestError::FailedTargetArtifactRead(Box::new(source))
+                })?;
                 builder.identify_file(&mut file)?
             }
         };
@@ -111,7 +122,7 @@ fn embed_manifest_in_target<H: HashAlgorithm>(
     path: &Path,
     file: &mut File,
     manifest_aid: ArtifactId<H>,
-) -> Result<ArtifactId<H>, Error> {
+) -> Result<ArtifactId<H>, InputManifestError> {
     match TargetType::infer(path, file) {
         TargetType::KnownBinaryType(BinaryType::ElfFile) => {
             embed_in_elf_file(path, file, manifest_aid)
@@ -122,7 +133,7 @@ fn embed_manifest_in_target<H: HashAlgorithm>(
         TargetType::KnownTextType(TextType::WrappedComments { prefix, suffix }) => {
             embed_in_text_file_with_wrapped_comment(path, file, manifest_aid, &prefix, &suffix)
         }
-        TargetType::Unknown => Err(Error::UnknownEmbeddingTarget),
+        TargetType::Unknown => Err(InputManifestError::UnknownEmbeddingTarget),
     }
 }
 
@@ -130,7 +141,7 @@ fn embed_in_elf_file<H: HashAlgorithm>(
     _path: &Path,
     _file: &mut File,
     _manifest_aid: ArtifactId<H>,
-) -> Result<ArtifactId<H>, Error> {
+) -> Result<ArtifactId<H>, InputManifestError> {
     todo!("embedding mode for ELF files is not yet implemented")
 }
 
@@ -139,7 +150,7 @@ fn embed_in_text_file_with_prefix_comment<H: HashAlgorithm>(
     _file: &mut File,
     _manifest_aid: ArtifactId<H>,
     _prefix: &str,
-) -> Result<ArtifactId<H>, Error> {
+) -> Result<ArtifactId<H>, InputManifestError> {
     todo!("embedding mode for text files is not yet implemented")
 }
 
@@ -149,7 +160,7 @@ fn embed_in_text_file_with_wrapped_comment<H: HashAlgorithm>(
     _manifest_aid: ArtifactId<H>,
     _prefix: &str,
     _suffix: &str,
-) -> Result<ArtifactId<H>, Error> {
+) -> Result<ArtifactId<H>, InputManifestError> {
     todo!("embedding mode for text files is not yet implemented")
 }
 

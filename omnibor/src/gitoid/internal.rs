@@ -1,7 +1,7 @@
 //! A gitoid representing a single artifact.
 
 use crate::{
-    error::Error,
+    error::ArtifactIdError,
     gitoid::GitOid,
     hash_algorithm::HashAlgorithm,
     object_type::ObjectType,
@@ -26,7 +26,7 @@ use tokio::io::{
 pub(crate) fn gitoid_from_buffer<H, O>(
     mut digester: impl Digest,
     buffer: &[u8],
-) -> Result<GitOid<H, O>, Error>
+) -> Result<GitOid<H, O>, ArtifactIdError>
 where
     H: HashAlgorithm,
     O: ObjectType,
@@ -45,7 +45,7 @@ where
 pub(crate) fn gitoid_from_reader<H, O, R>(
     mut digester: impl Digest,
     mut reader: R,
-) -> Result<GitOid<H, O>, Error>
+) -> Result<GitOid<H, O>, ArtifactIdError>
 where
     H: HashAlgorithm,
     O: ObjectType,
@@ -71,7 +71,7 @@ where
 pub(crate) async fn gitoid_from_async_reader<H, O, R>(
     mut digester: impl Digest,
     mut reader: R,
-) -> Result<GitOid<H, O>, Error>
+) -> Result<GitOid<H, O>, ArtifactIdError>
 where
     H: HashAlgorithm,
     O: ObjectType,
@@ -87,7 +87,10 @@ where
     let mut reader = AsyncBufReader::new(reader);
 
     loop {
-        let buffer = reader.fill_buf().await?;
+        let buffer = reader
+            .fill_buf()
+            .await
+            .map_err(|source| ArtifactIdError::FailedRead(Box::new(source)))?;
         let amount_read = buffer.len();
 
         if amount_read == 0 {
@@ -137,18 +140,20 @@ fn num_carriage_returns_in_buffer(buffer: &[u8]) -> usize {
 }
 
 /// Read a seek-able stream and reset to the beginning when done.
-fn read_and_reset<R, F>(reader: R, f: F) -> Result<(usize, R), Error>
+fn read_and_reset<R, F>(reader: R, f: F) -> Result<(usize, R), ArtifactIdError>
 where
     R: Read + Seek,
-    F: Fn(R) -> Result<(usize, R), Error>,
+    F: Fn(R) -> Result<(usize, R), ArtifactIdError>,
 {
     let (data, mut reader) = f(reader)?;
-    reader.seek(SeekFrom::Start(0))?;
+    reader
+        .seek(SeekFrom::Start(0))
+        .map_err(|source| ArtifactIdError::FailedSeek(SeekFrom::Start(0), Box::new(source)))?;
     Ok((data, reader))
 }
 
 /// Count carriage returns in a reader.
-fn num_carriage_returns_in_reader<R>(reader: R) -> Result<(usize, R), Error>
+fn num_carriage_returns_in_reader<R>(reader: R) -> Result<(usize, R), ArtifactIdError>
 where
     R: Read + Seek,
 {
@@ -166,7 +171,7 @@ where
 }
 
 /// Count carriage returns in a reader.
-async fn num_carriage_returns_in_async_reader<R>(reader: R) -> Result<(usize, R), Error>
+async fn num_carriage_returns_in_async_reader<R>(reader: R) -> Result<(usize, R), ArtifactIdError>
 where
     R: AsyncRead + AsyncSeek + Unpin,
 {
@@ -174,7 +179,10 @@ where
     let mut total_dos_newlines = 0;
 
     loop {
-        let buffer = reader.fill_buf().await?;
+        let buffer = reader
+            .fill_buf()
+            .await
+            .map_err(|source| ArtifactIdError::FailedRead(Box::new(source)))?;
         let amount_read = buffer.len();
 
         if amount_read == 0 {
@@ -187,6 +195,9 @@ where
     }
 
     let (data, mut reader) = (total_dos_newlines, reader.into_inner());
-    reader.seek(SeekFrom::Start(0)).await?;
+    reader
+        .seek(SeekFrom::Start(0))
+        .await
+        .map_err(|source| ArtifactIdError::FailedSeek(SeekFrom::Start(0), Box::new(source)))?;
     Ok((data, reader))
 }

@@ -3,9 +3,10 @@
 use {
     crate::{
         artifact_id::ArtifactId,
-        error::Error,
+        error::InputManifestError,
         hash_algorithm::HashAlgorithm,
         object_type::{Blob, ObjectType},
+        util::clone_as_boxstr::CloneAsBoxstr,
     },
     std::{
         cmp::Ordering,
@@ -83,42 +84,46 @@ impl<H: HashAlgorithm> InputManifest<H> {
     }
 
     /// Construct an [`InputManifest`] from a file at a specified path.
-    pub fn from_path(path: &Path) -> Result<Self, Error> {
-        let file = BufReader::new(File::open(path)?);
+    pub fn from_path(path: &Path) -> Result<Self, InputManifestError> {
+        let file = BufReader::new(
+            File::open(path)
+                .map_err(|source| InputManifestError::FailedManifestRead(Box::new(source)))?,
+        );
         let mut lines = file.lines();
 
         let first_line = lines
             .next()
-            .ok_or(Error::ManifestMissingHeader)?
-            .map_err(Error::FailedManifestRead)?;
+            .ok_or(InputManifestError::ManifestMissingHeader)?
+            .map_err(|source| InputManifestError::FailedManifestRead(Box::new(source)))?;
 
         let parts = first_line.split(':').collect::<Vec<_>>();
 
         if parts.len() != 3 {
-            return Err(Error::MissingHeaderParts);
+            return Err(InputManifestError::MissingHeaderParts);
         }
 
         // Panic Safety: we've already checked the length.
         let (gitoid, blob, hash_algorithm) = (parts[0], parts[1], parts[2]);
 
         if gitoid != "gitoid" {
-            return Err(Error::MissingGitOidInHeader);
+            return Err(InputManifestError::MissingGitOidInHeader);
         }
 
         if blob != "blob" {
-            return Err(Error::MissingObjectTypeInHeader);
+            return Err(InputManifestError::MissingObjectTypeInHeader);
         }
 
         if hash_algorithm != H::NAME {
-            return Err(Error::WrongHashAlgorithm {
-                expected: H::NAME,
-                got: hash_algorithm.to_owned(),
+            return Err(InputManifestError::WrongHashAlgorithm {
+                expected: H::NAME.clone_as_boxstr(),
+                got: hash_algorithm.clone_as_boxstr(),
             });
         }
 
         let mut relations = Vec::new();
         for line in lines {
-            let line = line.map_err(Error::FailedManifestRead)?;
+            let line =
+                line.map_err(|source| InputManifestError::FailedManifestRead(Box::new(source)))?;
             let relation = parse_relation::<H>(&line)?;
             relations.push(relation);
         }
@@ -175,11 +180,13 @@ impl<H: HashAlgorithm> Clone for InputManifest<H> {
 }
 
 /// Parse a single relation line.
-fn parse_relation<H: HashAlgorithm>(input: &str) -> Result<InputManifestRelation<H>, Error> {
+fn parse_relation<H: HashAlgorithm>(
+    input: &str,
+) -> Result<InputManifestRelation<H>, InputManifestError> {
     let parts = input.split(' ').collect::<Vec<_>>();
 
     if parts.len() < 2 {
-        return Err(Error::MissingRelationParts);
+        return Err(InputManifestError::MissingRelationParts);
     }
 
     // Panic Safety: we've already checked the length.
@@ -192,7 +199,7 @@ fn parse_relation<H: HashAlgorithm>(input: &str) -> Result<InputManifestRelation
         (None, None) | (Some(_), None) | (None, Some(_)) => None,
         (Some(manifest_indicator), Some(manifest_aid_hex)) => {
             if *manifest_indicator != "manifest" {
-                return Err(Error::MissingBomIndicatorInRelation);
+                return Err(InputManifestError::MissingBomIndicatorInRelation);
             }
 
             let gitoid_url = &format!("gitoid:{}:{}:{}", Blob::NAME, H::NAME, manifest_aid_hex);

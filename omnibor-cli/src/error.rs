@@ -1,7 +1,7 @@
 //! Error types.
 
 use async_channel::SendError;
-use omnibor::Error as OmniborError;
+use omnibor::error::{ArtifactIdError, InputManifestError};
 use serde_json::Error as JsonError;
 use std::{io::Error as IoError, path::PathBuf, result::Result as StdResult};
 use tokio::task::JoinError;
@@ -15,16 +15,16 @@ pub enum Error {
     NoRoot,
 
     #[error("failed to initialize file system storage")]
-    StorageInitFailed(#[source] OmniborError),
+    StorageInitFailed(#[source] InputManifestError),
 
     #[error("failed to generate Artifact ID")]
-    IdFailed(#[source] OmniborError),
+    IdFailed(#[source] ArtifactIdError),
 
     #[error("failed to add relation to Input Manifest")]
-    AddRelationFailed(#[source] OmniborError),
+    AddRelationFailed(#[source] InputManifestError),
 
     #[error("failed to build Input Manifest")]
-    ManifestBuildFailed(#[source] OmniborError),
+    ManifestBuildFailed(#[source] InputManifestError),
 
     #[error("failed to write to stdout")]
     StdoutWriteFailed(#[source] IoError),
@@ -60,7 +60,7 @@ pub enum Error {
     FileFailedToId {
         path: PathBuf,
         #[source]
-        source: OmniborError,
+        source: ArtifactIdError,
     },
 
     #[error("can't identify directory to write manifest")]
