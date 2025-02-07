@@ -237,6 +237,10 @@ pub unsafe extern "C" fn ob_aid_sha256_object_type(ptr: *const ArtifactIdSha256)
 }
 
 /// Get the length of the `ArtifactId` hash in bytes.
+///
+/// # Safety
+///
+/// If `ptr` is `null` then an error code of -5 is returned.
 #[no_mangle]
 pub unsafe extern "C" fn ob_aid_sha256_hash_len(ptr: *const ArtifactIdSha256) -> c_int {
     let output = catch_panic(|| {

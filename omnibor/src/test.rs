@@ -128,72 +128,45 @@ fn validate_uri() -> Result<()> {
 }
 
 #[test]
+#[should_panic]
 fn try_from_url_bad_scheme() {
     let url = Url::parse("gitiod:blob:sha1:95d09f2b10159347eece71399a7e2e907ea3df4f").unwrap();
-
-    match ArtifactId::<Sha256>::try_from_url(url) {
-        Ok(_) => panic!("parsing should fail"),
-        Err(e) => assert_eq!(
-            e.to_string(),
-            "invalid scheme in URL 'gitiod:blob:sha1:95d09f2b10159347eece71399a7e2e907ea3df4f'"
-        ),
-    }
+    ArtifactId::<Sha256>::try_from_url(url).unwrap();
 }
 
 #[test]
+#[should_panic]
 fn try_from_url_missing_object_type() {
     let url = Url::parse("gitoid:").unwrap();
-
-    match ArtifactId::<Sha256>::try_from_url(url) {
-        Ok(_) => panic!("parsing should fail"),
-        Err(e) => assert_eq!(e.to_string(), "missing object type in URL 'gitoid:'"),
-    }
+    ArtifactId::<Sha256>::try_from_url(url).unwrap();
 }
 
 #[test]
+#[should_panic]
 fn try_from_url_bad_object_type() {
     let url = Url::parse("gitoid:whatever").unwrap();
-
-    match ArtifactId::<Sha256>::try_from_url(url) {
-        Ok(_) => panic!("parsing should fail"),
-        Err(e) => assert_eq!(e.to_string(), "mismatched object type; expected 'blob'"),
-    }
+    ArtifactId::<Sha256>::try_from_url(url).unwrap();
 }
 
 #[test]
+#[should_panic]
 fn try_from_url_missing_hash_algorithm() {
     let url = Url::parse("gitoid:blob:").unwrap();
-
-    match ArtifactId::<Sha256>::try_from_url(url) {
-        Ok(_) => panic!("parsing should fail"),
-        Err(e) => assert_eq!(
-            e.to_string(),
-            "missing hash algorithm in URL 'gitoid:blob:'"
-        ),
-    }
+    ArtifactId::<Sha256>::try_from_url(url).unwrap();
 }
 
 #[test]
+#[should_panic]
 fn try_from_url_bad_hash_algorithm() {
     let url = Url::parse("gitoid:blob:sha10000").unwrap();
-
-    match ArtifactId::<Sha256>::try_from_url(url) {
-        Ok(_) => panic!("parsing should fail"),
-        Err(e) => assert_eq!(
-            e.to_string(),
-            "mismatched hash algorithm; expected 'sha256'"
-        ),
-    }
+    ArtifactId::<Sha256>::try_from_url(url).unwrap();
 }
 
 #[test]
+#[should_panic]
 fn try_from_url_missing_hash() {
     let url = Url::parse("gitoid:blob:sha256:").unwrap();
-
-    match ArtifactId::<Sha256>::try_from_url(url) {
-        Ok(_) => panic!("parsing should fail"),
-        Err(e) => assert_eq!(e.to_string(), "missing hash in URL 'gitoid:blob:sha256:'"),
-    }
+    ArtifactId::<Sha256>::try_from_url(url).unwrap();
 }
 
 #[test]

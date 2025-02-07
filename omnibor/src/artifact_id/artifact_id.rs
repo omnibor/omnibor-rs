@@ -1,8 +1,8 @@
 use {
     super::ArtifactIdBuilder,
     crate::{
-        error::Error, gitoid::GitOid, hash_algorithm::HashAlgorithm, hash_provider::HashProvider,
-        object_type::Blob,
+        error::ArtifactIdError, gitoid::GitOid, hash_algorithm::HashAlgorithm,
+        hash_provider::HashProvider, object_type::Blob, util::clone_as_boxstr::CloneAsBoxstr,
     },
     core::{
         cmp::Ordering,
@@ -61,7 +61,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// selected for your [`ArtifactId`] (today, only `sha256` is supported), and has the
     /// `blob` object type. It also validates that the provided hash is a valid hash for
     /// the specified hashing scheme. If any of these checks fail, the function returns
-    /// an [`Error`].
+    /// an [`ArtifactIdError`](crate::error::ArtifactIdError).
     ///
     /// Note that this expects a `gitoid`-scheme URL, as defined by IANA. This method
     /// _does not_ expect an HTTP or HTTPS URL to access, retrieve contents, and hash
@@ -77,12 +77,12 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// let id: ArtifactId<Sha256> = ArtifactId::try_from_url(url).unwrap();
     /// println!("Artifact ID: {}", id);
     /// ```
-    pub fn try_from_url(url: Url) -> Result<ArtifactId<H>, Error> {
+    pub fn try_from_url(url: Url) -> Result<ArtifactId<H>, ArtifactIdError> {
         ArtifactId::try_from(url)
     }
 
     /// Try to construct an [`ArtifactId`] from a filesystem-safe representation.
-    pub fn try_from_safe_name(s: &str) -> Result<ArtifactId<H>, Error> {
+    pub fn try_from_safe_name(s: &str) -> Result<ArtifactId<H>, ArtifactIdError> {
         ArtifactId::from_str(&s.replace('_', ":"))
     }
 
@@ -204,10 +204,12 @@ impl<H: HashAlgorithm> ArtifactId<H> {
 }
 
 impl<H: HashAlgorithm> FromStr for ArtifactId<H> {
-    type Err = Error;
+    type Err = ArtifactIdError;
 
-    fn from_str(s: &str) -> Result<ArtifactId<H>, Error> {
-        let url = Url::parse(s)?;
+    fn from_str(s: &str) -> Result<ArtifactId<H>, ArtifactIdError> {
+        let url = Url::parse(s).map_err(|source| {
+            ArtifactIdError::FailedToParseUrl(s.clone_as_boxstr(), Box::new(source))
+        })?;
         ArtifactId::try_from_url(url)
     }
 }
@@ -270,17 +272,17 @@ impl<H: HashAlgorithm> From<GitOid<H, Blob>> for ArtifactId<H> {
 }
 
 impl<'r, H: HashAlgorithm> TryFrom<&'r str> for ArtifactId<H> {
-    type Error = Error;
+    type Error = ArtifactIdError;
 
-    fn try_from(s: &'r str) -> Result<Self, Error> {
+    fn try_from(s: &'r str) -> Result<Self, ArtifactIdError> {
         ArtifactId::from_str(s)
     }
 }
 
 impl<H: HashAlgorithm> TryFrom<Url> for ArtifactId<H> {
-    type Error = Error;
+    type Error = ArtifactIdError;
 
-    fn try_from(url: Url) -> Result<ArtifactId<H>, Error> {
+    fn try_from(url: Url) -> Result<ArtifactId<H>, ArtifactIdError> {
         let gitoid = GitOid::try_from_url(url)?;
         Ok(ArtifactId::from_gitoid(gitoid))
     }

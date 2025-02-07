@@ -13,7 +13,7 @@
 //! errors to users of the `ArtifactId` FFI.
 
 use {
-    crate::error::Error as ArtifactIdError,
+    crate::error::ArtifactIdError,
     core::{
         any::Any,
         cell::RefCell,

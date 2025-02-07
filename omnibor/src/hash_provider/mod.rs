@@ -1,4 +1,8 @@
 //! Cryptography libraries providing hash function implementations.
+//!
+//! __See [Hash Algorithms and Hash Providers][idx] documentation for more info.__
+//!
+//! [idx]: crate#hash-algorithms-and-hash-providers
 
 #[cfg(doc)]
 use crate::artifact_id::ArtifactId;

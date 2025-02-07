@@ -1,4 +1,8 @@
 //! Hash algorithms supported for Artifact IDs.
+//!
+//! __See [Hash Algorithms and Hash Providers][idx] documentation for more info.__
+//!
+//! [idx]: crate#hash-algorithms-and-hash-providers
 
 use {
     crate::util::sealed::Sealed,
@@ -9,7 +13,13 @@ use {
     std::{fmt::Debug, ops::Deref},
 };
 
-/// Marker trait for hash algorithms supported for constructing `GitOid`s.
+#[cfg(doc)]
+use crate::ArtifactId;
+
+/// Marker trait for hash algorithms supported for constructing [`ArtifactId`]s.
+///
+/// This trait is sealed, meaning it can only be implemented within the
+/// `omnibor` crate.
 pub trait HashAlgorithm: Sealed {
     /// The name of the hash algorithm, to be written in the GitOid string.
     #[doc(hidden)]

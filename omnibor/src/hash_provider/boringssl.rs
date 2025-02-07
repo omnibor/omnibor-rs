@@ -18,6 +18,7 @@ pub struct BoringSsl {
 }
 
 impl BoringSsl {
+    /// Construct a new `BoringSsl` provider.
     pub fn new() -> Self {
         BoringSsl { _phantom: () }
     }

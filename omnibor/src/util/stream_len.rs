@@ -1,5 +1,5 @@
 use {
-    crate::error::Error,
+    crate::error::ArtifactIdError,
     std::io::{Seek, SeekFrom},
     tokio::io::{AsyncSeek, AsyncSeekExt as _},
 };
@@ -34,34 +34,53 @@ use {
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
-pub(crate) fn stream_len<R>(mut stream: R) -> Result<u64, Error>
+pub(crate) fn stream_len<R>(mut stream: R) -> Result<u64, ArtifactIdError>
 where
     R: Seek,
 {
-    let old_pos = stream.stream_position()?;
-    let len = stream.seek(SeekFrom::End(0))?;
+    let old_pos = stream
+        .stream_position()
+        .map_err(|source| ArtifactIdError::FailedCheckReaderPos(Box::new(source)))?;
+
+    let len = stream
+        .seek(SeekFrom::End(0))
+        .map_err(|source| ArtifactIdError::FailedSeek(SeekFrom::End(0), Box::new(source)))?;
 
     // Avoid seeking a third time when we were already at the end of the
     // stream. The branch is usually way cheaper than a seek operation.
     if old_pos != len {
-        stream.seek(SeekFrom::Start(old_pos))?;
+        stream.seek(SeekFrom::Start(old_pos)).map_err(|source| {
+            ArtifactIdError::FailedSeek(SeekFrom::Start(old_pos), Box::new(source))
+        })?;
     }
 
     Ok(len)
 }
 
 /// An async equivalent of `stream_len`.
-pub(crate) async fn async_stream_len<R>(mut stream: R) -> Result<u64, Error>
+pub(crate) async fn async_stream_len<R>(mut stream: R) -> Result<u64, ArtifactIdError>
 where
     R: AsyncSeek + Unpin,
 {
-    let old_pos = stream.stream_position().await?;
-    let len = stream.seek(SeekFrom::End(0)).await?;
+    let old_pos = stream
+        .stream_position()
+        .await
+        .map_err(|source| ArtifactIdError::FailedCheckReaderPos(Box::new(source)))?;
+
+    let len = stream
+        .seek(SeekFrom::End(0))
+        .await
+        .map_err(|source| ArtifactIdError::FailedSeek(SeekFrom::End(0), Box::new(source)))?;
 
     // Avoid seeking a third time when we were already at the end of the
     // stream. The branch is usually way cheaper than a seek operation.
     if old_pos != len {
-        stream.seek(SeekFrom::Start(old_pos)).await?;
+        stream
+            .seek(SeekFrom::Start(old_pos))
+            .await
+            .map_err(|source| {
+                ArtifactIdError::FailedSeek(SeekFrom::Start(old_pos), Box::new(source))
+            })?;
     }
 
     Ok(len)

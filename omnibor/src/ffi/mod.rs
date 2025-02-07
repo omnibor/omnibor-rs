@@ -1,4 +1,4 @@
-//! `omnibor` Foreign Function Interface (FFI)
+//! Foreign Function Interface (FFI) to use `omnibor` from other languages.
 
 mod artifact_id;
 pub(crate) mod error;
