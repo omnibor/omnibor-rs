@@ -194,7 +194,7 @@ pub struct ManifestRemoveArgs {}
 #[command(arg_required_else_help = true)]
 pub struct ManifestCreateArgs {
     /// Inputs to record in the manifest.
-    #[arg(short = 'i', long = "input", help_heading = IMPORTANT)]
+    #[arg(help_heading = IMPORTANT)]
     pub inputs: Vec<IdentifiableArg>,
 
     /// The target the manifest is describing.
