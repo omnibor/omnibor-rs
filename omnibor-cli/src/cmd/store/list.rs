@@ -13,8 +13,7 @@ pub async fn run(app: &App, _args: &StoreListArgs) -> Result<(), Error> {
     let manifests = storage.get_manifests().map_err(Error::CantGetManifests)?;
 
     for manifest in manifests {
-        let _ = app
-            .print_tx
+        app.print_tx
             .send(PrinterCmd::msg(
                 StoreListMsg {
                     manifest: builder.identify_manifest(&manifest),
@@ -22,7 +21,7 @@ pub async fn run(app: &App, _args: &StoreListArgs) -> Result<(), Error> {
                 },
                 app.args.format(),
             ))
-            .await;
+            .await?;
     }
 
     Ok(())

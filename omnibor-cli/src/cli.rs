@@ -231,6 +231,8 @@ pub enum StoreCommand {
     Log(StoreLogArgs),
     /// List the Input Manifests in the store.
     List(StoreListArgs),
+    /// Get a single Input Manifest in the store.
+    Get(StoreGetArgs),
 }
 
 #[derive(Debug, clap::Args)]
@@ -247,6 +249,40 @@ pub struct StoreLogArgs {}
 
 #[derive(Debug, clap::Args)]
 pub struct StoreListArgs {}
+
+#[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
+pub struct StoreGetArgs {
+    #[command(flatten)]
+    manifest: GetManifest,
+}
+
+impl StoreGetArgs {
+    pub fn manifest_criteria(&self) -> ManifestCriteria {
+        match (&self.manifest.target, &self.manifest.id) {
+            (None, Some(id)) => ManifestCriteria::Id(id.clone()),
+            (Some(target), None) => ManifestCriteria::Target(target.clone()),
+            (None, None) | (Some(_), Some(_)) => unreachable!("clap should ensure one arg is set"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ManifestCriteria {
+    Target(IdentifiableArg),
+    Id(IdentifiableArg),
+}
+
+#[derive(Debug, clap::Args)]
+#[group(required = true, multiple = false)]
+pub struct GetManifest {
+    /// Get a manifest with the given target.
+    #[arg(short = 't', long, help_heading = IMPORTANT)]
+    target: Option<IdentifiableArg>,
+    /// Get a manifest with the given ID.
+    #[arg(short = 'i', long, help_heading = IMPORTANT)]
+    id: Option<IdentifiableArg>,
+}
 
 #[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]

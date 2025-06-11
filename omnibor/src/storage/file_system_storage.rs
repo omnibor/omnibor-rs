@@ -158,6 +158,13 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         }
     }
 
+    fn get_manifest_with_id(
+        &self,
+        _manifest_aid: ArtifactId<H>,
+    ) -> Result<Option<InputManifest<H>>, InputManifestError> {
+        todo!()
+    }
+
     fn get_manifest_id_for_artifact(
         &self,
         target_aid: ArtifactId<H>,

@@ -1,10 +1,16 @@
 //! Error types.
 
 use async_channel::SendError;
-use omnibor::error::{ArtifactIdError, InputManifestError};
+use omnibor::{
+    error::{ArtifactIdError, InputManifestError},
+    hash_algorithm::Sha256,
+    ArtifactId,
+};
 use serde_json::Error as JsonError;
 use std::{io::Error as IoError, path::PathBuf, result::Result as StdResult};
 use tokio::task::JoinError;
+
+use crate::cli::Format;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -104,6 +110,30 @@ pub enum Error {
 
     #[error("can't read manifests from store")]
     CantGetManifests(#[source] InputManifestError),
+
+    #[error("manifest not found for target '{0}'")]
+    ManifestNotFoundForTarget(ArtifactId<Sha256>),
+
+    #[error("manifest not found with ID '{0}'")]
+    ManifestNotFoundWithId(ArtifactId<Sha256>),
+
+    #[error(
+        "invalid format '{}'; use one of: {}",
+        requested,
+        combine_formats(allowed)
+    )]
+    InvalidFormat {
+        allowed: Vec<Format>,
+        requested: Format,
+    },
+}
+
+fn combine_formats(allowed: &[Format]) -> String {
+    allowed
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 pub type Result<T> = StdResult<T, Error>;

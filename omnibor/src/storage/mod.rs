@@ -28,6 +28,12 @@ pub trait Storage<H: HashAlgorithm> {
         target_aid: ArtifactId<H>,
     ) -> Result<Option<InputManifest<H>>, InputManifestError>;
 
+    /// Get a manifest by its Artifact ID.
+    fn get_manifest_with_id(
+        &self,
+        manifest_aid: ArtifactId<H>,
+    ) -> Result<Option<InputManifest<H>>, InputManifestError>;
+
     /// Get the ID of the manifest for the artifact.
     fn get_manifest_id_for_artifact(
         &self,
@@ -61,6 +67,13 @@ impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
         target_aid: ArtifactId<H>,
     ) -> Result<Option<InputManifest<H>>, InputManifestError> {
         (**self).get_manifest_for_artifact(target_aid)
+    }
+
+    fn get_manifest_with_id(
+        &self,
+        manifest_aid: ArtifactId<H>,
+    ) -> Result<Option<InputManifest<H>>, InputManifestError> {
+        (**self).get_manifest_with_id(manifest_aid)
     }
 
     fn get_manifest_id_for_artifact(

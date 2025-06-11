@@ -10,7 +10,7 @@ use {
     },
     std::{
         cmp::Ordering,
-        fmt::{Debug, Formatter, Result as FmtResult},
+        fmt::{Debug, Display, Formatter, Result as FmtResult},
         fs::File,
         io::{BufRead, BufReader, Write},
         path::Path,
@@ -77,6 +77,11 @@ impl<H: HashAlgorithm> InputManifest<H> {
         self
     }
 
+    /// Get the header used at the top of the [`InputManifest`].
+    pub fn header(&self) -> String {
+        format!("gitoid:{}:{}", Blob::NAME, H::NAME)
+    }
+
     /// Get the relations inside an [`InputManifest`].
     #[inline]
     pub fn relations(&self) -> &[InputManifestRelation<H>] {
@@ -134,7 +139,7 @@ impl<H: HashAlgorithm> InputManifest<H> {
         })
     }
 
-    /// Write the manifest out at the given path.
+    /// Get the manifest as bytes.
     pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes = vec![];
 
@@ -143,7 +148,7 @@ impl<H: HashAlgorithm> InputManifest<H> {
         // a manifest if they were written in full form. Instead, only the
         // hex-encoded hashes are recorded elsewhere, because all the metadata
         // is identical in a manifest and only recorded once at the beginning.
-        let _ = writeln!(bytes, "gitoid:{}:{}", Blob::NAME, H::NAME);
+        let _ = writeln!(bytes, "{}", self.header());
 
         for relation in &self.relations {
             let aid = relation.artifact;
@@ -235,6 +240,18 @@ impl<H: HashAlgorithm> Debug for InputManifestRelation<H> {
             .field("artifact", &self.artifact)
             .field("manifest", &self.manifest)
             .finish()
+    }
+}
+
+impl<H: HashAlgorithm> Display for InputManifestRelation<H> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "{}", self.artifact.as_hex())?;
+
+        if let Some(manifest) = self.manifest {
+            write!(f, " manifest {}", manifest.as_hex())?;
+        }
+
+        writeln!(f)
     }
 }
 

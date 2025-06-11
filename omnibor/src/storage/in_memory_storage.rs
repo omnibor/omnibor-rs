@@ -59,6 +59,13 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
             .map(|entry| entry.manifest.clone()))
     }
 
+    fn get_manifest_with_id(
+        &self,
+        _manifest_aid: ArtifactId<Sha256>,
+    ) -> Result<Option<InputManifest<Sha256>>, InputManifestError> {
+        todo!()
+    }
+
     fn get_manifest_id_for_artifact(
         &self,
         target_aid: ArtifactId<Sha256>,
