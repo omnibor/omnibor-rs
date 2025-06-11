@@ -4,6 +4,7 @@ use crate::{
 };
 use console::Style;
 use serde_json::json;
+use std::error::Error as StdError;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
@@ -20,8 +21,26 @@ impl ErrorMsg {
 
     fn error_string(&self) -> String {
         // SAFETY: This error type should only have a singular owner anyway.
-        self.error.lock().unwrap().to_string()
+        error_string(&*self.error.lock().unwrap())
     }
+}
+
+fn error_string(error: &dyn StdError) -> String {
+    fn error_string_inner(err_string: &mut String, error: &dyn StdError, inner: bool) {
+        if inner {
+            err_string.push_str(&format!(", {}", error));
+        } else {
+            err_string.push_str(&error.to_string());
+        }
+
+        if let Some(child) = error.source() {
+            error_string_inner(err_string, child, true);
+        }
+    }
+
+    let mut err_string = String::from("");
+    error_string_inner(&mut err_string, error, false);
+    err_string
 }
 
 impl CommandOutput for ErrorMsg {

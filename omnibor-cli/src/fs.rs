@@ -4,7 +4,7 @@ use crate::{
     app::App,
     cli::{Format, SelectedHash},
     error::{Error, Result},
-    print::{error::ErrorMsg, id_file::IdFileMsg, PrintSender, PrinterCmd},
+    print::{msg::error::ErrorMsg, msg::id_file::IdFileMsg, PrintSender, PrinterCmd},
 };
 use async_channel::{bounded, Receiver, Sender as WorkSender};
 use async_walkdir::{DirEntry as AsyncDirEntry, WalkDir};

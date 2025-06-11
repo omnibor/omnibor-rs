@@ -229,6 +229,8 @@ pub enum StoreCommand {
     Remove(StoreRemoveArgs),
     /// Review the log of changes to the store.
     Log(StoreLogArgs),
+    /// List the Input Manifests in the store.
+    List(StoreListArgs),
 }
 
 #[derive(Debug, clap::Args)]
@@ -242,6 +244,9 @@ pub struct StoreRemoveArgs {}
 #[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]
 pub struct StoreLogArgs {}
+
+#[derive(Debug, clap::Args)]
+pub struct StoreListArgs {}
 
 #[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]

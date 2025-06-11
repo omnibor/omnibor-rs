@@ -5,7 +5,7 @@ use crate::{
     cli::{FindArgs, Format, SelectedHash},
     error::{Error, Result},
     fs::*,
-    print::{find_file::FindFileMsg, PrintSender, PrinterCmd},
+    print::{msg::find_file::FindFileMsg, PrintSender, PrinterCmd},
 };
 use async_channel::{bounded, Receiver};
 use futures_lite::stream::StreamExt as _;

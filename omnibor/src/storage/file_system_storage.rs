@@ -209,8 +209,17 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
     }
 
     fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError> {
+        let target_index = self.target_index()?;
+        let aid_builder = ArtifactIdBuilder::with_provider(self.hash_provider);
+
         self.manifests()
-            .map(|entry: ManifestsEntry<H>| InputManifest::from_path(&entry.manifest_path))
+            .map(|entry: ManifestsEntry<H>| {
+                InputManifest::from_path(&entry.manifest_path).and_then(|mut manifest| {
+                    let target = target_index.find(aid_builder.identify_manifest(&manifest))?;
+                    manifest.set_target(target);
+                    Ok(manifest)
+                })
+            })
             .collect()
     }
 }

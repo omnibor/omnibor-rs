@@ -1,4 +1,14 @@
-use crate::{cli::Args, config::Config, print::PrintSender};
+use crate::{
+    cli::Args,
+    config::Config,
+    error::{Error, Result},
+    print::PrintSender,
+};
+use omnibor::{
+    hash_algorithm::Sha256,
+    hash_provider::RustCrypto,
+    storage::{FileSystemStorage, Storage},
+};
 use std::fmt::Debug;
 
 pub struct App {
@@ -10,6 +20,16 @@ pub struct App {
 
     /// Sender for print data.
     pub print_tx: PrintSender,
+}
+
+impl App {
+    /// Get a handle to the on-disk storage for manifests.
+    pub fn storage(&self) -> Result<impl Storage<Sha256>> {
+        let root = self.args.dir().ok_or(Error::NoRoot)?;
+        let storage =
+            FileSystemStorage::new(RustCrypto::new(), root).map_err(Error::StorageInitFailed)?;
+        Ok(storage)
+    }
 }
 
 impl Debug for App {

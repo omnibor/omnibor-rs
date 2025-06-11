@@ -101,6 +101,9 @@ pub enum Error {
 
     #[error("can't read configuration file")]
     CantReadConfig(#[source] JsonError),
+
+    #[error("can't read manifests from store")]
+    CantGetManifests(#[source] InputManifestError),
 }
 
 pub type Result<T> = StdResult<T, Error>;

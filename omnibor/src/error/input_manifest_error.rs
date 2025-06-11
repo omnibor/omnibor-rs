@@ -28,8 +28,8 @@ pub enum InputManifestError {
     MissingBomIndicatorInRelation,
 
     /// Missing one or more relation parts.
-    #[error("missing one or more relation parts")]
-    MissingRelationParts,
+    #[error("missing one or more relation parts in '{0}'")]
+    MissingRelationParts(Box<str>),
 
     /// Wrong hash algorithm.
     #[error("wrong hash algorithm; expected '{expected}', got '{got}'")]

@@ -4,7 +4,7 @@ use crate::{
     app::App,
     cli::DebugPathsArgs,
     error::{Error, Result},
-    print::{paths::PathsMsg, PrinterCmd},
+    print::{msg::paths::PathsMsg, PrinterCmd},
 };
 use std::{collections::HashMap, ops::Not, path::Path};
 

@@ -8,7 +8,7 @@ use crate::{
 use omnibor::{
     hash_algorithm::Sha256,
     hash_provider::{HashProvider, RustCrypto},
-    storage::{FileSystemStorage, Storage},
+    storage::Storage,
     ArtifactId, ArtifactIdBuilder, EmbeddingMode, InputManifestBuilder,
 };
 use pathbuf::pathbuf;
@@ -23,9 +23,7 @@ use tracing::info;
 
 /// Run the `manifest create` subcommand.
 pub async fn run(app: &App, args: &ManifestCreateArgs) -> Result<()> {
-    let root = app.args.dir().ok_or(Error::NoRoot)?;
-    let storage =
-        FileSystemStorage::new(RustCrypto::new(), root).map_err(Error::StorageInitFailed)?;
+    let storage = app.storage()?;
     let builder = InputManifestBuilder::<Sha256, _, _>::new(
         EmbeddingMode::NoEmbed,
         storage,

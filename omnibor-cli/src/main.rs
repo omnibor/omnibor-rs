@@ -14,7 +14,7 @@ use crate::{
     config::Config,
     error::Result,
     log::init_log,
-    print::{error::ErrorMsg, Printer, PrinterCmd},
+    print::{msg::error::ErrorMsg, Printer, PrinterCmd},
 };
 use clap::Parser as _;
 use std::{error::Error as StdError, process::ExitCode};
@@ -77,6 +77,7 @@ async fn run_cmd(app: &App) -> Result<()> {
             StoreCommand::Add(ref args) => store::add::run(app, args).await,
             StoreCommand::Remove(ref args) => store::remove::run(app, args).await,
             StoreCommand::Log(ref args) => store::log::run(app, args).await,
+            StoreCommand::List(ref args) => store::list::run(app, args).await,
         },
         Command::Debug(ref args) => match args.command {
             DebugCommand::Paths(ref args) => debug::paths::run(app, args).await,

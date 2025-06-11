@@ -1,16 +1,13 @@
 //! Defines a simple print queue abstraction.
 
-pub mod error;
-pub mod find_file;
-pub mod id_file;
-pub mod paths;
+pub mod msg;
 
 use crate::{
     cli::Format,
     error::{Error, Result},
 };
 use dyn_clone::{clone_box, DynClone};
-use error::ErrorMsg;
+use msg::error::ErrorMsg;
 use serde_json::Value as JsonValue;
 use std::{
     fmt::Debug,

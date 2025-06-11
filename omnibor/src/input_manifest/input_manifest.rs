@@ -185,8 +185,10 @@ fn parse_relation<H: HashAlgorithm>(
 ) -> Result<InputManifestRelation<H>, InputManifestError> {
     let parts = input.split(' ').collect::<Vec<_>>();
 
-    if parts.len() < 2 {
-        return Err(InputManifestError::MissingRelationParts);
+    if parts.len() < 1 {
+        return Err(InputManifestError::MissingRelationParts(
+            input.to_string().into_boxed_str(),
+        ));
     }
 
     // Panic Safety: we've already checked the length.
