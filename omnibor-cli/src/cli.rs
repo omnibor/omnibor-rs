@@ -204,6 +204,10 @@ pub struct ManifestCreateArgs {
     /// Hash algorithm to use for Artifact IDs.
     #[arg(short = 'H', long = "hash", env = "OMNIBOR_HASH", help_heading = IMPORTANT)]
     pub hash: Option<SelectedHash>,
+
+    /// Write the created manifest into the OmniBOR store.
+    #[arg(short = 'S', long = "store", help_heading = IMPORTANT)]
+    pub store: bool,
 }
 
 #[derive(Debug, clap::Args)]

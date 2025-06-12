@@ -109,9 +109,11 @@ pub enum Error {
     #[error("manifest not found with ID '{0}'")]
     ManifestNotFoundWithId(ArtifactId<Sha256>),
 
-    /// Failed to remove manifest from store.
     #[error("failed to remove manifest from store")]
     FailedToRemoveManifest(#[source] InputManifestError),
+
+    #[error("failed to add manifest to the store")]
+    FailedToAddManifest(#[source] InputManifestError),
 }
 
 pub type Result<T> = StdResult<T, Error>;

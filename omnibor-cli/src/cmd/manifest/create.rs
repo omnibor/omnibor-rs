@@ -47,6 +47,12 @@ where
         .finish(&args.target)
         .map_err(Error::ManifestBuildFailed)?;
 
+    if args.store {
+        app.storage()?
+            .write_manifest(&manifest)
+            .map_err(Error::FailedToAddManifest)?;
+    }
+
     app.print_tx
         .send(PrinterCmd::msg(
             ManifestCreateMsg { manifest },
