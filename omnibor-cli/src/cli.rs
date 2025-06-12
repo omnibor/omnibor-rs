@@ -201,14 +201,6 @@ pub struct ManifestCreateArgs {
     #[arg(short = 't', long = "target", help_heading = IMPORTANT)]
     pub target: PathBuf,
 
-    /// Do not write the manifest to a local directory.
-    #[arg(long = "no-out", help_heading = IMPORTANT)]
-    pub no_out: bool,
-
-    /// Directory to write manifest out to.
-    #[arg(short = 'o', long = "output", help_heading = IMPORTANT, value_name = "DIR")]
-    pub output: Option<PathBuf>,
-
     /// Hash algorithm to use for Artifact IDs.
     #[arg(short = 'H', long = "hash", env = "OMNIBOR_HASH", help_heading = IMPORTANT)]
     pub hash: Option<SelectedHash>,
@@ -227,8 +219,6 @@ pub enum StoreCommand {
     Add(StoreAddArgs),
     /// Remove an Input Manifest from the store.
     Remove(StoreRemoveArgs),
-    /// Review the log of changes to the store.
-    Log(StoreLogArgs),
     /// List the Input Manifests in the store.
     List(StoreListArgs),
     /// Get a single Input Manifest in the store.
@@ -245,10 +235,6 @@ pub struct StoreRemoveArgs {
     #[command(flatten)]
     pub manifest: GetManifest,
 }
-
-#[derive(Debug, clap::Args)]
-#[command(arg_required_else_help = true)]
-pub struct StoreLogArgs {}
 
 #[derive(Debug, clap::Args)]
 pub struct StoreListArgs {}

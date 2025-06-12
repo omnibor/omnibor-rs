@@ -67,12 +67,6 @@ pub enum Error {
         source: ArtifactIdError,
     },
 
-    #[error("can't identify directory to write manifest")]
-    NoOutputDir,
-
-    #[error("can't write manifest to '{}'", path.display())]
-    CantWriteManifest { path: PathBuf, source: IoError },
-
     #[error("work channel closed for sending")]
     WorkChannelCloseSend(#[source] SendError<PathBuf>),
 
