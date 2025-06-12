@@ -10,8 +10,6 @@ use serde_json::Error as JsonError;
 use std::{io::Error as IoError, path::PathBuf, result::Result as StdResult};
 use tokio::task::JoinError;
 
-use crate::cli::Format;
-
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("could not identify '{0}'")]
@@ -117,23 +115,9 @@ pub enum Error {
     #[error("manifest not found with ID '{0}'")]
     ManifestNotFoundWithId(ArtifactId<Sha256>),
 
-    #[error(
-        "invalid format '{}'; use one of: {}",
-        requested,
-        combine_formats(allowed)
-    )]
-    InvalidFormat {
-        allowed: Vec<Format>,
-        requested: Format,
-    },
-}
-
-fn combine_formats(allowed: &[Format]) -> String {
-    allowed
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<_>>()
-        .join(", ")
+    /// Failed to remove manifest from store.
+    #[error("failed to remove manifest from store")]
+    FailedToRemoveManifest(#[source] InputManifestError),
 }
 
 pub type Result<T> = StdResult<T, Error>;

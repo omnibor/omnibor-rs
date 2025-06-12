@@ -43,14 +43,27 @@ impl<P: HashProvider<Sha256>> InMemoryStorage<P> {
             .iter()
             .find(|entry| entry.manifest.target() == Some(target_aid))
     }
+
+    fn match_by_manifest_aid(
+        &self,
+        manifest_aid: ArtifactId<Sha256>,
+    ) -> Option<&ManifestEntry<Sha256>> {
+        self.sha256_manifests
+            .iter()
+            .find(|entry| entry.manifest_aid == manifest_aid)
+    }
 }
 
 impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
-    fn has_manifest_for_artifact(&self, target_aid: ArtifactId<Sha256>) -> bool {
-        self.match_by_target_aid(target_aid).is_some()
+    fn get_manifests(&self) -> Result<Vec<InputManifest<Sha256>>, InputManifestError> {
+        Ok(self
+            .sha256_manifests
+            .iter()
+            .map(|entry| entry.manifest.clone())
+            .collect())
     }
 
-    fn get_manifest_for_artifact(
+    fn get_manifest_for_target(
         &self,
         target_aid: ArtifactId<Sha256>,
     ) -> Result<Option<InputManifest<Sha256>>, InputManifestError> {
@@ -61,18 +74,11 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
 
     fn get_manifest_with_id(
         &self,
-        _manifest_aid: ArtifactId<Sha256>,
+        manifest_aid: ArtifactId<Sha256>,
     ) -> Result<Option<InputManifest<Sha256>>, InputManifestError> {
-        todo!()
-    }
-
-    fn get_manifest_id_for_artifact(
-        &self,
-        target_aid: ArtifactId<Sha256>,
-    ) -> Result<Option<ArtifactId<Sha256>>, InputManifestError> {
         Ok(self
-            .match_by_target_aid(target_aid)
-            .and_then(|entry| entry.manifest.target()))
+            .match_by_manifest_aid(manifest_aid)
+            .map(|entry| entry.manifest.clone()))
     }
 
     fn write_manifest(
@@ -103,12 +109,42 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
         Ok(())
     }
 
-    fn get_manifests(&self) -> Result<Vec<InputManifest<Sha256>>, InputManifestError> {
-        Ok(self
+    fn remove_manifest_for_target(
+        &mut self,
+        target_aid: ArtifactId<Sha256>,
+    ) -> Result<InputManifest<Sha256>, InputManifestError> {
+        let pos = self
             .sha256_manifests
             .iter()
-            .map(|entry| entry.manifest.clone())
-            .collect())
+            .position(|entry| entry.manifest.target() == Some(target_aid))
+            .ok_or_else(|| {
+                InputManifestError::CantFindManifestForTarget(
+                    target_aid.to_string().into_boxed_str(),
+                )
+            })?;
+
+        let manifest = self.sha256_manifests.remove(pos).manifest;
+
+        Ok(manifest)
+    }
+
+    fn remove_manifest_with_id(
+        &mut self,
+        manifest_aid: ArtifactId<Sha256>,
+    ) -> Result<InputManifest<Sha256>, InputManifestError> {
+        let pos = self
+            .sha256_manifests
+            .iter()
+            .position(|entry| entry.manifest_aid == manifest_aid)
+            .ok_or_else(|| {
+                InputManifestError::CantFindManifestWithId(
+                    manifest_aid.to_string().into_boxed_str(),
+                )
+            })?;
+
+        let manifest = self.sha256_manifests.remove(pos).manifest;
+
+        Ok(manifest)
     }
 }
 

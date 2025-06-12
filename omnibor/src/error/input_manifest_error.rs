@@ -144,4 +144,26 @@ pub enum InputManifestError {
     /// Failed to clean up storage root.
     #[error("failed to clean up storage root '{0}'")]
     FailedStorageCleanup(Box<str>, #[source] Box<IoError>),
+
+    /// Can't find manifest for target Artifact ID.
+    #[error("can't find manifest for target Artifact ID '{0}'")]
+    CantFindManifestForTarget(Box<str>),
+
+    /// Can't find manifest with Artifact ID.
+    #[error("can't find manifest with Artifact ID '{0}'")]
+    CantFindManifestWithId(Box<str>),
+
+    /// Missing target index removal criteria.
+    #[error(
+        "missing target index removal criteria; make sure to set a target or manifest Artifact ID"
+    )]
+    MissingTargetIndexRemoveCriteria,
+
+    /// No manifest found to remove in the target index
+    #[error("no manifest found to remove in the target index")]
+    NoManifestFoundToRemove,
+
+    /// Can't remove manifest from storage.
+    #[error("can't remove manifest from storage")]
+    CantRemoveManifest(#[source] Box<IoError>),
 }

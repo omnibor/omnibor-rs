@@ -19,11 +19,11 @@ use crate::{
 
 /// Represents the interface for storing and querying manifests.
 pub trait Storage<H: HashAlgorithm> {
-    /// Check if we have the manifest for a specific artifact.
-    fn has_manifest_for_artifact(&self, target_aid: ArtifactId<H>) -> bool;
+    /// Get all manifests from the storage.
+    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError>;
 
-    /// Get the manifest for a specific artifact.
-    fn get_manifest_for_artifact(
+    /// Get the manifest for a specific target artifact.
+    fn get_manifest_for_target(
         &self,
         target_aid: ArtifactId<H>,
     ) -> Result<Option<InputManifest<H>>, InputManifestError>;
@@ -33,12 +33,6 @@ pub trait Storage<H: HashAlgorithm> {
         &self,
         manifest_aid: ArtifactId<H>,
     ) -> Result<Option<InputManifest<H>>, InputManifestError>;
-
-    /// Get the ID of the manifest for the artifact.
-    fn get_manifest_id_for_artifact(
-        &self,
-        target_aid: ArtifactId<H>,
-    ) -> Result<Option<ArtifactId<H>>, InputManifestError>;
 
     /// Write a manifest to the storage.
     fn write_manifest(
@@ -53,20 +47,33 @@ pub trait Storage<H: HashAlgorithm> {
         target_aid: ArtifactId<H>,
     ) -> Result<(), InputManifestError>;
 
-    /// Get all manifests from the storage.
-    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError>;
+    /// Remove the manifest for the target artifact.
+    ///
+    /// Returns the manifest to the caller.
+    fn remove_manifest_for_target(
+        &mut self,
+        target_aid: ArtifactId<H>,
+    ) -> Result<InputManifest<H>, InputManifestError>;
+
+    /// Remove a manifest by its Artifact ID.
+    ///
+    /// Returns the manifest to the caller.
+    fn remove_manifest_with_id(
+        &mut self,
+        manifest_aid: ArtifactId<H>,
+    ) -> Result<InputManifest<H>, InputManifestError>;
 }
 
 impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
-    fn has_manifest_for_artifact(&self, target_aid: ArtifactId<H>) -> bool {
-        (**self).has_manifest_for_artifact(target_aid)
+    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError> {
+        (**self).get_manifests()
     }
 
-    fn get_manifest_for_artifact(
+    fn get_manifest_for_target(
         &self,
         target_aid: ArtifactId<H>,
     ) -> Result<Option<InputManifest<H>>, InputManifestError> {
-        (**self).get_manifest_for_artifact(target_aid)
+        (**self).get_manifest_for_target(target_aid)
     }
 
     fn get_manifest_with_id(
@@ -74,13 +81,6 @@ impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
         manifest_aid: ArtifactId<H>,
     ) -> Result<Option<InputManifest<H>>, InputManifestError> {
         (**self).get_manifest_with_id(manifest_aid)
-    }
-
-    fn get_manifest_id_for_artifact(
-        &self,
-        target_aid: ArtifactId<H>,
-    ) -> Result<Option<ArtifactId<H>>, InputManifestError> {
-        (**self).get_manifest_id_for_artifact(target_aid)
     }
 
     fn write_manifest(
@@ -98,7 +98,23 @@ impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
         (**self).update_target_for_manifest(manifest_aid, target_aid)
     }
 
-    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError> {
-        (**self).get_manifests()
+    /// Remove the manifest for the target artifact.
+    ///
+    /// Returns the manifest to the caller.
+    fn remove_manifest_for_target(
+        &mut self,
+        target_aid: ArtifactId<H>,
+    ) -> Result<InputManifest<H>, InputManifestError> {
+        (**self).remove_manifest_for_target(target_aid)
+    }
+
+    /// Remove a manifest by its Artifact ID.
+    ///
+    /// Returns the manifest to the caller.
+    fn remove_manifest_with_id(
+        &mut self,
+        manifest_aid: ArtifactId<H>,
+    ) -> Result<InputManifest<H>, InputManifestError> {
+        (**self).remove_manifest_with_id(manifest_aid)
     }
 }

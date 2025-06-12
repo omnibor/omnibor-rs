@@ -241,7 +241,10 @@ pub struct StoreAddArgs {}
 
 #[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]
-pub struct StoreRemoveArgs {}
+pub struct StoreRemoveArgs {
+    #[command(flatten)]
+    pub manifest: GetManifest,
+}
 
 #[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]
@@ -254,23 +257,7 @@ pub struct StoreListArgs {}
 #[command(arg_required_else_help = true)]
 pub struct StoreGetArgs {
     #[command(flatten)]
-    manifest: GetManifest,
-}
-
-impl StoreGetArgs {
-    pub fn manifest_criteria(&self) -> ManifestCriteria {
-        match (&self.manifest.target, &self.manifest.id) {
-            (None, Some(id)) => ManifestCriteria::Id(id.clone()),
-            (Some(target), None) => ManifestCriteria::Target(target.clone()),
-            (None, None) | (Some(_), Some(_)) => unreachable!("clap should ensure one arg is set"),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ManifestCriteria {
-    Target(IdentifiableArg),
-    Id(IdentifiableArg),
+    pub manifest: GetManifest,
 }
 
 #[derive(Debug, clap::Args)]
@@ -282,6 +269,22 @@ pub struct GetManifest {
     /// Get a manifest with the given ID.
     #[arg(short = 'i', long, help_heading = IMPORTANT)]
     id: Option<IdentifiableArg>,
+}
+
+impl GetManifest {
+    pub fn criteria(&self) -> ManifestCriteria {
+        match (&self.target, &self.id) {
+            (None, Some(id)) => ManifestCriteria::Id(id.clone()),
+            (Some(target), None) => ManifestCriteria::Target(target.clone()),
+            (None, None) | (Some(_), Some(_)) => unreachable!("clap should ensure one arg is set"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ManifestCriteria {
+    Target(IdentifiableArg),
+    Id(IdentifiableArg),
 }
 
 #[derive(Debug, clap::Args)]

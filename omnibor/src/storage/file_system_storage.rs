@@ -139,52 +139,77 @@ impl<H: HashAlgorithm, P: HashProvider<H>> FileSystemStorage<H, P> {
     }
 }
 
+/// Enrich an InputManifest with its target if stored in the index.
+fn enrich_manifest_with_target<H: HashAlgorithm, P: HashProvider<H>>(
+    target_index: &TargetIndex,
+    aid_builder: &ArtifactIdBuilder<H, P>,
+    mut manifest: InputManifest<H>,
+) -> Result<InputManifest<H>, InputManifestError> {
+    // Get the Artifact ID of the manifest
+    let manifest_aid = aid_builder.identify_manifest(&manifest);
+
+    // Get the target Artifact ID for the manifest
+    let target_aid = target_index.find(manifest_aid)?;
+
+    // Update the manifest with the target Artifact ID.
+    manifest.set_target(target_aid);
+
+    Ok(manifest)
+}
+
 impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P> {
-    fn has_manifest_for_artifact(&self, target_aid: ArtifactId<H>) -> bool {
+    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError> {
+        let target_index = self.target_index()?;
+        let aid_builder = ArtifactIdBuilder::with_provider(self.hash_provider);
+
         self.manifests()
-            .any(|entry| entry.target_aid == Some(target_aid))
+            .map(|entry: ManifestsEntry<H>| {
+                enrich_manifest_with_target(&target_index, &aid_builder, entry.manifest()?)
+            })
+            .collect()
     }
 
-    fn get_manifest_for_artifact(
+    fn get_manifest_for_target(
         &self,
         target_aid: ArtifactId<H>,
     ) -> Result<Option<InputManifest<H>>, InputManifestError> {
-        match self
-            .manifests()
+        let target_index = self.target_index()?;
+        let aid_builder = ArtifactIdBuilder::with_provider(self.hash_provider);
+
+        self.manifests()
             .find(|entry| entry.target_aid == Some(target_aid))
-        {
-            Some(entry) => entry.manifest().map(Some),
-            None => Ok(None),
-        }
+            .map(|entry| {
+                enrich_manifest_with_target(&target_index, &aid_builder, entry.manifest()?)
+            })
+            .transpose()
     }
 
     fn get_manifest_with_id(
         &self,
-        _manifest_aid: ArtifactId<H>,
+        manifest_aid: ArtifactId<H>,
     ) -> Result<Option<InputManifest<H>>, InputManifestError> {
-        todo!()
-    }
+        let target_index = self.target_index()?;
+        let aid_builder = ArtifactIdBuilder::with_provider(self.hash_provider);
 
-    fn get_manifest_id_for_artifact(
-        &self,
-        target_aid: ArtifactId<H>,
-    ) -> Result<Option<ArtifactId<H>>, InputManifestError> {
-        match self.get_manifest_for_artifact(target_aid) {
-            Ok(Some(manifest)) => Ok(Some(
-                ArtifactIdBuilder::with_provider(self.hash_provider).identify_manifest(&manifest),
-            )),
-            Ok(None) => Ok(None),
-            Err(e) => Err(e),
-        }
+        self.manifests()
+            .find(|entry| {
+                aid_builder.identify_path(&entry.manifest_path).ok() == Some(manifest_aid)
+            })
+            .map(|entry| {
+                enrich_manifest_with_target(&target_index, &aid_builder, entry.manifest()?)
+            })
+            .transpose()
     }
 
     fn write_manifest(
         &mut self,
         manifest: &InputManifest<H>,
     ) -> Result<ArtifactId<H>, InputManifestError> {
-        let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
-        let manifest_aid = builder.identify_manifest(manifest);
+        let manifest_aid =
+            ArtifactIdBuilder::with_provider(self.hash_provider).identify_manifest(manifest);
+
         let path = self.manifest_path(manifest_aid);
+
         let parent_dirs = path
             .parent()
             .ok_or_else(|| InputManifestError::InvalidObjectStorePath(path.clone_as_boxstr()))?;
@@ -209,25 +234,66 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         target_aid: ArtifactId<H>,
     ) -> Result<(), InputManifestError> {
         self.target_index()?
-            .upsert()
-            .manifest_aid(manifest_aid)
-            .target_aid(target_aid)
-            .run()
+            .start_upsert()
+            .set_manifest_aid(manifest_aid)
+            .set_target_aid(target_aid)
+            .run_upsert()
     }
 
-    fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError> {
-        let target_index = self.target_index()?;
+    fn remove_manifest_for_target(
+        &mut self,
+        target_aid: ArtifactId<H>,
+    ) -> Result<InputManifest<H>, InputManifestError> {
+        // Remove the relevant entry from the target index.
+        self.target_index()?
+            .start_remove()
+            .set_target_aid(target_aid)
+            .run_remove()?;
+
+        // Find the manifest in the store.
+        let manifest_entry: ManifestsEntry<H> = self
+            .manifests()
+            .find(|entry| entry.target_aid == Some(target_aid))
+            .ok_or_else(|| InputManifestError::NoManifestFoundToRemove)?;
+
+        // Get a copy of it to return.
+        let removed_manifest = manifest_entry.manifest()?;
+
+        // Remove it from the store.
+        fs::remove_file(&manifest_entry.manifest_path)
+            .map_err(|source| InputManifestError::CantRemoveManifest(Box::new(source)))?;
+
+        Ok(removed_manifest)
+    }
+
+    fn remove_manifest_with_id(
+        &mut self,
+        manifest_aid: ArtifactId<H>,
+    ) -> Result<InputManifest<H>, InputManifestError> {
         let aid_builder = ArtifactIdBuilder::with_provider(self.hash_provider);
 
-        self.manifests()
-            .map(|entry: ManifestsEntry<H>| {
-                InputManifest::from_path(&entry.manifest_path).and_then(|mut manifest| {
-                    let target = target_index.find(aid_builder.identify_manifest(&manifest))?;
-                    manifest.set_target(target);
-                    Ok(manifest)
-                })
+        // Remove the relevant entry from the target index.
+        self.target_index()?
+            .start_remove()
+            .set_manifest_aid(manifest_aid)
+            .run_remove()?;
+
+        // Find the manifest in the store.
+        let manifest_entry: ManifestsEntry<H> = self
+            .manifests()
+            .find(|entry| {
+                aid_builder.identify_path(&entry.manifest_path).ok() == Some(manifest_aid)
             })
-            .collect()
+            .ok_or_else(|| InputManifestError::NoManifestFoundToRemove)?;
+
+        // Get a copy of it to return.
+        let removed_manifest = manifest_entry.manifest()?;
+
+        // Remove it from the store.
+        fs::remove_file(&manifest_entry.manifest_path)
+            .map_err(|source| InputManifestError::CantRemoveManifest(Box::new(source)))?;
+
+        Ok(removed_manifest)
     }
 }
 
@@ -322,12 +388,157 @@ impl TargetIndex {
         Ok(None)
     }
 
+    /// Begin a removal operation in the [`TargetIndex`].
+    fn start_remove<H: HashAlgorithm>(&self) -> TargetIndexRemove<H> {
+        let root = self.path.parent().unwrap();
+        TargetIndexRemove::new(root)
+    }
+
     // Begin an "upsert" operation in the [`TargetIndex`].
     //
     // This either updates or inserts, as appropriate, into the index.
-    fn upsert<H: HashAlgorithm>(&self) -> TargetIndexUpsert<H> {
+    fn start_upsert<H: HashAlgorithm>(&self) -> TargetIndexUpsert<H> {
         let root = self.path.parent().unwrap();
         TargetIndexUpsert::new(root)
+    }
+}
+
+struct TargetIndexRemove<H: HashAlgorithm> {
+    root: PathBuf,
+    manifest_aid: Option<ArtifactId<H>>,
+    target_aid: Option<ArtifactId<H>>,
+}
+
+impl<H: HashAlgorithm> TargetIndexRemove<H> {
+    fn new(root: impl AsRef<Path>) -> Self {
+        TargetIndexRemove {
+            root: root.as_ref().to_owned(),
+            manifest_aid: None,
+            target_aid: None,
+        }
+    }
+
+    /// Set the manifest [`ArtifactId`] for the upsert.
+    fn set_manifest_aid(mut self, manifest_aid: ArtifactId<H>) -> Self {
+        self.manifest_aid = Some(manifest_aid);
+        self
+    }
+
+    /// Set the target [`ArtifactId`] for the upsert.
+    fn set_target_aid(mut self, target_aid: ArtifactId<H>) -> Self {
+        self.target_aid = Some(target_aid);
+        self
+    }
+
+    /// Get the path to a temporary file used during upserting.
+    fn tempfile(&self) -> PathBuf {
+        pathbuf![&self.root, "targets.temp"]
+    }
+
+    fn target_file(&self) -> PathBuf {
+        pathbuf![&self.root, "targets"]
+    }
+
+    /// Run the removal operation, removing based on matching the set criteria.
+    ///
+    /// This returns the Artifact ID of the removed [`InputManifest`] to the caller.
+    fn run_remove(self) -> Result<ArtifactId<H>, InputManifestError> {
+        if matches!((self.manifest_aid, self.target_aid), (None, None)) {
+            return Err(InputManifestError::MissingTargetIndexRemoveCriteria);
+        }
+
+        let file = File::open(self.target_file()).map_err(|source| {
+            InputManifestError::CantOpenTargetIndex(
+                self.target_file().clone_as_boxstr(),
+                Box::new(source),
+            )
+        })?;
+
+        // Read the current target index from disk.
+        let mut target_index = HashMap::new();
+
+        for (idx, line) in BufReader::new(file).lines().enumerate() {
+            let line = line.map_err(|source| InputManifestError::CantReadTargetIndexLine {
+                line_no: idx,
+                source: Box::new(source),
+            })?;
+
+            let (line_manifest_aid, line_target_aid) = line
+                .split_once(' ')
+                .ok_or(InputManifestError::TargetIndexMalformedEntry { line_no: idx })?;
+
+            let line_manifest_aid = ArtifactId::from_str(line_manifest_aid)?;
+
+            let line_target_aid = ArtifactId::from_str(line_target_aid)?;
+
+            target_index.insert(line_manifest_aid, line_target_aid);
+        }
+
+        // Update the index in memory.
+        let entry_to_remove: ArtifactId<H> = target_index
+            .iter()
+            .find(|(entry_manifest_aid, entry_target_aid)| {
+                match (self.target_aid, self.manifest_aid) {
+                    (None, None) => unreachable!(
+                        "target_aid and manifest_aid will always have at least one set"
+                    ),
+                    (None, Some(manifest_aid)) => **entry_manifest_aid == manifest_aid,
+                    (Some(target_aid), None) => **entry_target_aid == target_aid,
+                    (Some(target_aid), Some(manifest_aid)) => {
+                        (**entry_manifest_aid == manifest_aid) && (**entry_target_aid == target_aid)
+                    }
+                }
+            })
+            .ok_or_else(|| InputManifestError::NoManifestFoundToRemove)?
+            .0
+            .clone();
+
+        // PANIC SAFETY: We know the key is there; we just found it.
+        let removed_manifest = target_index.remove(&entry_to_remove).unwrap();
+
+        // Write out updated index to a tempfile.
+        let mut tempfile = File::create(self.tempfile()).map_err(|source| {
+            InputManifestError::CantOpenTargetIndexTemp(
+                self.tempfile().clone_as_boxstr(),
+                Box::new(source),
+            )
+        })?;
+
+        // Write the updated in-memory data to the tempfile.
+        let mut writer = BufWriter::new(&mut tempfile);
+        for (manifest_aid, target_aid) in target_index {
+            if let Err(source) = writeln!(writer, "{} {}", manifest_aid, target_aid) {
+                fs::remove_file(self.tempfile()).map_err(|source| {
+                    InputManifestError::CantDeleteTargetIndexTemp(
+                        self.tempfile().clone_as_boxstr(),
+                        Box::new(source),
+                    )
+                })?;
+
+                return Err(InputManifestError::CantWriteTargetIndexTemp(
+                    self.tempfile().clone_as_boxstr(),
+                    Box::new(source),
+                ));
+            }
+        }
+
+        // Replace the prior index with the new one.
+        if let Err(source) = fs::rename(self.tempfile(), self.target_file()) {
+            fs::remove_dir(self.tempfile()).map_err(|source| {
+                InputManifestError::CantDeleteTargetIndexTemp(
+                    self.tempfile().clone_as_boxstr(),
+                    Box::new(source),
+                )
+            })?;
+
+            return Err(InputManifestError::CantReplaceTargetIndexWithTemp {
+                temp: self.tempfile().clone_as_boxstr(),
+                index: self.target_file().clone_as_boxstr(),
+                source: Box::new(source),
+            });
+        }
+
+        Ok(removed_manifest)
     }
 }
 
@@ -348,13 +559,13 @@ impl<H: HashAlgorithm> TargetIndexUpsert<H> {
     }
 
     /// Set the manifest [`ArtifactId`] for the upsert.
-    fn manifest_aid(mut self, manifest_aid: ArtifactId<H>) -> Self {
+    fn set_manifest_aid(mut self, manifest_aid: ArtifactId<H>) -> Self {
         self.manifest_aid = Some(manifest_aid);
         self
     }
 
     /// Set the target [`ArtifactId`] for the upsert.
-    fn target_aid(mut self, target_aid: ArtifactId<H>) -> Self {
+    fn set_target_aid(mut self, target_aid: ArtifactId<H>) -> Self {
         self.target_aid = Some(target_aid);
         self
     }
@@ -369,7 +580,7 @@ impl<H: HashAlgorithm> TargetIndexUpsert<H> {
     }
 
     /// Run the upsert operation.
-    fn run(self) -> Result<(), InputManifestError> {
+    fn run_upsert(self) -> Result<(), InputManifestError> {
         let manifest_aid = self
             .manifest_aid
             .ok_or(InputManifestError::InvalidTargetIndexUpsert)?;

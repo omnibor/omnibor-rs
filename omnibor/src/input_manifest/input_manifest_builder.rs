@@ -60,9 +60,16 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
         &mut self,
         artifact: ArtifactId<H>,
     ) -> Result<&mut Self, InputManifestError> {
-        let manifest = self.storage.get_manifest_id_for_artifact(artifact)?;
+        let manifest_aid = self
+            .storage
+            .get_manifest_for_target(artifact)?
+            .map(|manifest| {
+                ArtifactIdBuilder::with_provider(self.hash_provider).identify_manifest(&manifest)
+            });
+
         self.relations
-            .insert(InputManifestRelation::new(artifact, manifest));
+            .insert(InputManifestRelation::new(artifact, manifest_aid));
+
         Ok(self)
     }
 

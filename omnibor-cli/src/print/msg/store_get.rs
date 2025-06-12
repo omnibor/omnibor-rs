@@ -28,11 +28,11 @@ impl CommandOutput for StoreGetMsg {
     }
 
     fn short_output(&self) -> String {
-        unimplemented!("this command does not support 'short' format")
+        self.plain_output()
     }
 
     fn json_output(&self) -> serde_json::Value {
-        unimplemented!("this command does not support 'json' format")
+        serde_json::json!({"manifest": self.plain_output()})
     }
 
     fn status(&self) -> Status {
