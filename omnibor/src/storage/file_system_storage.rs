@@ -254,7 +254,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         let manifest_entry: ManifestsEntry<H> = self
             .manifests()
             .find(|entry| entry.target_aid == Some(target_aid))
-            .ok_or_else(|| InputManifestError::NoManifestFoundToRemove)?;
+            .ok_or(InputManifestError::NoManifestFoundToRemove)?;
 
         // Get a copy of it to return.
         let removed_manifest = manifest_entry.manifest()?;
@@ -284,7 +284,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
             .find(|entry| {
                 aid_builder.identify_path(&entry.manifest_path).ok() == Some(manifest_aid)
             })
-            .ok_or_else(|| InputManifestError::NoManifestFoundToRemove)?;
+            .ok_or(InputManifestError::NoManifestFoundToRemove)?;
 
         // Get a copy of it to return.
         let removed_manifest = manifest_entry.manifest()?;
@@ -475,7 +475,7 @@ impl<H: HashAlgorithm> TargetIndexRemove<H> {
         }
 
         // Update the index in memory.
-        let entry_to_remove: ArtifactId<H> = target_index
+        let entry_to_remove: ArtifactId<H> = *target_index
             .iter()
             .find(|(entry_manifest_aid, entry_target_aid)| {
                 match (self.target_aid, self.manifest_aid) {
@@ -489,9 +489,8 @@ impl<H: HashAlgorithm> TargetIndexRemove<H> {
                     }
                 }
             })
-            .ok_or_else(|| InputManifestError::NoManifestFoundToRemove)?
-            .0
-            .clone();
+            .ok_or(InputManifestError::NoManifestFoundToRemove)?
+            .0;
 
         // PANIC SAFETY: We know the key is there; we just found it.
         let removed_manifest = target_index.remove(&entry_to_remove).unwrap();
