@@ -75,9 +75,8 @@ async fn run_cmd(app: &App) -> Result<()> {
         },
         Command::Store(ref args) => match args.command {
             StoreCommand::Add(ref args) => store::add::run(app, args).await,
-            StoreCommand::Remove(ref args) => store::remove::run(app, args).await,
-            StoreCommand::List(ref args) => store::list::run(app, args).await,
             StoreCommand::Get(ref args) => store::get::run(app, args).await,
+            StoreCommand::Remove(ref args) => store::remove::run(app, args).await,
         },
         Command::Debug(ref args) => match args.command {
             DebugCommand::Paths(ref args) => debug::paths::run(app, args).await,

@@ -5,17 +5,28 @@ use crate::{
     print::{msg::store_remove::StoreRemoveMsg, PrinterCmd},
 };
 use omnibor::{hash_algorithm::Sha256, storage::Storage, ArtifactId, ArtifactIdBuilder};
+use tracing::warn;
 
 /// Run the `store remove` subcommand.
 pub async fn run(app: &App, args: &StoreRemoveArgs) -> Result<()> {
-    match args.manifest.criteria() {
-        ManifestCriteria::Target(target) => {
-            remove_by_target(app, target.into_artifact_id().map_err(Error::IdFailed)?).await
-        }
-        ManifestCriteria::Id(id) => {
-            remove_by_id(app, id.into_artifact_id().map_err(Error::IdFailed)?).await
+    for criteria in args.manifest.criteria() {
+        match criteria {
+            ManifestCriteria::Target(target) => {
+                let target_aid = target.into_artifact_id().map_err(Error::IdFailed)?;
+                if remove_by_target(app, target_aid).await.is_err() {
+                    warn!("failed to remove manifest with target ID '{}'", target_aid);
+                }
+            }
+            ManifestCriteria::Id(id) => {
+                let artifact_aid = id.into_artifact_id().map_err(Error::IdFailed)?;
+                if remove_by_id(app, artifact_aid).await.is_err() {
+                    warn!("failed to remove manifest with ID '{}'", artifact_aid);
+                }
+            }
         }
     }
+
+    Ok(())
 }
 
 async fn remove_by_target(app: &App, target: ArtifactId<Sha256>) -> Result<()> {

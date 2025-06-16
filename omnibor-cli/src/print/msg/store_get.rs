@@ -1,6 +1,6 @@
 use crate::print::{CommandOutput, Status};
 use console::Style;
-use omnibor::{hash_algorithm::Sha256, InputManifest};
+use omnibor::{hash_algorithm::Sha256, ArtifactIdBuilder, InputManifest};
 
 #[derive(Debug, Clone)]
 pub struct StoreGetMsg {
@@ -16,7 +16,7 @@ impl CommandOutput for StoreGetMsg {
             &Style::new()
                 .blue()
                 .bold()
-                .apply_to(format!("{}\n", self.manifest.header()))
+                .apply_to(self.manifest.header())
                 .to_string(),
         );
 
@@ -28,7 +28,16 @@ impl CommandOutput for StoreGetMsg {
     }
 
     fn short_output(&self) -> String {
-        self.plain_output()
+        let manifest_aid = ArtifactIdBuilder::with_rustcrypto().identify_manifest(&self.manifest);
+
+        format!(
+            "{}",
+            &Style::new()
+                .blue()
+                .bold()
+                .apply_to(manifest_aid)
+                .to_string(),
+        )
     }
 
     fn json_output(&self) -> serde_json::Value {

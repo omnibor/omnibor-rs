@@ -213,12 +213,10 @@ pub struct StoreArgs {
 pub enum StoreCommand {
     /// Add an Input Manifest to the store.
     Add(StoreAddArgs),
-    /// Remove an Input Manifest from the store.
-    Remove(StoreRemoveArgs),
-    /// List the Input Manifests in the store.
-    List(StoreListArgs),
-    /// Get a single Input Manifest in the store.
+    /// Get Input Manifests in the store.
     Get(StoreGetArgs),
+    /// Remove Input Manifests from the store.
+    Remove(StoreRemoveArgs),
 }
 
 #[derive(Debug, clap::Args)]
@@ -241,33 +239,39 @@ pub struct StoreRemoveArgs {
 }
 
 #[derive(Debug, clap::Args)]
-pub struct StoreListArgs {}
-
-#[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]
 pub struct StoreGetArgs {
+    /// Get all manifests in the store.
+    #[arg(short = 'a', long = "all", help_heading = IMPORTANT)]
+    pub all: bool,
+
     #[command(flatten)]
     pub manifest: ManifestMatcher,
 }
 
 #[derive(Debug, clap::Args)]
-#[group(required = true, multiple = false)]
 pub struct ManifestMatcher {
-    /// Get a manifest with the given target.
+    /// Get manifest with the given target.
     #[arg(short = 't', long, help_heading = IMPORTANT)]
-    target: Option<IdentifiableArg>,
+    target: Vec<IdentifiableArg>,
     /// Get a manifest with the given ID.
     #[arg(short = 'i', long, help_heading = IMPORTANT)]
-    id: Option<IdentifiableArg>,
+    id: Vec<IdentifiableArg>,
 }
 
 impl ManifestMatcher {
-    pub fn criteria(&self) -> ManifestCriteria {
-        match (&self.target, &self.id) {
-            (None, Some(id)) => ManifestCriteria::Id(id.clone()),
-            (Some(target), None) => ManifestCriteria::Target(target.clone()),
-            (None, None) | (Some(_), Some(_)) => unreachable!("clap should ensure one arg is set"),
+    pub fn criteria(&self) -> Vec<ManifestCriteria> {
+        let mut results = Vec::with_capacity(self.target.len() + self.id.len());
+
+        for target in &self.target {
+            results.push(ManifestCriteria::Target(target.clone()));
         }
+
+        for id in &self.id {
+            results.push(ManifestCriteria::Id(id.clone()));
+        }
+
+        results
     }
 }
 
