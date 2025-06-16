@@ -1,14 +1,12 @@
 //! The main ArtifactId FFI functions.
 
-use crate::artifact_id::ArtifactIdBuilder;
-
 use {
     crate::{
-        artifact_id::ArtifactId,
+        artifact_id::{ArtifactId, ArtifactIdBuilder},
         ffi::{
             error::{catch_panic, get_error_msg, Error},
             status::Status,
-            util::{check_null, write_to_c_buf},
+            util::{check_null, const_transmute, write_to_c_buf},
         },
         hash_algorithm::Sha256,
     },
@@ -80,8 +78,11 @@ pub unsafe extern "C" fn ob_str_free(s: *const c_char) {
     let _ = unsafe { CString::from_raw(s as *mut _) };
 }
 
+/// The number of bytes for a SHA-256 hash.
+const NUM_SHA_256_BYTES: usize = 32;
+
 /// A `ArtifactId` constructed with the specified hash algorithm.
-pub struct ArtifactIdSha256(ArtifactId<Sha256>);
+pub type ArtifactIdSha256 = [u8; NUM_SHA_256_BYTES];
 
 /// Construct a new `ArtifactId` from a buffer of bytes.
 ///
@@ -103,8 +104,8 @@ pub unsafe extern "C" fn ob_aid_sha256_id_bytes(
     let output = catch_panic(|| {
         check_null(content, Error::ContentPtrIsNull)?;
         let content = unsafe { from_raw_parts(content, content_len) };
-        let artifact_id =
-            ArtifactIdSha256(ArtifactIdBuilder::with_rustcrypto().identify_bytes(content));
+        let artifact_id = ArtifactIdBuilder::with_rustcrypto().identify_bytes(content);
+        let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
     });
@@ -124,7 +125,8 @@ pub unsafe extern "C" fn ob_aid_sha256_id_str(s: *const c_char) -> *const Artifa
     let output = catch_panic(|| {
         check_null(s, Error::StringPtrIsNull)?;
         let s = unsafe { CStr::from_ptr(s) }.to_str()?;
-        let artifact_id = ArtifactIdSha256(ArtifactIdBuilder::with_rustcrypto().identify_string(s));
+        let artifact_id = ArtifactIdBuilder::with_rustcrypto().identify_string(s);
+        let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
     });
@@ -145,7 +147,8 @@ pub unsafe extern "C" fn ob_aid_sha256_try_from_url(s: *const c_char) -> *const 
         check_null(s, Error::StringPtrIsNull)?;
         let raw_url = unsafe { CStr::from_ptr(s) }.to_str()?;
         let url = Url::parse(raw_url)?;
-        let artifact_id = ArtifactIdSha256(ArtifactId::<Sha256>::try_from_url(url)?);
+        let artifact_id = ArtifactId::<Sha256>::try_from_url(url)?;
+        let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
     });
@@ -165,8 +168,8 @@ pub unsafe extern "C" fn ob_aid_sha256_try_from_url(s: *const c_char) -> *const 
 pub unsafe extern "C" fn ob_aid_sha256_id_reader(fd: RawFd) -> *const ArtifactIdSha256 {
     let output = catch_panic(|| {
         let mut file = unsafe { File::from_raw_fd(fd) };
-        let artifact_id =
-            ArtifactIdSha256(ArtifactIdBuilder::with_rustcrypto().identify_file(&mut file)?);
+        let artifact_id = ArtifactIdBuilder::with_rustcrypto().identify_file(&mut file)?;
+        let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
     });
@@ -187,8 +190,8 @@ pub unsafe extern "C" fn ob_aid_sha256_id_reader(fd: RawFd) -> *const ArtifactId
 pub unsafe extern "C" fn ob_aid_sha256_id_reader(handle: RawHandle) -> *const ArtifactIdSha256 {
     let output = catch_panic(|| {
         let mut file = unsafe { File::from_raw_handle(handle) };
-        let artifact_id =
-            ArtifactIdSha256(ArtifactIdBuilder::with_rustcrypto().identify_file(&mut file)?);
+        let artifact_id = ArtifactIdBuilder::with_rustcrypto().identify_file(&mut file)?;
+        let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
     });
@@ -208,7 +211,8 @@ pub unsafe extern "C" fn ob_aid_sha256_url(ptr: *const ArtifactIdSha256) -> *con
     let output = catch_panic(|| {
         check_null(ptr, Error::ArtifactIdPtrIsNull)?;
         let artifact_id = unsafe { &*ptr };
-        let url = CString::new(artifact_id.0.url().as_str())?;
+        let artifact_id: ArtifactId<Sha256> = const_transmute(artifact_id);
+        let url = CString::new(artifact_id.url().as_str())?;
         Ok(url.into_raw() as *const _)
     });
 
@@ -225,7 +229,8 @@ pub unsafe extern "C" fn ob_aid_sha256_object_type(ptr: *const ArtifactIdSha256)
     let output = catch_panic(|| {
         check_null(ptr, Error::ArtifactIdPtrIsNull)?;
         let artifact_id = unsafe { &*ptr };
-        let object_type = artifact_id.0.object_type();
+        let artifact_id: ArtifactId<Sha256> = const_transmute(artifact_id);
+        let object_type = artifact_id.object_type();
 
         match object_type {
             "blob" => Ok(OBJECT_TYPE_BLOB),
@@ -246,7 +251,8 @@ pub unsafe extern "C" fn ob_aid_sha256_hash_len(ptr: *const ArtifactIdSha256) ->
     let output = catch_panic(|| {
         check_null(ptr, Error::ArtifactIdPtrIsNull)?;
         let artifact_id = unsafe { &*ptr };
-        let len = artifact_id.0.hash_len();
+        let artifact_id: ArtifactId<Sha256> = const_transmute(artifact_id);
+        let len = artifact_id.hash_len();
         Ok(len as c_int)
     });
 
@@ -263,7 +269,8 @@ pub unsafe extern "C" fn ob_aid_sha256_hash_bytes(ptr: *const ArtifactIdSha256) 
     let output = catch_panic(|| {
         check_null(ptr, Error::ArtifactIdPtrIsNull)?;
         let artifact_id = unsafe { &*ptr };
-        let hash = artifact_id.0.as_bytes();
+        let artifact_id: ArtifactId<Sha256> = const_transmute(artifact_id);
+        let hash = artifact_id.as_bytes();
         Ok(hash.as_ptr())
     });
 
@@ -281,7 +288,8 @@ pub unsafe extern "C" fn ob_aid_sha256_hash_string(ptr: *const ArtifactIdSha256)
     let output = catch_panic(|| {
         check_null(ptr, Error::ArtifactIdPtrIsNull)?;
         let artifact_id = unsafe { &*ptr };
-        let hash_str = artifact_id.0.as_hex();
+        let artifact_id: ArtifactId<Sha256> = const_transmute(artifact_id);
+        let hash_str = artifact_id.as_hex();
         let hash_c_str = CString::new(hash_str)?;
         Ok(hash_c_str.into_raw())
     });
@@ -303,7 +311,8 @@ pub unsafe extern "C" fn ob_aid_sha256_hash_algorithm(
     let output = catch_panic(|| {
         check_null(ptr, Error::ArtifactIdPtrIsNull)?;
         let artifact_id = unsafe { &*ptr };
-        let name = artifact_id.0.hash_algorithm();
+        let artifact_id: ArtifactId<Sha256> = const_transmute(artifact_id);
+        let name = artifact_id.hash_algorithm();
 
         match name {
             "sha256" => Ok(HASH_ALGORITHM_SHA256),

@@ -40,3 +40,26 @@ pub(crate) fn check_null<T>(ptr: *const T, error: Error) -> Result<(), Error> {
 
     Ok(())
 }
+
+// License: adapted from https://github.com/fizyk20/generic-array, reused under MIT license.
+/// A const reimplementation of the [`transmute`](core::mem::transmute) function,
+/// avoiding problems when the compiler can't prove equal sizes.
+///
+/// # Safety
+///
+/// Treat this the same as [`transmute`](core::mem::transmute), or (preferably) don't use it at all.
+#[inline(always)]
+pub(crate) const unsafe fn const_transmute<A, B>(a: A) -> B {
+    if std::mem::size_of::<A>() != std::mem::size_of::<B>() {
+        panic!("Size mismatch for generic_array::const_transmute");
+    }
+
+    #[repr(C)]
+    union Union<A, B> {
+        a: std::mem::ManuallyDrop<A>,
+        b: std::mem::ManuallyDrop<B>,
+    }
+
+    let a = std::mem::ManuallyDrop::new(a);
+    std::mem::ManuallyDrop::into_inner(Union { a }.b)
+}
