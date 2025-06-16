@@ -10,7 +10,7 @@ exit_code: 2
 ----- stdout -----
 
 ----- stderr -----
-Actions related to Input Manifests
+Create Input Manifests
 
 Usage: omnibor manifest [OPTIONS] <COMMAND>
 

@@ -1,9 +1,9 @@
 //! The `artifact id` command, which identifies files.
 
-use crate::{app::App, cli::IdArgs, error::Result, fs::*};
+use crate::{app::App, cli::IdCreateArgs, error::Result, fs::*};
 
 /// Run the `artifact id` subcommand.
-pub async fn run(app: &App, args: &IdArgs) -> Result<()> {
+pub async fn run(app: &App, args: &IdCreateArgs) -> Result<()> {
     let mut file = open_async_file(&args.path).await?;
 
     if file_is_dir(&file, &args.path).await? {

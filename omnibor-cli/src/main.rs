@@ -9,8 +9,8 @@ mod print;
 
 use crate::{
     app::App,
-    cli::{Args, ArtifactCommand, Command, DebugCommand, ManifestCommand, StoreCommand},
-    cmd::{artifact, debug, manifest, store},
+    cli::{Args, Command, DebugCommand, IdCommand, ManifestCommand, StoreCommand},
+    cmd::{debug, id, manifest, store},
     config::Config,
     error::Result,
     log::init_log,
@@ -66,9 +66,9 @@ async fn run() -> ExitCode {
 /// Select and run the chosen command.
 async fn run_cmd(app: &App) -> Result<()> {
     match app.args.command() {
-        Command::Artifact(ref args) => match args.command {
-            ArtifactCommand::Id(ref args) => artifact::id::run(app, args).await,
-            ArtifactCommand::Find(ref args) => artifact::find::run(app, args).await,
+        Command::Id(ref args) => match args.command {
+            IdCommand::Create(ref args) => id::create::run(app, args).await,
+            IdCommand::Find(ref args) => id::find::run(app, args).await,
         },
         Command::Manifest(ref args) => match args.command {
             ManifestCommand::Create(ref args) => manifest::create::run(app, args).await,

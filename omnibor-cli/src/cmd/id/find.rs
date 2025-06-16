@@ -2,7 +2,7 @@
 
 use crate::{
     app::App,
-    cli::{FindArgs, Format, SelectedHash},
+    cli::{IdFindArgs, Format, SelectedHash},
     error::{Error, Result},
     fs::*,
     print::{msg::find_file::FindFileMsg, PrintSender, PrinterCmd},
@@ -16,8 +16,8 @@ use tracing::debug;
 use url::Url;
 
 /// Run the `artifact find` subcommand.
-pub async fn run(app: &App, args: &FindArgs) -> Result<()> {
-    let FindArgs { aid, path } = args;
+pub async fn run(app: &App, args: &IdFindArgs) -> Result<()> {
+    let IdFindArgs { aid, path } = args;
     let url = aid.url();
 
     let (sender, receiver) = bounded(app.config.perf.work_queue_size());

@@ -105,38 +105,38 @@ impl Args {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum Command {
-    /// Actions related to Artifact Identifiers.
-    Artifact(ArtifactArgs),
+    /// Create identifiers and find artifacts by identifier
+    Id(IdArgs),
 
-    /// Actions related to Input Manifests.
+    /// Create Input Manifests
     Manifest(ManifestArgs),
 
-    /// Actions related to the filesystem store.
+    /// Manage the Store, where manifests are recorded
     Store(StoreArgs),
 
-    /// Actions to help debug the OmniBOR CLI.
+    /// Debug the OmniBOR CLI
     Debug(DebugArgs),
 }
 
 #[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]
-pub struct ArtifactArgs {
+pub struct IdArgs {
     #[clap(subcommand)]
-    pub command: ArtifactCommand,
+    pub command: IdCommand,
 }
 
 #[derive(Debug, Clone, clap::Subcommand)]
-pub enum ArtifactCommand {
+pub enum IdCommand {
     /// For files, prints their Artifact ID. For directories, recursively prints IDs for all files under it.
-    Id(IdArgs),
+    Create(IdCreateArgs),
 
     /// Find file matching an Artifact ID.
-    Find(FindArgs),
+    Find(IdFindArgs),
 }
 
 #[derive(Debug, Clone, clap::Args)]
 #[command(arg_required_else_help = true)]
-pub struct IdArgs {
+pub struct IdCreateArgs {
     /// Path to identify
     #[arg(short = 'p', long = "path", help_heading = IMPORTANT)]
     pub path: PathBuf,
@@ -150,7 +150,7 @@ pub struct IdArgs {
     hash: Option<SelectedHash>,
 }
 
-impl IdArgs {
+impl IdCreateArgs {
     /// Get the hash to use.
     pub fn hash(&self) -> SelectedHash {
         self.hash.unwrap_or_default()
@@ -159,7 +159,7 @@ impl IdArgs {
 
 #[derive(Debug, Clone, clap::Args)]
 #[command(arg_required_else_help = true)]
-pub struct FindArgs {
+pub struct IdFindArgs {
     /// Artifact ID to match
     #[arg(short = 'a', long = "aid", help_heading = IMPORTANT)]
     pub aid: ArtifactId<Sha256>,
@@ -286,6 +286,7 @@ pub struct DebugArgs {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum DebugCommand {
+    /// Print information on paths the CLI uses
     Paths(DebugPathsArgs),
 }
 

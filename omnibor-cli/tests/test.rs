@@ -20,7 +20,7 @@ fn no_args() {
 #[test]
 fn artifact_no_args() {
     settings!({
-        assert_cmd_snapshot!(Command::new(get_cargo_bin("omnibor")).arg("artifact"));
+        assert_cmd_snapshot!(Command::new(get_cargo_bin("omnibor")).arg("id"));
     });
 }
 
@@ -42,8 +42,8 @@ fn debug_no_args() {
 fn artifact_id_plain() {
     settings!({
         assert_cmd_snapshot!(Command::new(get_cargo_bin("omnibor")).args([
-            "artifact",
             "id",
+            "create",
             "--format",
             "plain",
             "--path",
@@ -56,8 +56,8 @@ fn artifact_id_plain() {
 fn artifact_id_short() {
     settings!({
         assert_cmd_snapshot!(Command::new(get_cargo_bin("omnibor")).args([
-            "artifact",
             "id",
+            "create",
             "--format",
             "short",
             "--path",
@@ -70,8 +70,8 @@ fn artifact_id_short() {
 fn artifact_id_json() {
     settings!({
         assert_cmd_snapshot!(Command::new(get_cargo_bin("omnibor")).args([
-            "artifact",
             "id",
+            "create",
             "--format",
             "json",
             "--path",
