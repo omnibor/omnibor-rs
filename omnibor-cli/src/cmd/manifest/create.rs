@@ -12,6 +12,8 @@ use omnibor::{
     storage::Storage,
     EmbeddingMode, InputManifestBuilder,
 };
+use std::ops::Not as _;
+use tracing::warn;
 
 /// Run the `manifest create` subcommand.
 pub async fn run(app: &App, args: &ManifestCreateArgs) -> Result<()> {
@@ -24,6 +26,7 @@ pub async fn run(app: &App, args: &ManifestCreateArgs) -> Result<()> {
     );
 
     create_with_builder(app, args, manifest_builder).await?;
+
     Ok(())
 }
 
@@ -51,6 +54,10 @@ where
         app.storage()?
             .write_manifest(&manifest)
             .map_err(Error::FailedToAddManifest)?;
+    }
+
+    if args.store.not() && manifest_builder.will_embed().not() {
+        warn!("manifest is *detached*; if adding to OmniBOR store separately, pass --target to retain target information")
     }
 
     app.print_tx

@@ -29,13 +29,10 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
     tracing_subscriber::fmt::layer()
+        .with_writer(std::io::stderr)
         .event_format(
             tracing_subscriber::fmt::format()
-                .with_level(true)
-                .without_time()
                 .with_target(false)
-                .with_thread_ids(false)
-                .with_thread_names(false)
                 .compact(),
         )
         .with_filter(filter)

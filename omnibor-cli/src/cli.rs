@@ -184,14 +184,6 @@ pub enum ManifestCommand {
 
 #[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]
-pub struct ManifestAddArgs {}
-
-#[derive(Debug, clap::Args)]
-#[command(arg_required_else_help = true)]
-pub struct ManifestRemoveArgs {}
-
-#[derive(Debug, clap::Args)]
-#[command(arg_required_else_help = true)]
 pub struct ManifestCreateArgs {
     /// Inputs to record in the manifest.
     #[arg(help_heading = IMPORTANT)]
@@ -231,13 +223,21 @@ pub enum StoreCommand {
 
 #[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]
-pub struct StoreAddArgs {}
+pub struct StoreAddArgs {
+    // TODO: Make this also accept a manifest being piped in.
+    /// The target for the Input Manifest.
+    #[arg(short = 't', long, help_heading = IMPORTANT)]
+    pub target: Option<IdentifiableArg>,
+    /// The Input Manifest to add to the store
+    #[arg(help_heading = IMPORTANT)]
+    pub manifest: PathBuf,
+}
 
 #[derive(Debug, clap::Args)]
 #[command(arg_required_else_help = true)]
 pub struct StoreRemoveArgs {
     #[command(flatten)]
-    pub manifest: GetManifest,
+    pub manifest: ManifestMatcher,
 }
 
 #[derive(Debug, clap::Args)]
@@ -247,12 +247,12 @@ pub struct StoreListArgs {}
 #[command(arg_required_else_help = true)]
 pub struct StoreGetArgs {
     #[command(flatten)]
-    pub manifest: GetManifest,
+    pub manifest: ManifestMatcher,
 }
 
 #[derive(Debug, clap::Args)]
 #[group(required = true, multiple = false)]
-pub struct GetManifest {
+pub struct ManifestMatcher {
     /// Get a manifest with the given target.
     #[arg(short = 't', long, help_heading = IMPORTANT)]
     target: Option<IdentifiableArg>,
@@ -261,7 +261,7 @@ pub struct GetManifest {
     id: Option<IdentifiableArg>,
 }
 
-impl GetManifest {
+impl ManifestMatcher {
     pub fn criteria(&self) -> ManifestCriteria {
         match (&self.target, &self.id) {
             (None, Some(id)) => ManifestCriteria::Id(id.clone()),

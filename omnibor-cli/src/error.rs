@@ -114,6 +114,12 @@ pub enum Error {
 
     #[error("failed to add manifest to the store")]
     FailedToAddManifest(#[source] InputManifestError),
+
+    #[error("unable to read manifest")]
+    UnableToReadManifest(#[source] InputManifestError),
+
+    #[error("failed to update target")]
+    FailedToUpdateTarget(#[source] InputManifestError),
 }
 
 pub type Result<T> = StdResult<T, Error>;

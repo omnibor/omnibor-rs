@@ -79,7 +79,7 @@ impl<H: HashAlgorithm> InputManifest<H> {
 
     /// Get the header used at the top of the [`InputManifest`].
     pub fn header(&self) -> String {
-        format!("gitoid:{}:{}", Blob::NAME, H::NAME)
+        format!("gitoid:{}:{}\n", Blob::NAME, H::NAME)
     }
 
     /// Get the relations inside an [`InputManifest`].
@@ -148,7 +148,7 @@ impl<H: HashAlgorithm> InputManifest<H> {
         // a manifest if they were written in full form. Instead, only the
         // hex-encoded hashes are recorded elsewhere, because all the metadata
         // is identical in a manifest and only recorded once at the beginning.
-        let _ = writeln!(bytes, "{}", self.header());
+        let _ = write!(bytes, "{}", self.header());
 
         for relation in &self.relations {
             let aid = relation.artifact;

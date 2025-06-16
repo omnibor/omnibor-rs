@@ -122,6 +122,11 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
     pub fn storage(&self) -> &S {
         &self.storage
     }
+
+    /// Whether the builder will embed in the target artifact.
+    pub fn will_embed(&self) -> bool {
+        self.mode == EmbeddingMode::Embed
+    }
 }
 
 /// Embed the manifest's [`ArtifactId`] into the target file.
