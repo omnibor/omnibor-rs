@@ -138,7 +138,7 @@ pub enum IdCommand {
 #[command(arg_required_else_help = true)]
 pub struct IdCreateArgs {
     /// Path to identify
-    #[arg(short = 'p', long = "path", help_heading = IMPORTANT)]
+    #[arg(help_heading = IMPORTANT)]
     pub path: PathBuf,
 
     /// Hash algorithm to use for Artifact IDs.

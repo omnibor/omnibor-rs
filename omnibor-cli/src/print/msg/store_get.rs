@@ -30,14 +30,11 @@ impl CommandOutput for StoreGetMsg {
     fn short_output(&self) -> String {
         let manifest_aid = ArtifactIdBuilder::with_rustcrypto().identify_manifest(&self.manifest);
 
-        format!(
-            "{}",
-            &Style::new()
-                .blue()
-                .bold()
-                .apply_to(manifest_aid)
-                .to_string(),
-        )
+        Style::new()
+            .blue()
+            .bold()
+            .apply_to(manifest_aid)
+            .to_string()
     }
 
     fn json_output(&self) -> serde_json::Value {
