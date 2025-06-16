@@ -9,19 +9,26 @@ use omnibor::{hash_algorithm::Sha256, storage::Storage, InputManifest};
 pub async fn run(app: &App, args: &StoreAddArgs) -> Result<()> {
     let mut storage = app.storage()?;
 
-    let manifest =
+    let mut manifest =
         InputManifest::<Sha256>::from_path(&args.manifest).map_err(Error::UnableToReadManifest)?;
 
-    let manifest_aid = storage
+    let target_aid = match &args.target {
+        Some(targetable) => {
+            let target_aid = targetable
+                .clone()
+                .into_artifact_id()
+                .map_err(Error::IdFailed)?;
+
+            Some(target_aid)
+        }
+        None => None,
+    };
+
+    manifest.set_target(target_aid);
+
+    storage
         .write_manifest(&manifest)
         .map_err(Error::FailedToAddManifest)?;
-
-    if let Some(target) = args.target.clone() {
-        let target_aid = target.into_artifact_id().map_err(Error::IdFailed)?;
-        storage
-            .update_target_for_manifest(manifest_aid, target_aid)
-            .map_err(Error::FailedToUpdateTarget)?;
-    }
 
     Ok(())
 }

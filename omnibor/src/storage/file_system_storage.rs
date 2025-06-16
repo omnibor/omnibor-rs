@@ -225,6 +225,10 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
             InputManifestError::CantWriteManifest(path.clone_as_boxstr(), Box::new(source))
         })?;
 
+        if let Some(target_aid) = manifest.target() {
+            self.update_target_for_manifest(manifest_aid, target_aid)?;
+        }
+
         Ok(manifest_aid)
     }
 

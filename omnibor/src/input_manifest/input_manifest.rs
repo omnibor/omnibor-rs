@@ -72,7 +72,7 @@ impl<H: HashAlgorithm> InputManifest<H> {
     }
 
     /// Set a new target.
-    pub(crate) fn set_target(&mut self, target: Option<ArtifactId<H>>) -> &mut Self {
+    pub fn set_target(&mut self, target: Option<ArtifactId<H>>) -> &mut Self {
         self.target = target;
         self
     }

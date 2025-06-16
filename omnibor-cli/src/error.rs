@@ -117,9 +117,6 @@ pub enum Error {
 
     #[error("unable to read manifest")]
     UnableToReadManifest(#[source] InputManifestError),
-
-    #[error("failed to update target")]
-    FailedToUpdateTarget(#[source] InputManifestError),
 }
 
 pub type Result<T> = StdResult<T, Error>;

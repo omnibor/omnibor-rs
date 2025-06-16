@@ -35,6 +35,8 @@ pub trait Storage<H: HashAlgorithm> {
     ) -> Result<Option<InputManifest<H>>, InputManifestError>;
 
     /// Write a manifest to the storage.
+    ///
+    /// If the manifest has a target attached, update any indices.
     fn write_manifest(
         &mut self,
         manifest: &InputManifest<H>,
