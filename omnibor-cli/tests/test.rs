@@ -46,7 +46,6 @@ fn artifact_id_plain() {
             "create",
             "--format",
             "plain",
-            "--path",
             "tests/data/main.c"
         ]))
     });
@@ -60,7 +59,6 @@ fn artifact_id_short() {
             "create",
             "--format",
             "short",
-            "--path",
             "tests/data/main.c"
         ]))
     });
@@ -74,7 +72,6 @@ fn artifact_id_json() {
             "create",
             "--format",
             "json",
-            "--path",
             "tests/data/main.c"
         ]))
     });
