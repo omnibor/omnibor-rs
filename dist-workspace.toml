@@ -29,6 +29,8 @@ install-path = ["~/.local/bin", "~/.omnibor/bin"]
 
 # NOTE: MUST be synced manually with runners in `.github/workflows/test.yml`
 [dist.github-custom-runners]
+# Needed to run, generally, given the Ubuntu 20.04 retirement.
+global = "ubuntu-22.04"
 # Ensure Apple Silicon macOS builds run natively rather than cross-compiling
 # from x86. Also makes sure our Apple Silicon macOS release builds match the
 # runner used for regular CI testing.
