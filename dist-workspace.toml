@@ -12,11 +12,11 @@ installers = ["shell", "powershell", "homebrew"]
 # Target platforms to build apps for (Rust target-triple syntax)
 targets = [
     "aarch64-apple-darwin",
-    "aarch64-unknown-linux-gnu",
-    "aarch64-pc-windows-msvc",
     "x86_64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
     "x86_64-unknown-linux-gnu",
     "x86_64-unknown-linux-musl",
+    "aarch64-pc-windows-msvc",
     "x86_64-pc-windows-msvc",
 ]
 # Which actions to run on pull requests
@@ -30,18 +30,21 @@ install-path = ["~/.local/bin", "~/.omnibor/bin"]
 
 # NOTE: MUST be synced manually with runners in `.github/workflows/test.yml`
 [dist.github-custom-runners]
-global = "ubuntu-22.04"
 # Ensure Apple Silicon macOS builds run natively rather than cross-compiling
 # from x86. Also makes sure our Apple Silicon macOS release builds match the
 # runner used for regular CI testing.
 aarch64-apple-darwin = "macos-14"
+x86_64-apple-darwin = "macos-13"
 # Update our Ubuntu release runs away from Ubuntu 20.04, which is now being
 # sunset by GitHub. They only track the last two LTS Ubuntu releases for free
 # runners, and with 24.04 out they're sunsetting 20.04. We're *just* moving to
 # 22.04, since releases compiled against 22.04's glibc should be forwards-
 # compatible with 24.04, but if we built on 24.04 the glibc *would not* be
 # backwards-compatible.
+aarch64-unknown-linux-gnu = "ubuntu-22.04"
 x86_64-unknown-linux-gnu = "ubuntu-22.04"
+x86_64-unknown-linux-musl = "ubuntu-22.04"
 # GitHub has sunset older versions of windows, so this ensures we can actually
 # run in GitHub Actions.
+aarch64-pc-windows-msvc = "windows-2022"
 x86_64-pc-windows-msvc = "windows-2022"
