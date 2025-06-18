@@ -1,7 +1,7 @@
 [package]
 
 name = "omnibor-cli"
-version = "0.9.0"
+version = "0.9.1"
 
 description = "CLI for working with OmniBOR Identifiers and Manifests"
 repository = "https://github.com/omnibor/omnibor-rs"
