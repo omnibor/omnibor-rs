@@ -9,8 +9,7 @@ use {
         fmt::{Debug, Formatter, Result as FmtResult},
         hash::{Hash, Hasher},
     },
-    serde::{de::Deserializer, Deserialize, Serialize, Serializer},
-    std::{fmt::Display, path::PathBuf, result::Result as StdResult, str::FromStr},
+    std::{fmt::Display, path::PathBuf, str::FromStr},
     url::Url,
 };
 
@@ -284,25 +283,6 @@ impl<H: HashAlgorithm> TryFrom<Url> for ArtifactId<H> {
 
     fn try_from(url: Url) -> Result<ArtifactId<H>, ArtifactIdError> {
         let gitoid = GitOid::try_from_url(url)?;
-        Ok(ArtifactId::from_gitoid(gitoid))
-    }
-}
-
-impl<H: HashAlgorithm> Serialize for ArtifactId<H> {
-    fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.gitoid.serialize(serializer)
-    }
-}
-
-impl<'de, H: HashAlgorithm> Deserialize<'de> for ArtifactId<H> {
-    fn deserialize<D>(deserializer: D) -> StdResult<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let gitoid = GitOid::<H, Blob>::deserialize(deserializer)?;
         Ok(ArtifactId::from_gitoid(gitoid))
     }
 }

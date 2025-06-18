@@ -166,4 +166,16 @@ pub enum InputManifestError {
     /// Can't remove manifest from storage.
     #[error("can't remove manifest from storage")]
     CantRemoveManifest(#[source] Box<IoError>),
+
+    /// Invalid line in metadata file.
+    #[error("invalid line in metadata file: '{0}'")]
+    InvalidMetadataLine(Box<str>),
+
+    /// Invalid path in metadata file.
+    #[error("invalid path in metadata file: '{0}'")]
+    InvalidPathInMetadata(Box<str>),
+
+    /// Invalid build-id.
+    #[error("invalid build-id '{0}'")]
+    InvalidBuildId(Box<str>),
 }

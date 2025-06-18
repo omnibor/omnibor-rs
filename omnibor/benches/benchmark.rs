@@ -1,7 +1,8 @@
 //! Benchmarks comparing cryptography backends.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use omnibor::ArtifactIdBuilder;
+use std::hint::black_box;
 
 #[cfg(not(any(
     feature = "backend-rustcrypto",

@@ -6,16 +6,11 @@ use {
         hash_algorithm::HashAlgorithm, object_type::ObjectType,
         util::clone_as_boxstr::CloneAsBoxstr,
     },
-    serde::{
-        de::{Deserializer, Error as DeserializeError, Visitor},
-        Deserialize, Serialize, Serializer,
-    },
     std::{
         cmp::Ordering,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
         hash::{Hash, Hasher},
         marker::PhantomData,
-        result::Result as StdResult,
         str::FromStr,
     },
     url::Url,
@@ -192,54 +187,6 @@ where
             H::NAME,
             self.as_hex()
         )
-    }
-}
-
-impl<H, O> Serialize for GitOid<H, O>
-where
-    H: HashAlgorithm,
-    O: ObjectType,
-{
-    fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        // Serialize self as the URL string.
-        let self_as_url_str = self.url().to_string();
-        serializer.serialize_str(&self_as_url_str)
-    }
-}
-
-impl<'de, H, O> Deserialize<'de> for GitOid<H, O>
-where
-    H: HashAlgorithm,
-    O: ObjectType,
-{
-    fn deserialize<D>(deserializer: D) -> StdResult<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        // Deserialize self from the URL string.
-        struct GitOidVisitor<H: HashAlgorithm, O: ObjectType>(PhantomData<H>, PhantomData<O>);
-
-        impl<H: HashAlgorithm, O: ObjectType> Visitor<'_> for GitOidVisitor<H, O> {
-            type Value = GitOid<H, O>;
-
-            fn expecting(&self, formatter: &mut Formatter<'_>) -> FmtResult {
-                formatter.write_str("a gitoid-scheme URL")
-            }
-
-            fn visit_str<E>(self, value: &str) -> StdResult<Self::Value, E>
-            where
-                E: DeserializeError,
-            {
-                let url = Url::parse(value).map_err(E::custom)?;
-                let id = GitOid::try_from(url).map_err(E::custom)?;
-                Ok(id)
-            }
-        }
-
-        deserializer.deserialize_str(GitOidVisitor(PhantomData, PhantomData))
     }
 }
 

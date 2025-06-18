@@ -4,13 +4,17 @@
 //!
 //! [idx]: crate#storing-input-manifests
 
+pub(crate) mod build_id;
 pub(crate) mod file_system_storage;
 pub(crate) mod in_memory_storage;
+pub(crate) mod metadata;
 #[cfg(test)]
 mod test;
 
+pub use crate::storage::build_id::BuildId;
 pub use crate::storage::file_system_storage::FileSystemStorage;
 pub use crate::storage::in_memory_storage::InMemoryStorage;
+pub use crate::storage::metadata::Metadata;
 
 use crate::{
     artifact_id::ArtifactId, error::InputManifestError, hash_algorithm::HashAlgorithm,
