@@ -28,7 +28,7 @@ github-attestations = true
 # Path that installers should place binaries in
 install-path = ["~/.local/bin", "~/.omnibor/bin"]
 
-# NOTE: MUST be synced manually with runners in `.github/workflows/hipcheck.yml`
+# NOTE: MUST be synced manually with runners in `.github/workflows/test.yml`
 [dist.github-custom-runners]
 global = "ubuntu-22.04"
 # Ensure Apple Silicon macOS builds run natively rather than cross-compiling
@@ -42,3 +42,6 @@ aarch64-apple-darwin = "macos-14"
 # compatible with 24.04, but if we built on 24.04 the glibc *would not* be
 # backwards-compatible.
 x86_64-unknown-linux-gnu = "ubuntu-22.04"
+# GitHub has sunset older versions of windows, so this ensures we can actually
+# run in GitHub Actions.
+x86_64-pc-windows-msvc = "windows-2022"
