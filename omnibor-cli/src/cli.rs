@@ -180,6 +180,8 @@ pub struct ManifestArgs {
 pub enum ManifestCommand {
     /// Create a new manifest and add it to the store
     Create(ManifestCreateArgs),
+    /// Find manifests containing an Artifact ID.
+    Find(ManifestFindArgs),
 }
 
 #[derive(Debug, clap::Args)]
@@ -200,6 +202,18 @@ pub struct ManifestCreateArgs {
     /// Write the created manifest into the OmniBOR store.
     #[arg(short = 'S', long = "store", help_heading = IMPORTANT)]
     pub store: bool,
+}
+
+#[derive(Debug, clap::Args)]
+#[command(arg_required_else_help = true)]
+pub struct ManifestFindArgs {
+    /// Artifact ID to match
+    #[arg(short = 'a', long = "aid", help_heading = IMPORTANT)]
+    pub aid: ArtifactId<Sha256>,
+
+    /// The root path to search under
+    #[arg(short = 'p', long = "path", help_heading = IMPORTANT)]
+    pub path: PathBuf,
 }
 
 #[derive(Debug, clap::Args)]

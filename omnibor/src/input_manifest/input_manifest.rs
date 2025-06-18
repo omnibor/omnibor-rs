@@ -88,6 +88,11 @@ impl<H: HashAlgorithm> InputManifest<H> {
         &self.relations[..]
     }
 
+    /// Check if the manifest contains the given input.
+    pub fn contains_input(&self, input_aid: ArtifactId<H>) -> bool {
+        self.relations().iter().any(|rel| rel.artifact == input_aid)
+    }
+
     /// Construct an [`InputManifest`] from a file at a specified path.
     pub fn from_path(path: &Path) -> Result<Self, InputManifestError> {
         let file = BufReader::new(

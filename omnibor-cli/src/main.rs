@@ -72,6 +72,7 @@ async fn run_cmd(app: &App) -> Result<()> {
         },
         Command::Manifest(ref args) => match args.command {
             ManifestCommand::Create(ref args) => manifest::create::run(app, args).await,
+            ManifestCommand::Find(ref args) => manifest::find::run(app, args).await,
         },
         Command::Store(ref args) => match args.command {
             StoreCommand::Add(ref args) => store::add::run(app, args).await,

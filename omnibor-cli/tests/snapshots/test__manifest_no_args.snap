@@ -16,6 +16,7 @@ Usage: omnibor manifest [OPTIONS] <COMMAND>
 
 Commands:
   create  Create a new manifest and add it to the store
+  find    Find manifests containing an Artifact ID
   help    Print this message or the help of the given subcommand(s)
 
 Options:
