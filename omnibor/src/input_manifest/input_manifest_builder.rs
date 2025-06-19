@@ -2,16 +2,15 @@ use {
     crate::{
         artifact_id::{ArtifactId, ArtifactIdBuilder},
         embedding_mode::EmbeddingMode,
-        error::InputManifestError,
+        error::{EmbeddingError, InputManifestError},
         hash_algorithm::HashAlgorithm,
         hash_provider::HashProvider,
-        input_manifest::{InputManifest, InputManifestRelation},
+        input_manifest::{embed::embed_manifest_in_target, InputManifest, InputManifestRelation},
         storage::Storage,
     },
     std::{
         collections::BTreeSet,
         fmt::{Debug, Formatter, Result as FmtResult},
-        fs::{File, OpenOptions},
         path::Path,
     },
 };
@@ -74,7 +73,10 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
     }
 
     /// Finish building the manifest, updating the artifact if embedding is on.
-    pub fn finish(&mut self, target: &Path) -> Result<InputManifest<H>, InputManifestError> {
+    pub fn finish(
+        &mut self,
+        target: &Path,
+    ) -> Result<Result<InputManifest<H>, EmbeddingError>, InputManifestError> {
         let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
 
         // Construct a new input manifest.
@@ -83,27 +85,15 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
         // Write the manifest to storage.
         let manifest_aid = self.storage.write_manifest(&manifest)?;
 
-        // Get the ArtifactID of the target, possibly embedding the
-        // manifest ArtifactID into the target first.
-        let target_aid = match self.mode {
-            EmbeddingMode::Embed => {
-                let mut file = OpenOptions::new()
-                    .read(true)
-                    .write(true)
-                    .open(target)
-                    .map_err(|source| {
-                        InputManifestError::FailedTargetArtifactRead(Box::new(source))
-                    })?;
-                embed_manifest_in_target(target, &mut file, manifest_aid)?;
-                builder.identify_file(&mut file)?
+        // Try to embed the manifest's Artifact ID in the target if we're in embedding mode.
+        if self.mode == EmbeddingMode::Embed {
+            if let Err(err) = embed_manifest_in_target(target, manifest_aid)? {
+                return Ok(Err(err));
             }
-            EmbeddingMode::NoEmbed => {
-                let mut file = File::open(target).map_err(|source| {
-                    InputManifestError::FailedTargetArtifactRead(Box::new(source))
-                })?;
-                builder.identify_file(&mut file)?
-            }
-        };
+        }
+
+        // Get the Artifact ID of the target.
+        let target_aid = builder.identify_path(target)?;
 
         // Update the manifest in storage with the target ArtifactID.
         self.storage
@@ -115,7 +105,27 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
         // Clear out the set of relations so you can reuse the builder.
         self.relations.clear();
 
-        Ok(manifest)
+        Ok(Ok(manifest))
+    }
+
+    /// Finish building the manifest without embedding in the target.
+    pub fn finish_without_embedding(
+        &mut self,
+        target: &Path,
+    ) -> Result<InputManifest<H>, InputManifestError> {
+        let mut builder = InputManifestBuilder {
+            relations: self.relations.clone(),
+            mode: EmbeddingMode::NoEmbed,
+            hash_provider: self.hash_provider,
+            storage: &mut self.storage,
+        };
+
+        // PANIC SAFETY: Since the embedding node is NoEmbed this will never panic.
+        let res = builder.finish(target).map(|res| res.unwrap());
+
+        self.relations.clear();
+
+        res
     }
 
     /// Access the underlying storage for the builder.
@@ -127,80 +137,6 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
     pub fn will_embed(&self) -> bool {
         self.mode == EmbeddingMode::Embed
     }
-}
-
-/// Embed the manifest's [`ArtifactId`] into the target file.
-fn embed_manifest_in_target<H: HashAlgorithm>(
-    path: &Path,
-    file: &mut File,
-    manifest_aid: ArtifactId<H>,
-) -> Result<ArtifactId<H>, InputManifestError> {
-    match TargetType::infer(path, file) {
-        TargetType::KnownBinaryType(BinaryType::ElfFile) => {
-            embed_in_elf_file(path, file, manifest_aid)
-        }
-        TargetType::KnownTextType(TextType::PrefixComments { prefix }) => {
-            embed_in_text_file_with_prefix_comment(path, file, manifest_aid, &prefix)
-        }
-        TargetType::KnownTextType(TextType::WrappedComments { prefix, suffix }) => {
-            embed_in_text_file_with_wrapped_comment(path, file, manifest_aid, &prefix, &suffix)
-        }
-        TargetType::Unknown => Err(InputManifestError::UnknownEmbeddingTarget),
-    }
-}
-
-fn embed_in_elf_file<H: HashAlgorithm>(
-    _path: &Path,
-    _file: &mut File,
-    _manifest_aid: ArtifactId<H>,
-) -> Result<ArtifactId<H>, InputManifestError> {
-    todo!("embedding mode for ELF files is not yet implemented")
-}
-
-fn embed_in_text_file_with_prefix_comment<H: HashAlgorithm>(
-    _path: &Path,
-    _file: &mut File,
-    _manifest_aid: ArtifactId<H>,
-    _prefix: &str,
-) -> Result<ArtifactId<H>, InputManifestError> {
-    todo!("embedding mode for text files is not yet implemented")
-}
-
-fn embed_in_text_file_with_wrapped_comment<H: HashAlgorithm>(
-    _path: &Path,
-    _file: &mut File,
-    _manifest_aid: ArtifactId<H>,
-    _prefix: &str,
-    _suffix: &str,
-) -> Result<ArtifactId<H>, InputManifestError> {
-    todo!("embedding mode for text files is not yet implemented")
-}
-
-#[allow(unused)]
-#[derive(Debug)]
-enum TargetType {
-    KnownBinaryType(BinaryType),
-    KnownTextType(TextType),
-    Unknown,
-}
-
-impl TargetType {
-    fn infer(_path: &Path, _file: &File) -> Self {
-        todo!("inferring target file type is not yet implemented")
-    }
-}
-
-#[allow(unused)]
-#[derive(Debug)]
-enum BinaryType {
-    ElfFile,
-}
-
-#[allow(unused)]
-#[derive(Debug)]
-enum TextType {
-    PrefixComments { prefix: String },
-    WrappedComments { prefix: String, suffix: String },
 }
 
 #[cfg(test)]
@@ -242,6 +178,7 @@ mod tests {
         .add_relation(second_input_aid)
         .unwrap()
         .finish(&target)
+        .unwrap()
         .unwrap();
 
         // Check the first relation in the manifest.

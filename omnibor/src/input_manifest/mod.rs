@@ -1,5 +1,6 @@
 //! Record of software build inputs by Artifact ID.
 
+pub(crate) mod embed;
 pub mod input_manifest;
 pub mod input_manifest_builder;
 

@@ -40,10 +40,6 @@ pub enum InputManifestError {
         got: Box<str>,
     },
 
-    /// Unknown file type for manifest ID embedding.
-    #[error("unknown file type for manifest ID embedding")]
-    UnknownEmbeddingTarget,
-
     /// Failed to read input manifest file.
     #[error("failed to read input manifest file")]
     FailedManifestRead(#[source] Box<IoError>),

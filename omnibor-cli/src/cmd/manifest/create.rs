@@ -19,11 +19,8 @@ use tracing::warn;
 pub async fn run(app: &App, args: &ManifestCreateArgs) -> Result<()> {
     let storage = app.storage()?;
 
-    let manifest_builder = InputManifestBuilder::<Sha256, _, _>::new(
-        EmbeddingMode::NoEmbed,
-        storage,
-        RustCrypto::new(),
-    );
+    let manifest_builder =
+        InputManifestBuilder::<Sha256, _, _>::new(EmbeddingMode::Embed, storage, RustCrypto::new());
 
     create_with_builder(app, args, manifest_builder).await?;
 
@@ -48,7 +45,13 @@ where
 
     let manifest = manifest_builder
         .finish(&args.target)
-        .map_err(Error::ManifestBuildFailed)?;
+        .map_err(Error::ManifestBuildFailed)?
+        .or_else(|embedding_error| {
+            warn!("embedding failed; '{}'", embedding_error);
+            manifest_builder
+                .finish_without_embedding(&args.target)
+                .map_err(Error::ManifestBuildFailed)
+        })?;
 
     if args.store {
         app.storage()?
