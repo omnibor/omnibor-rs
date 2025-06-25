@@ -26,4 +26,8 @@ pub enum EmbeddingError {
     /// Unknown embedding support.
     #[error("unknown embedding support for language '{0}'. Consider opening a Pull Request on the OmniBOR Rust repo to fix it!")]
     UnknownEmbeddingSupport(Box<str>),
+
+    /// Unknown programming language.
+    #[error("unknown programming language: '{0}'")]
+    UnknownProgLang(Box<str>),
 }

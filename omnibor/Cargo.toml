@@ -52,7 +52,7 @@ bytecount = { version = "0.6.8", features = ["runtime-dispatch-simd"] }
 hex = "0.4.3"
 hyperpolyglot = "0.1.7"
 serde = { version = "1.0.197", features = ["derive"] }
-strum = { version = "0.27.1", features = ["derive", "phf"] }
+# strum = { version = "0.27.1", features = ["derive", "phf"] }
 thiserror = "2.0.0"
 tokio = { version = "1.36.0", features = ["io-util", "fs"] }
 url = "2.4.1"

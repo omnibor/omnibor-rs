@@ -6,7 +6,16 @@ use {
         util::clone_as_boxstr::CloneAsBoxstr,
     },
     bindet::FileType as BinaryType,
-    std::{fmt::Debug, fs::OpenOptions, io::Write as _, ops::Not, path::Path},
+    std::{
+        collections::HashMap,
+        fmt::{Debug, Display},
+        fs::OpenOptions,
+        io::Write as _,
+        ops::Not,
+        path::Path,
+        str::FromStr,
+        sync::LazyLock,
+    },
 };
 
 const EMBED_KEY: &str = "OmniBOR-Input-Manifest";
@@ -224,1113 +233,1185 @@ impl KnownProgLang {
 }
 
 /// Known programming languages, to tie into the output of hyperpolyglot.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::EnumString, strum::Display)]
-#[strum(use_phf)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum KnownProgLang {
-    #[strum(to_string = "F*")]
     FStar,
-    #[strum(to_string = "Git Attributes")]
     GitAttributes,
-    #[strum(to_string = "IRC Log")]
     IrcLog,
-    #[strum(to_string = "ECLiPSe")]
     Eclipse,
-    #[strum(to_string = "Blade")]
     Blade,
-    #[strum(to_string = "Pure Data")]
     PureData,
-    #[strum(to_string = "Grammatical Framework")]
     GrammaticalFramework,
-    #[strum(to_string = "Brightscript")]
     Brightscript,
-    #[strum(to_string = "Go")]
     Go,
-    #[strum(to_string = "BitBake")]
     BitBake,
-    #[strum(to_string = "COBOL")]
     Cobol,
-    #[strum(to_string = "Dhall")]
     Dhall,
-    #[strum(to_string = "OpenCL")]
     OpenCl,
-    #[strum(to_string = "Pod 6")]
     Pod6,
-    #[strum(to_string = "Scheme")]
     Scheme,
-    #[strum(to_string = "DIGITAL Command Language")]
     DigitalCommandLanguage,
-    #[strum(to_string = "Diff")]
     Diff,
-    #[strum(to_string = "Motorola 68K Assembly")]
     Motorola68KAssembly,
-    #[strum(to_string = "Io")]
     Io,
-    #[strum(to_string = "SRecode Template")]
     SRecodeTemplate,
-    #[strum(to_string = "SCSS")]
     Scss,
-    #[strum(to_string = "AMPL")]
     Ampl,
-    #[strum(to_string = "Regular Expression")]
     RegularExpression,
-    #[strum(to_string = "CoNLL-U")]
     CoNllU,
-    #[strum(to_string = "nanorc")]
     NanoRc,
-    #[strum(to_string = "Slice")]
     Slice,
-    #[strum(to_string = "OpenSCAD")]
     OpenScad,
-    #[strum(to_string = "JSX")]
     Jsx,
-    #[strum(to_string = "YANG")]
     Yang,
-    #[strum(to_string = "F#")]
     FSharp,
-    #[strum(to_string = "X10")]
     X10,
-    #[strum(to_string = "Common Workflow Language")]
     CommonWorkflowLanguage,
-    #[strum(to_string = "Stan")]
     Stan,
-    #[strum(to_string = "Befunge")]
     Befunge,
-    #[strum(to_string = "Gentoo Ebuild")]
     GentooEbuild,
-    #[strum(to_string = "Altium Designer")]
     AltiumDesigner,
-    #[strum(to_string = "Alloy")]
     Alloy,
-    #[strum(to_string = "Sage")]
     Sage,
-    #[strum(to_string = "Object Data Instance Notation")]
     ObjectDataInstanceNotation,
-    #[strum(to_string = "ZenScript")]
     ZenScript,
-    #[strum(to_string = "AntBuildSystem")]
     AntBuildSystem,
-    #[strum(to_string = "Pep8")]
     Pep8,
-    #[strum(to_string = "BibTeX")]
     BibTeX,
-    #[strum(to_string = "JSON")]
     Json,
-    #[strum(to_string = "Maven POM")]
     MavenPom,
-    #[strum(to_string = "Smarty")]
     Smarty,
-    #[strum(to_string = "Wavefront Object")]
     WavefrontObject,
-    #[strum(to_string = "C++")]
     Cpp,
-    #[strum(to_string = "Ignore List")]
     IgnoreList,
-    #[strum(to_string = "DirectX 3D File")]
     DirectX3DFile,
-    #[strum(to_string = "Apex")]
     Apex,
-    #[strum(to_string = "LLVM")]
     Llvm,
-    #[strum(to_string = "UnrealScript")]
     UnrealScript,
-    #[strum(to_string = "TLA")]
     Tla,
-    #[strum(to_string = "HCL")]
     Hcl,
-    #[strum(to_string = "Edje Data Collection")]
     EdjeDataCollection,
-    #[strum(to_string = "Fancy")]
     Fancy,
-    #[strum(to_string = "KRL")]
     Krl,
-    #[strum(to_string = "ECL")]
     Ecl,
-    #[strum(to_string = "Roff Manpage")]
     RoffManpage,
-    #[strum(to_string = "Objective-C++")]
     ObjectiveCpp,
-    #[strum(to_string = "Turing")]
     Turing,
-    #[strum(to_string = "ShaderLab")]
     ShaderLab,
-    #[strum(to_string = "Makefile")]
     Makefile,
-    #[strum(to_string = "Factor")]
     Factor,
-    #[strum(to_string = "CWeb")]
     CWeb,
-    #[strum(to_string = "LSL")]
     Lsl,
-    #[strum(to_string = "Pony")]
     Pony,
-    #[strum(to_string = "Gherkin")]
     Gherkin,
-    #[strum(to_string = "Awk")]
     Awk,
-    #[strum(to_string = "Cycript")]
     Cycript,
-    #[strum(to_string = "Jolie")]
     Jolie,
-    #[strum(to_string = "Ballerina")]
     Ballerina,
-    #[strum(to_string = "Starlark")]
     Starlark,
-    #[strum(to_string = "Gettext Catalog")]
     GettextCatalog,
-    #[strum(to_string = "Lolcode")]
     Lolcode,
-    #[strum(to_string = "Oz")]
     Oz,
-    #[strum(to_string = "PlantUML")]
     PlantUml,
-    #[strum(to_string = "SMT")]
     Smt,
-    #[strum(to_string = "V")]
     V,
-    #[strum(to_string = "Nix")]
     Nix,
-    #[strum(to_string = "Zeek")]
     Zeek,
-    #[strum(to_string = "Jison Lex")]
     JisonLex,
-    #[strum(to_string = "cURL Config")]
     CurlConfig,
-    #[strum(to_string = "KiCad Layout")]
     KiCadLayout,
-    #[strum(to_string = "HTML+EEX")]
     HtmlPlusEex,
-    #[strum(to_string = "Mask")]
     Mask,
-    #[strum(to_string = "Isabelle")]
     Isabelle,
-    #[strum(to_string = "LoomScript")]
     LoomScript,
-    #[strum(to_string = "Raku")]
     Raku,
-    #[strum(to_string = "VBA")]
     Vba,
-    #[strum(to_string = "ASN.1")]
     Asn1,
-    #[strum(to_string = "Brainfuck")]
     Brainfuck,
-    #[strum(to_string = "DTrace")]
     DTrace,
-    #[strum(to_string = "Elm")]
     Elm,
-    #[strum(to_string = "Crystal")]
     Crystal,
-    #[strum(to_string = "Fortran")]
     Fortran,
-    #[strum(to_string = "ChucK")]
     ChucK,
-    #[strum(to_string = "HyPhy")]
     HyPhy,
-    #[strum(to_string = "Genie")]
     Genie,
-    #[strum(to_string = "MQL5")]
     Mql5,
-    #[strum(to_string = "PLSQL")]
     PlSql,
-    #[strum(to_string = "Jasmin")]
     Jasmin,
-    #[strum(to_string = "desktop")]
     Desktop,
-    #[strum(to_string = "Self")]
     SelfLang,
-    #[strum(to_string = "Swift")]
     Swift,
-    #[strum(to_string = "mIRC Script")]
     MIrcScript,
-    #[strum(to_string = "Smali")]
     Smali,
-    #[strum(to_string = "eC")]
     Ec,
-    #[strum(to_string = "JavaServerPages")]
     JavaServerPages,
-    #[strum(to_string = "Lean")]
     Lean,
-    #[strum(to_string = "Oxygene")]
     Oxygene,
-    #[strum(to_string = "STON")]
     Ston,
-    #[strum(to_string = "Inno Setup")]
     InnoSetup,
-    #[strum(to_string = "ASP")]
     Asp,
-    #[strum(to_string = "Gosu")]
     Gosu,
-    #[strum(to_string = "Gradle")]
     Gradle,
-    #[strum(to_string = "Objective-J")]
     ObjectiveJ,
-    #[strum(to_string = "Volt")]
     Volt,
-    #[strum(to_string = "XC")]
     Xc,
-    #[strum(to_string = "Golo")]
     Golo,
-    #[strum(to_string = "EditorConfig")]
     EditorConfig,
-    #[strum(to_string = "G-code")]
     GCode,
-    #[strum(to_string = "Mirah")]
     Mirah,
-    #[strum(to_string = "Python console")]
     PythonConsole,
-    #[strum(to_string = "Inform 7")]
     Inform7,
-    #[strum(to_string = "VHDL")]
     Vhdl,
-    #[strum(to_string = "M4")]
     M4,
-    #[strum(to_string = "q")]
     Q,
-    #[strum(to_string = "ColdFusion")]
     ColdFusion,
-    #[strum(to_string = "ANTLR")]
     Antlr,
-    #[strum(to_string = "Ren'Py")]
     RenPy,
-    #[strum(to_string = "EML")]
     Eml,
-    #[strum(to_string = "TSX")]
     Tsx,
-    #[strum(to_string = "NumPy")]
     NumPy,
-    #[strum(to_string = "nesC")]
     NesC,
-    #[strum(to_string = "Modula-3")]
     Modula3,
-    #[strum(to_string = "NewLisp")]
     NewLisp,
-    #[strum(to_string = "Pug")]
     Pug,
-    #[strum(to_string = "Grace")]
     Grace,
-    #[strum(to_string = "Idris")]
     Idris,
-    #[strum(to_string = "YASnippet")]
     YaSnippet,
-    #[strum(to_string = "Parrot Internal Representation")]
     ParrotInternalRepresentation,
-    #[strum(to_string = "SaltStack")]
     SaltStackm,
-    #[strum(to_string = "REXX")]
     Rexx,
-    #[strum(to_string = "Cloud Firestore Security Rules")]
     CloudFirestoreSecurityRules,
-    #[strum(to_string = "INI")]
     Ini,
-    #[strum(to_string = "MATLAB")]
     Matlab,
-    #[strum(to_string = "Svelte")]
     Svelte,
-    #[strum(to_string = "Text")]
     Text,
-    #[strum(to_string = "Arc")]
     Arc,
-    #[strum(to_string = "Xojo")]
     Xojo,
-    #[strum(to_string = "HTML+Django")]
     HtmlPlusDjango,
-    #[strum(to_string = "AngelScript")]
     AngelScript,
-    #[strum(to_string = "Slash")]
     Slash,
-    #[strum(to_string = "Zephir")]
     Zephir,
-    #[strum(to_string = "Vim Snippet")]
     VimSmippet,
-    #[strum(to_string = "SuperCollider")]
     SuperCollider,
-    #[strum(to_string = "Modula-2")]
     Modula2,
-    #[strum(to_string = "Web Ontology Language")]
     WebOntologyLanguage,
-    #[strum(to_string = "Handlebars")]
     Handlebars,
-    #[strum(to_string = "COLLADA")]
     Collada,
-    #[strum(to_string = "HTML+Razor")]
     HtmlPlusRazor,
-    #[strum(to_string = "SPARQL")]
     Sparql,
-    #[strum(to_string = "Texinfo")]
     Texinfo,
-    #[strum(to_string = "Stata")]
     Stata,
-    #[strum(to_string = "Opa")]
     Opa,
-    #[strum(to_string = "Ring")]
     Ring,
-    #[strum(to_string = "WebAssembly")]
     WebAssembly,
-    #[strum(to_string = "ABAP")]
     Abap,
-    #[strum(to_string = "FLUX")]
     Flex,
-    #[strum(to_string = "Nim")]
     Nim,
-    #[strum(to_string = "GAMS")]
     Gams,
-    #[strum(to_string = "SAS")]
     Sas,
-    #[strum(to_string = "SQL")]
     Sql,
-    #[strum(to_string = "CSON")]
     Cson,
-    #[strum(to_string = "Harbour")]
     Harbour,
-    #[strum(to_string = "RHTML")]
     RHtml,
-    #[strum(to_string = "Nemerle")]
     Nemerle,
-    #[strum(to_string = "IDL")]
     Idl,
-    #[strum(to_string = "JSON with Comments")]
     JsonWithComments,
-    #[strum(to_string = "ActionScript")]
     ActionScript,
-    #[strum(to_string = "MediaWiki")]
     MediaWiki,
-    #[strum(to_string = "Nginx")]
     Nginx,
-    #[strum(to_string = "Less")]
     Less,
-    #[strum(to_string = "Forth")]
     Forth,
-    #[strum(to_string = "OpenRC runscript")]
     OpenRcRunscript,
-    #[strum(to_string = "APL")]
     Apl,
-    #[strum(to_string = "Python")]
     Python,
-    #[strum(to_string = "Scaml")]
     Scaml,
-    #[strum(to_string = "Verilog")]
     Verilog,
-    #[strum(to_string = "QML")]
     Qml,
-    #[strum(to_string = "Assembly")]
     Assembly,
-    #[strum(to_string = "Marko")]
     Marko,
-    #[strum(to_string = "D-ObjDump")]
     DObjDump,
-    #[strum(to_string = "P4")]
     P4,
-    #[strum(to_string = "sed")]
     Sed,
-    #[strum(to_string = "Rouge")]
     Rouge,
-    #[strum(to_string = "Pan")]
     Pan,
-    #[strum(to_string = "DNS Zone")]
     DnsZone,
-    #[strum(to_string = "RPM Spec")]
     RpmSpec,
-    #[strum(to_string = "JavaScript")]
     JavaScript,
-    #[strum(to_string = "SystemVerilog")]
     SystemVerilog,
-    #[strum(to_string = "Wollok")]
     Wollok,
-    #[strum(to_string = "R")]
     R,
-    #[strum(to_string = "Latte")]
     Latte,
-    #[strum(to_string = "Mathematica")]
     Mathematica,
-    #[strum(to_string = "EBNF")]
     Ebnf,
-    #[strum(to_string = "Rebol")]
     Rebol,
-    #[strum(to_string = "SWIG")]
     Swig,
-    #[strum(to_string = "JFlex")]
     JFlex,
-    #[strum(to_string = "FIGlet Font")]
     FigletFont,
-    #[strum(to_string = "dircolors")]
     Dircolors,
-    #[strum(to_string = "Shen")]
     Shen,
-    #[strum(to_string = "Scala")]
     Scala,
-    #[strum(to_string = "AGS Script")]
     AgsScript,
-    #[strum(to_string = "LilyPond")]
     LilyPond,
-    #[strum(to_string = "Standard ML")]
     StandardMl,
-    #[strum(to_string = "Bluespec")]
     Bluespec,
-    #[strum(to_string = "Unity3D Asset")]
     Unity3DAsset,
-    #[strum(to_string = "Markdown")]
     Markdown,
-    #[strum(to_string = "API Blueprint")]
     ApiBlueprint,
-    #[strum(to_string = "Logos")]
     Logos,
-    #[strum(to_string = "Readline Config")]
     ReadlineConfig,
-    #[strum(to_string = "Cool")]
     Cool,
-    #[strum(to_string = "REALbasic")]
     RealBasic,
-    #[strum(to_string = "CodeQL")]
     CodeQl,
-    #[strum(to_string = "WebIDL")]
     WebIdl,
-    #[strum(to_string = "CLIPS")]
     Clips,
-    #[strum(to_string = "GAP")]
     Gap,
-    #[strum(to_string = "Nu")]
     Nu,
-    #[strum(to_string = "Game Maker Language")]
     GameMakerLanguage,
-    #[strum(to_string = "PostScript")]
     PostScript,
-    #[strum(to_string = "HAProxy")]
     HaProxy,
-    #[strum(to_string = "Groovy")]
     Groovy,
-    #[strum(to_string = "Myghty")]
     Myghty,
-    #[strum(to_string = "PureScript")]
     PureScript,
-    #[strum(to_string = "TSQL")]
     Tsql,
-    #[strum(to_string = "Java Properties")]
     JavaProperties,
-    #[strum(to_string = "Ecere Projects")]
     EcereProjects,
-    #[strum(to_string = "Type Language")]
     TypeLanguage,
-    #[strum(to_string = "RAML")]
     Raml,
-    #[strum(to_string = "Common Lisp")]
     CommonLisp,
-    #[strum(to_string = "Creole")]
     Creole,
-    #[strum(to_string = "Modelica")]
     Modelica,
-    #[strum(to_string = "TeX")]
     TeX,
-    #[strum(to_string = "Elixir")]
     Elixir,
-    #[strum(to_string = "NetLink")]
     NetLink,
-    #[strum(to_string = "Zig")]
     Zig,
-    #[strum(to_string = "Riot")]
     Riot,
-    #[strum(to_string = "PHP")]
     Php,
-    #[strum(to_string = "OpenEdge ABL")]
     OpenEdgeAbl,
-    #[strum(to_string = "AsciiDoc")]
     AsciiDoc,
-    #[strum(to_string = "LookML")]
     LookMl,
-    #[strum(to_string = "Source Pawn")]
     SourcePawn,
-    #[strum(to_string = "Yacc")]
     Yacc,
-    #[strum(to_string = "ApacheConf")]
     ApacheConf,
-    #[strum(to_string = "TXL")]
     Txl,
-    #[strum(to_string = "PowerShell")]
     PowerShell,
-    #[strum(to_string = "GAML")]
     Gaml,
-    #[strum(to_string = "XCompose")]
     XCompose,
-    #[strum(to_string = "C#")]
     CSharp,
-    #[strum(to_string = "Scilab")]
     Scilab,
-    #[strum(to_string = "RobotFramework")]
     RobotFramework,
-    #[strum(to_string = "Cython")]
     Cython,
-    #[strum(to_string = "Emacs Lisp")]
     EmacsLisp,
-    #[strum(to_string = "Metal")]
     Metal,
-    #[strum(to_string = "JavaScript+ERB")]
     JavaScriptPlusErb,
-    #[strum(to_string = "DataWeave")]
     DataWeave,
-    #[strum(to_string = "Logtalk")]
     Logtalk,
-    #[strum(to_string = "PLpgSQL")]
     PlPgSql,
-    #[strum(to_string = "Augeas")]
     Augeas,
-    #[strum(to_string = "MLIR")]
     Mlir,
-    #[strum(to_string = "POV-Ray SDL")]
     PovRaySdl,
-    #[strum(to_string = "Solidity")]
     Solidity,
-    #[strum(to_string = "Mercury")]
     Mercury,
-    #[strum(to_string = "Clojure")]
     Clojure,
-    #[strum(to_string = "Genshi")]
     Genshi,
-    #[strum(to_string = "Csound")]
     Csound,
-    #[strum(to_string = "Monkey")]
     Monkey,
-    #[strum(to_string = "Boo")]
     Boo,
-    #[strum(to_string = "Unix Assembly")]
     UnixAssembly,
-    #[strum(to_string = "MAXScript")]
     MaxScript,
-    #[strum(to_string = "Rich Text Format")]
     RichTextFormat,
-    #[strum(to_string = "Faust")]
     Faust,
-    #[strum(to_string = "Erlang")]
     Erlang,
-    #[strum(to_string = "Filterscript")]
     Filterscript,
-    #[strum(to_string = "Stylus")]
     Stylus,
-    #[strum(to_string = "mupad")]
     Mupad,
-    #[strum(to_string = "Org")]
     Org,
-    #[strum(to_string = "Glyph")]
     Glyph,
-    #[strum(to_string = "SubRip Text")]
     SubRipText,
-    #[strum(to_string = "Pod")]
     Pod,
-    #[strum(to_string = "XQuery")]
     XQuery,
-    #[strum(to_string = "CMake")]
     CMake,
-    #[strum(to_string = "Gnuplot")]
     Gnuplot,
-    #[strum(to_string = "Python traceback")]
     PythonTraceback,
-    #[strum(to_string = "Darcs Patch")]
     DarcsPatch,
-    #[strum(to_string = "ZAP")]
     Zap,
-    #[strum(to_string = "Public Key")]
     PublicKey,
-    #[strum(to_string = "Hy")]
     Hy,
-    #[strum(to_string = "LFE")]
     Lfe,
-    #[strum(to_string = "Wavefront Material")]
     WavefrontMaterial,
-    #[strum(to_string = "AutoHotKey")]
     AutoHotKey,
-    #[strum(to_string = "SVG")]
     Svg,
-    #[strum(to_string = "Zimpl")]
     Zimpl,
-    #[strum(to_string = "HiveQL")]
     HiveQL,
-    #[strum(to_string = "J")]
     J,
-    #[strum(to_string = "XPages")]
     XPages,
-    #[strum(to_string = "Propeller Spin")]
     PropellerSpin,
-    #[strum(to_string = "VBScript")]
     VbScript,
-    #[strum(to_string = "reStructuredText")]
     ReStructuredText,
-    #[strum(to_string = "Pic")]
     Pic,
-    #[strum(to_string = "wdl")]
     Wdl,
-    #[strum(to_string = "LTspice Symbol")]
     LTspiceSymbol,
-    #[strum(to_string = "RPC")]
     Rpc,
-    #[strum(to_string = "Vim script")]
     VimScript,
-    #[strum(to_string = "TypeScript")]
     TypeScript,
-    #[strum(to_string = "Dockerfile")]
     Dockerfile,
-    #[strum(to_string = "QMake")]
     QMake,
-    #[strum(to_string = "Git Config")]
     GitConfig,
-    #[strum(to_string = "Reason")]
     Reason,
-    #[strum(to_string = "Spline Font Database")]
     SplineFontDatabase,
-    #[strum(to_string = "OCaml")]
     OCaml,
-    #[strum(to_string = "MTML")]
     Mtml,
-    #[strum(to_string = "Pike")]
     Pike,
-    #[strum(to_string = "Objective-C")]
     ObjectiveC,
-    #[strum(to_string = "ShellSession")]
     ShellSession,
-    #[strum(to_string = "Meson")]
     Meson,
-    #[strum(to_string = "Ox")]
     Ox,
-    #[strum(to_string = "Module Management System")]
     ModuleManagementSystem,
-    #[strum(to_string = "Coq")]
     Coq,
-    #[strum(to_string = "X BitMap")]
     XBitMap,
-    #[strum(to_string = "X Font Directory Index")]
     XFontDirectoryIndex,
-    #[strum(to_string = "Terra")]
     Terra,
-    #[strum(to_string = "SugarSS")]
     SugarSS,
-    #[strum(to_string = "wisp")]
     Wisp,
-    #[strum(to_string = "OpenQASM")]
     OpenQasm,
-    #[strum(to_string = "Rascal")]
     Rascal,
-    #[strum(to_string = "Chapel")]
     Chapel,
-    #[strum(to_string = "C2hs Haskell")]
     C2hsHaskell,
-    #[strum(to_string = "Cuda")]
     Cuda,
-    #[strum(to_string = "LiveScript")]
     LiveScript,
-    #[strum(to_string = "NCL")]
     Ncl,
-    #[strum(to_string = "Haxe")]
     Haxe,
-    #[strum(to_string = "AdobeFontMetrics")]
     AdobeFontMetrics,
-    #[strum(to_string = "Java")]
     Java,
-    #[strum(to_string = "SQLPL")]
     SqlPl,
-    #[strum(to_string = "DM")]
     Dm,
-    #[strum(to_string = "Opal")]
     Opal,
-    #[strum(to_string = "CoffeeScript")]
     CoffeeScript,
-    #[strum(to_string = "Open Policy Agent")]
     OpenPolicyAgent,
-    #[strum(to_string = "Formatted")]
     Formatted,
-    #[strum(to_string = "Roff")]
     Roff,
-    #[strum(to_string = "Unified Parallel C")]
     UnifiedParallelC,
-    #[strum(to_string = "Gerber Image")]
     GerberImage,
-    #[strum(to_string = "BlitzMax")]
     BlitzMax,
-    #[strum(to_string = "Moonscript")]
     Moonscript,
-    #[strum(to_string = "Agda")]
     Agda,
-    #[strum(to_string = "Tcl")]
     Tcl,
-    #[strum(to_string = "Max")]
     Max,
-    #[strum(to_string = "Hack")]
     Hack,
-    #[strum(to_string = "Jison")]
     Jison,
-    #[strum(to_string = "Click")]
     Click,
-    #[strum(to_string = "Mako")]
     Mako,
-    #[strum(to_string = "RUNOFF")]
     Runoff,
-    #[strum(to_string = "MiniD")]
     MiniD,
-    #[strum(to_string = "Odin")]
     Odin,
-    #[strum(to_string = "RDoc")]
     RDoc,
-    #[strum(to_string = "Cirru")]
     Cirru,
-    #[strum(to_string = "HTML+ECR")]
     HtmlPlusEcr,
-    #[strum(to_string = "CSS")]
     Css,
-    #[strum(to_string = "Ada")]
     Ada,
-    #[strum(to_string = "Omgrofl")]
     Omgrofl,
-    #[strum(to_string = "Dart")]
     Dart,
-    #[strum(to_string = "YAML")]
     Yaml,
-    #[strum(to_string = "Clarion")]
     Clarion,
-    #[strum(to_string = "KiCad Schematic")]
     KiCadSchematic,
-    #[strum(to_string = "NPM Config")]
     NpmConfig,
-    #[strum(to_string = "1C Enterprise")]
     OneCEnterprise,
-    #[strum(to_string = "Linux Kernel Module")]
     LinuxKernelModule,
-    #[strum(to_string = "Dylan")]
     Dylan,
-    #[strum(to_string = "Gn")]
     Gn,
-    #[strum(to_string = "Redcode")]
     Redcode,
-    #[strum(to_string = "Eagle")]
     Eagle,
-    #[strum(to_string = "VCL")]
     Vcl,
-    #[strum(to_string = "LabVIEW")]
     LabView,
-    #[strum(to_string = "Parrot Assembly")]
     ParrotAssembly,
-    #[strum(to_string = "Graphviz (DOT)")]
     GraphvizDot,
-    #[strum(to_string = "xBase")]
     XBase,
-    #[strum(to_string = "ComponentPascal")]
     ComponentPascal,
-    #[strum(to_string = "Ninja")]
     Ninja,
-    #[strum(to_string = "Prisma")]
     Prisma,
-    #[strum(to_string = "XS")]
     Xs,
-    #[strum(to_string = "Clean")]
     Clean,
-    #[strum(to_string = "Charity")]
     Charity,
-    #[strum(to_string = "Protocol Buffer")]
     ProtocolBuffer,
-    #[strum(to_string = "Kit")]
     Kit,
-    #[strum(to_string = "D")]
     D,
-    #[strum(to_string = "Bison")]
     Bison,
-    #[strum(to_string = "Filebench WML")]
     FilebenchWml,
-    #[strum(to_string = "Limbo")]
     Limbo,
-    #[strum(to_string = "Glyph Bitmap Distribution Format")]
     GlyphBitmapDistributionFormat,
-    #[strum(to_string = "Wget Config")]
     WgetConfig,
-    #[strum(to_string = "Haskell")]
     Haskell,
-    #[strum(to_string = "GDScript")]
     GdScript,
-    #[strum(to_string = "GDB")]
     Gdb,
-    #[strum(to_string = "PicoLisp")]
     PicoLisp,
-    #[strum(to_string = "FreeMarker")]
     FreeMarker,
-    #[strum(to_string = "Apollo Guidance Computer")]
     ApolloGuidanceComputer,
-    #[strum(to_string = "Gentoo Eclass")]
     GentooEclass,
-    #[strum(to_string = "PowerBuilder")]
     PowerBuilder,
-    #[strum(to_string = "AspectJ")]
     AspectJ,
-    #[strum(to_string = "Literate CoffeeScript")]
     LiterateCoffeeScript,
-    #[strum(to_string = "Squirrel")]
     Squirrel,
-    #[strum(to_string = "ooc")]
     Ooc,
-    #[strum(to_string = "Pascal")]
     Pascal,
-    #[strum(to_string = "NSIS")]
     Nsis,
-    #[strum(to_string = "Csound Document")]
     CsoundDocument,
-    #[strum(to_string = "Sass")]
     Sass,
-    #[strum(to_string = "Graph Modeling Language")]
     GraphModelingLanguage,
-    #[strum(to_string = "Twig")]
     Twig,
-    #[strum(to_string = "HolyC")]
     HolyC,
-    #[strum(to_string = "OpenType Feature File")]
     OpenTypeFeatureFile,
-    #[strum(to_string = "XML Property List")]
     XmlPropertyList,
-    #[strum(to_string = "Pawn")]
     Pawn,
-    #[strum(to_string = "C")]
     C,
-    #[strum(to_string = "SmPL")]
     SmPl,
-    #[strum(to_string = "NL")]
     Nl,
-    #[strum(to_string = "NetLogo")]
     NetLogo,
-    #[strum(to_string = "Cpp-ObjDump")]
     CppObjDump,
-    #[strum(to_string = "JSON5")]
     Json5,
-    #[strum(to_string = "Proguard")]
     Proguard,
-    #[strum(to_string = "ABNF")]
     Abnf,
-    #[strum(to_string = "PureBasic")]
     PureBasic,
-    #[strum(to_string = "XProc")]
     XProc,
-    #[strum(to_string = "GraphQL")]
     GraphQl,
-    #[strum(to_string = "Vala")]
     Vala,
-    #[strum(to_string = "NASL")]
     Nasl,
-    #[strum(to_string = "Perl")]
     Perl,
-    #[strum(to_string = "Haml")]
     Haml,
-    #[strum(to_string = "Literate Agda")]
     LiterateAgda,
-    #[strum(to_string = "Liquid")]
     Liquid,
-    #[strum(to_string = "RenderScript")]
     RenderScript,
-    #[strum(to_string = "Literate Haskell")]
     LiterateHaskell,
-    #[strum(to_string = "PogoScript")]
     PogoScript,
-    #[strum(to_string = "World of Warcraft Addon Data")]
     WorldOfWarcraftAddonData,
-    #[strum(to_string = "fish")]
     Fish,
-    #[strum(to_string = "Nit")]
     Nit,
-    #[strum(to_string = "WebVTT")]
     WebVtt,
-    #[strum(to_string = "RMarkdown")]
     RMarkdown,
-    #[strum(to_string = "GCC Machine Description")]
     GccMachineDescription,
-    #[strum(to_string = "EJS")]
     Ejs,
-    #[strum(to_string = "Lasso")]
     Lasso,
-    #[strum(to_string = "Processing")]
     Processing,
-    #[strum(to_string = "Closure Templates")]
     ClosureTemplates,
-    #[strum(to_string = "PigLatin")]
     PigLatin,
-    #[strum(to_string = "Xtend")]
     Xtend,
-    #[strum(to_string = "TOML")]
     Toml,
-    #[strum(to_string = "NetLinx+ERB")]
     NetLinkxPlusERB,
-    #[strum(to_string = "Easybuild")]
     Easybuild,
-    #[strum(to_string = "4D")]
     FourD,
-    #[strum(to_string = "Cabal Config")]
     CabalConfig,
-    #[strum(to_string = "Microsoft Developer Studio Project")]
     MicrosoftDeveloperStudioProject,
-    #[strum(to_string = "Nextflow")]
     Nextflow,
-    #[strum(to_string = "X PixMap")]
     XPixMap,
-    #[strum(to_string = "XSLT")]
     Xslt,
-    #[strum(to_string = "Textile")]
     Textfile,
-    #[strum(to_string = "M")]
     M,
-    #[strum(to_string = "JSONiq")]
     JsonIq,
-    #[strum(to_string = "KiCad Legacy Layout")]
     KiCadLegacyLayout,
-    #[strum(to_string = "Dogescript")]
     Dogescript,
-    #[strum(to_string = "Jsonnet")]
     Jsonnet,
-    #[strum(to_string = "Ragel")]
     Ragel,
-    #[strum(to_string = "Uno")]
     Uno,
-    #[strum(to_string = "HXML")]
     Hxml,
-    #[strum(to_string = "HLSL")]
     Hlsl,
-    #[strum(to_string = "ATS")]
     Ats,
-    #[strum(to_string = "Eiffel")]
     Eiffel,
-    #[strum(to_string = "Linker Script")]
     LinkerScript,
-    #[strum(to_string = "Tea")]
     Tea,
-    #[strum(to_string = "Quake")]
     Quake,
-    #[strum(to_string = "Kotlin")]
     Kotlin,
-    #[strum(to_string = "Puppet")]
     Puppet,
-    #[strum(to_string = "Vue")]
     Vue,
-    #[strum(to_string = "Parrot")]
     Parrot,
-    #[strum(to_string = "Ioke")]
     Ioke,
-    #[strum(to_string = "Lua")]
     Lua,
-    #[strum(to_string = "SQF")]
     Sqf,
-    #[strum(to_string = "MQL4")]
     Mql4,
-    #[strum(to_string = "XML")]
     Xml,
-    #[strum(to_string = "Red")]
     Red,
-    #[strum(to_string = "Moocode")]
     Moocode,
-    #[strum(to_string = "Julia")]
     Julia,
-    #[strum(to_string = "Raw token data")]
     RawTokenData,
-    #[strum(to_string = "Smalltalk")]
     Smalltalk,
-    #[strum(to_string = "M4Sugar")]
     M4Sugar,
-    #[strum(to_string = "ZIL")]
     Zil,
-    #[strum(to_string = "mcfunction")]
     Mcfunction,
-    #[strum(to_string = "ColdFusion CFC")]
     ColdFusionCfc,
-    #[strum(to_string = "AppleScript")]
     AppleScript,
-    #[strum(to_string = "E")]
     E,
-    #[strum(to_string = "EQ")]
     Eq,
-    #[strum(to_string = "Groovy Server Pages")]
     GroovyServerPages,
-    #[strum(to_string = "ObjDump")]
     ObjDump,
-    #[strum(to_string = "Ruby")]
     Ruby,
-    #[strum(to_string = "Visual Basic .NET")]
     VisualBasicDotNet,
-    #[strum(to_string = "Thrift")]
     Thrift,
-    #[strum(to_string = "IGOR Pro")]
     IgorPro,
-    #[strum(to_string = "Asymptote")]
     Asymptote,
-    #[strum(to_string = "GLSL")]
     Glsl,
-    #[strum(to_string = "Nearly")]
     Nearly,
-    #[strum(to_string = "SSH Config")]
     SshConfig,
-    #[strum(to_string = "Shell")]
     Shell,
-    #[strum(to_string = "CSV")]
     Csv,
-    #[strum(to_string = "edn")]
     Edn,
-    #[strum(to_string = "HTML+ERB")]
     HtmlPlusErb,
-    #[strum(to_string = "Ceylon")]
     Ceylon,
-    #[strum(to_string = "Lex")]
     Lex,
-    #[strum(to_string = "CartoCSS")]
     CartoCss,
-    #[strum(to_string = "EmberScript")]
     EmberScript,
-    #[strum(to_string = "JSONLD")]
     JsonLd,
-    #[strum(to_string = "Pickle")]
     Pickle,
-    #[strum(to_string = "Prolog")]
     Prolog,
-    #[strum(to_string = "TI Program")]
     TiProgram,
-    #[strum(to_string = "AutoIt")]
     AutoIt,
-    #[strum(to_string = "ObjectScript")]
     ObjectScript,
-    #[strum(to_string = "Csound Score")]
     CsoundScore,
-    #[strum(to_string = "Papyrus")]
     Papyrus,
-    #[strum(to_string = "Turtle")]
     Turtle,
-    #[strum(to_string = "YARA")]
     Yara,
-    #[strum(to_string = "Cap'n Proto")]
     CapnProto,
-    #[strum(to_string = "PostCSS")]
     PostCss,
-    #[strum(to_string = "UrWeb")]
     UrWeb,
-    #[strum(to_string = "Muse")]
     Muse,
-    #[strum(to_string = "MUF")]
     Muf,
-    #[strum(to_string = "Alpine Abuild")]
     AlpineAbuild,
-    #[strum(to_string = "C-ObjDump")]
     CObjDump,
-    #[strum(to_string = "HTML")]
     Html,
-    #[strum(to_string = "Rust")]
     Rust,
-    #[strum(to_string = "Frege")]
     Frege,
-    #[strum(to_string = "Isabelle ROOT")]
     IsabelleRoot,
-    #[strum(to_string = "Windows Registry Entries")]
     WindowsRegistryEntries,
-    #[strum(to_string = "Tcsh")]
     Tcsh,
-    #[strum(to_string = "Racket")]
     Racket,
-    #[strum(to_string = "Slim")]
     Slim,
-    #[strum(to_string = "HTML+PHP")]
     HtmlPlusPhp,
-    #[strum(to_string = "Fantom")]
     Fantom,
-    #[strum(to_string = "Jupyter Notebook")]
     JupyterNotebook,
-    #[strum(to_string = "HTTP")]
     Http,
-    #[strum(to_string = "OpenStep Property List")]
     OpenStepPropertyList,
-    #[strum(to_string = "BlitzBasic")]
     BlitzBasic,
-    #[strum(to_string = "Batchfile")]
     Batchfile,
+}
+
+static LANG_NAMES: LazyLock<HashMap<KnownProgLang, &'static str>> = LazyLock::new(|| {
+    let mut lang_names = HashMap::new();
+
+    lang_names.insert(KnownProgLang::FStar, "F*");
+    lang_names.insert(KnownProgLang::GitAttributes, "Git Attributes");
+    lang_names.insert(KnownProgLang::IrcLog, "IRC Log");
+    lang_names.insert(KnownProgLang::Eclipse, "ECLiPSe");
+    lang_names.insert(KnownProgLang::Blade, "Blade");
+    lang_names.insert(KnownProgLang::PureData, "Pure Data");
+    lang_names.insert(KnownProgLang::GrammaticalFramework, "Grammatical Framework");
+    lang_names.insert(KnownProgLang::Brightscript, "Brightscript");
+    lang_names.insert(KnownProgLang::Go, "Go");
+    lang_names.insert(KnownProgLang::BitBake, "BitBake");
+    lang_names.insert(KnownProgLang::Cobol, "COBOL");
+    lang_names.insert(KnownProgLang::Dhall, "Dhall");
+    lang_names.insert(KnownProgLang::OpenCl, "OpenCL");
+    lang_names.insert(KnownProgLang::Pod6, "Pod 6");
+    lang_names.insert(KnownProgLang::Scheme, "Scheme");
+    lang_names.insert(
+        KnownProgLang::DigitalCommandLanguage,
+        "DIGITAL Command Language",
+    );
+    lang_names.insert(KnownProgLang::Diff, "Diff");
+    lang_names.insert(KnownProgLang::Motorola68KAssembly, "Motorola 68K Assembly");
+    lang_names.insert(KnownProgLang::Io, "Io");
+    lang_names.insert(KnownProgLang::SRecodeTemplate, "SRecode Template");
+    lang_names.insert(KnownProgLang::Scss, "SCSS");
+    lang_names.insert(KnownProgLang::Ampl, "AMPL");
+    lang_names.insert(KnownProgLang::RegularExpression, "Regular Expression");
+    lang_names.insert(KnownProgLang::CoNllU, "CoNLL-U");
+    lang_names.insert(KnownProgLang::NanoRc, "nanorc");
+    lang_names.insert(KnownProgLang::Slice, "Slice");
+    lang_names.insert(KnownProgLang::OpenScad, "OpenSCAD");
+    lang_names.insert(KnownProgLang::Jsx, "JSX");
+    lang_names.insert(KnownProgLang::Yang, "YANG");
+    lang_names.insert(KnownProgLang::FSharp, "F#");
+    lang_names.insert(KnownProgLang::X10, "X10");
+    lang_names.insert(
+        KnownProgLang::CommonWorkflowLanguage,
+        "Common Workflow Language",
+    );
+    lang_names.insert(KnownProgLang::Stan, "Stan");
+    lang_names.insert(KnownProgLang::Befunge, "Befunge");
+    lang_names.insert(KnownProgLang::GentooEbuild, "Gentoo Ebuild");
+    lang_names.insert(KnownProgLang::AltiumDesigner, "Altium Designer");
+    lang_names.insert(KnownProgLang::Alloy, "Alloy");
+    lang_names.insert(KnownProgLang::Sage, "Sage");
+    lang_names.insert(
+        KnownProgLang::ObjectDataInstanceNotation,
+        "Object Data Instance Notation",
+    );
+    lang_names.insert(KnownProgLang::ZenScript, "ZenScript");
+    lang_names.insert(KnownProgLang::AntBuildSystem, "AntBuildSystem");
+    lang_names.insert(KnownProgLang::Pep8, "Pep8");
+    lang_names.insert(KnownProgLang::BibTeX, "BibTeX");
+    lang_names.insert(KnownProgLang::Json, "JSON");
+    lang_names.insert(KnownProgLang::MavenPom, "Maven POM");
+    lang_names.insert(KnownProgLang::Smarty, "Smarty");
+    lang_names.insert(KnownProgLang::WavefrontObject, "Wavefront Object");
+    lang_names.insert(KnownProgLang::Cpp, "C++");
+    lang_names.insert(KnownProgLang::IgnoreList, "Ignore List");
+    lang_names.insert(KnownProgLang::DirectX3DFile, "DirectX 3D File");
+    lang_names.insert(KnownProgLang::Apex, "Apex");
+    lang_names.insert(KnownProgLang::Llvm, "LLVM");
+    lang_names.insert(KnownProgLang::UnrealScript, "UnrealScript");
+    lang_names.insert(KnownProgLang::Tla, "TLA");
+    lang_names.insert(KnownProgLang::Hcl, "HCL");
+    lang_names.insert(KnownProgLang::EdjeDataCollection, "Edje Data Collection");
+    lang_names.insert(KnownProgLang::Fancy, "Fancy");
+    lang_names.insert(KnownProgLang::Krl, "KRL");
+    lang_names.insert(KnownProgLang::Ecl, "ECL");
+    lang_names.insert(KnownProgLang::RoffManpage, "Roff Manpage");
+    lang_names.insert(KnownProgLang::ObjectiveCpp, "Objective-C++");
+    lang_names.insert(KnownProgLang::Turing, "Turing");
+    lang_names.insert(KnownProgLang::ShaderLab, "ShaderLab");
+    lang_names.insert(KnownProgLang::Makefile, "Makefile");
+    lang_names.insert(KnownProgLang::Factor, "Factor");
+    lang_names.insert(KnownProgLang::CWeb, "CWeb");
+    lang_names.insert(KnownProgLang::Lsl, "LSL");
+    lang_names.insert(KnownProgLang::Pony, "Pony");
+    lang_names.insert(KnownProgLang::Gherkin, "Gherkin");
+    lang_names.insert(KnownProgLang::Awk, "Awk");
+    lang_names.insert(KnownProgLang::Cycript, "Cycript");
+    lang_names.insert(KnownProgLang::Jolie, "Jolie");
+    lang_names.insert(KnownProgLang::Ballerina, "Ballerina");
+    lang_names.insert(KnownProgLang::Starlark, "Starlark");
+    lang_names.insert(KnownProgLang::GettextCatalog, "Gettext Catalog");
+    lang_names.insert(KnownProgLang::Lolcode, "Lolcode");
+    lang_names.insert(KnownProgLang::Oz, "Oz");
+    lang_names.insert(KnownProgLang::PlantUml, "PlantUML");
+    lang_names.insert(KnownProgLang::Smt, "SMT");
+    lang_names.insert(KnownProgLang::V, "V");
+    lang_names.insert(KnownProgLang::Nix, "Nix");
+    lang_names.insert(KnownProgLang::Zeek, "Zeek");
+    lang_names.insert(KnownProgLang::JisonLex, "Jison Lex");
+    lang_names.insert(KnownProgLang::CurlConfig, "cURL Config");
+    lang_names.insert(KnownProgLang::KiCadLayout, "KiCad Layout");
+    lang_names.insert(KnownProgLang::HtmlPlusEex, "HTML+EEX");
+    lang_names.insert(KnownProgLang::Mask, "Mask");
+    lang_names.insert(KnownProgLang::Isabelle, "Isabelle");
+    lang_names.insert(KnownProgLang::LoomScript, "LoomScript");
+    lang_names.insert(KnownProgLang::Raku, "Raku");
+    lang_names.insert(KnownProgLang::Vba, "VBA");
+    lang_names.insert(KnownProgLang::Asn1, "ASN.1");
+    lang_names.insert(KnownProgLang::Brainfuck, "Brainfuck");
+    lang_names.insert(KnownProgLang::DTrace, "DTrace");
+    lang_names.insert(KnownProgLang::Elm, "Elm");
+    lang_names.insert(KnownProgLang::Crystal, "Crystal");
+    lang_names.insert(KnownProgLang::Fortran, "Fortran");
+    lang_names.insert(KnownProgLang::ChucK, "ChucK");
+    lang_names.insert(KnownProgLang::HyPhy, "HyPhy");
+    lang_names.insert(KnownProgLang::Genie, "Genie");
+    lang_names.insert(KnownProgLang::Mql5, "MQL5");
+    lang_names.insert(KnownProgLang::PlSql, "PLSQL");
+    lang_names.insert(KnownProgLang::Jasmin, "Jasmin");
+    lang_names.insert(KnownProgLang::Desktop, "desktop");
+    lang_names.insert(KnownProgLang::SelfLang, "Self");
+    lang_names.insert(KnownProgLang::Swift, "Swift");
+    lang_names.insert(KnownProgLang::MIrcScript, "mIRC Script");
+    lang_names.insert(KnownProgLang::Smali, "Smali");
+    lang_names.insert(KnownProgLang::Ec, "eC");
+    lang_names.insert(KnownProgLang::JavaServerPages, "JavaServerPages");
+    lang_names.insert(KnownProgLang::Lean, "Lean");
+    lang_names.insert(KnownProgLang::Oxygene, "Oxygene");
+    lang_names.insert(KnownProgLang::Ston, "STON");
+    lang_names.insert(KnownProgLang::InnoSetup, "Inno Setup");
+    lang_names.insert(KnownProgLang::Asp, "ASP");
+    lang_names.insert(KnownProgLang::Gosu, "Gosu");
+    lang_names.insert(KnownProgLang::Gradle, "Gradle");
+    lang_names.insert(KnownProgLang::ObjectiveJ, "Objective-J");
+    lang_names.insert(KnownProgLang::Volt, "Volt");
+    lang_names.insert(KnownProgLang::Xc, "XC");
+    lang_names.insert(KnownProgLang::Golo, "Golo");
+    lang_names.insert(KnownProgLang::EditorConfig, "EditorConfig");
+    lang_names.insert(KnownProgLang::GCode, "G-code");
+    lang_names.insert(KnownProgLang::Mirah, "Mirah");
+    lang_names.insert(KnownProgLang::PythonConsole, "Python console");
+    lang_names.insert(KnownProgLang::Inform7, "Inform 7");
+    lang_names.insert(KnownProgLang::Vhdl, "VHDL");
+    lang_names.insert(KnownProgLang::M4, "M4");
+    lang_names.insert(KnownProgLang::Q, "q");
+    lang_names.insert(KnownProgLang::ColdFusion, "ColdFusion");
+    lang_names.insert(KnownProgLang::Antlr, "ANTLR");
+    lang_names.insert(KnownProgLang::RenPy, "Ren'Py");
+    lang_names.insert(KnownProgLang::Eml, "EML");
+    lang_names.insert(KnownProgLang::Tsx, "TSX");
+    lang_names.insert(KnownProgLang::NumPy, "NumPy");
+    lang_names.insert(KnownProgLang::NesC, "nesC");
+    lang_names.insert(KnownProgLang::Modula3, "Modula-3");
+    lang_names.insert(KnownProgLang::NewLisp, "NewLisp");
+    lang_names.insert(KnownProgLang::Pug, "Pug");
+    lang_names.insert(KnownProgLang::Grace, "Grace");
+    lang_names.insert(KnownProgLang::Idris, "Idris");
+    lang_names.insert(KnownProgLang::YaSnippet, "YASnippet");
+    lang_names.insert(
+        KnownProgLang::ParrotInternalRepresentation,
+        "Parrot Internal Representation",
+    );
+    lang_names.insert(KnownProgLang::SaltStackm, "SaltStack");
+    lang_names.insert(KnownProgLang::Rexx, "REXX");
+    lang_names.insert(
+        KnownProgLang::CloudFirestoreSecurityRules,
+        "Cloud Firestore Security Rules",
+    );
+    lang_names.insert(KnownProgLang::Ini, "INI");
+    lang_names.insert(KnownProgLang::Matlab, "MATLAB");
+    lang_names.insert(KnownProgLang::Svelte, "Svelte");
+    lang_names.insert(KnownProgLang::Text, "Text");
+    lang_names.insert(KnownProgLang::Arc, "Arc");
+    lang_names.insert(KnownProgLang::Xojo, "Xojo");
+    lang_names.insert(KnownProgLang::HtmlPlusDjango, "HTML+Django");
+    lang_names.insert(KnownProgLang::AngelScript, "AngelScript");
+    lang_names.insert(KnownProgLang::Slash, "Slash");
+    lang_names.insert(KnownProgLang::Zephir, "Zephir");
+    lang_names.insert(KnownProgLang::VimSmippet, "Vim Snippet");
+    lang_names.insert(KnownProgLang::SuperCollider, "SuperCollider");
+    lang_names.insert(KnownProgLang::Modula2, "Modula-2");
+    lang_names.insert(KnownProgLang::WebOntologyLanguage, "Web Ontology Language");
+    lang_names.insert(KnownProgLang::Handlebars, "Handlebars");
+    lang_names.insert(KnownProgLang::Collada, "COLLADA");
+    lang_names.insert(KnownProgLang::HtmlPlusRazor, "HTML+Razor");
+    lang_names.insert(KnownProgLang::Sparql, "SPARQL");
+    lang_names.insert(KnownProgLang::Texinfo, "Texinfo");
+    lang_names.insert(KnownProgLang::Stata, "Stata");
+    lang_names.insert(KnownProgLang::Opa, "Opa");
+    lang_names.insert(KnownProgLang::Ring, "Ring");
+    lang_names.insert(KnownProgLang::WebAssembly, "WebAssembly");
+    lang_names.insert(KnownProgLang::Abap, "ABAP");
+    lang_names.insert(KnownProgLang::Flex, "FLUX");
+    lang_names.insert(KnownProgLang::Nim, "Nim");
+    lang_names.insert(KnownProgLang::Gams, "GAMS");
+    lang_names.insert(KnownProgLang::Sas, "SAS");
+    lang_names.insert(KnownProgLang::Sql, "SQL");
+    lang_names.insert(KnownProgLang::Cson, "CSON");
+    lang_names.insert(KnownProgLang::Harbour, "Harbour");
+    lang_names.insert(KnownProgLang::RHtml, "RHTML");
+    lang_names.insert(KnownProgLang::Nemerle, "Nemerle");
+    lang_names.insert(KnownProgLang::Idl, "IDL");
+    lang_names.insert(KnownProgLang::JsonWithComments, "JSON with Comments");
+    lang_names.insert(KnownProgLang::ActionScript, "ActionScript");
+    lang_names.insert(KnownProgLang::MediaWiki, "MediaWiki");
+    lang_names.insert(KnownProgLang::Nginx, "Nginx");
+    lang_names.insert(KnownProgLang::Less, "Less");
+    lang_names.insert(KnownProgLang::Forth, "Forth");
+    lang_names.insert(KnownProgLang::OpenRcRunscript, "OpenRC runscript");
+    lang_names.insert(KnownProgLang::Apl, "APL");
+    lang_names.insert(KnownProgLang::Python, "Python");
+    lang_names.insert(KnownProgLang::Scaml, "Scaml");
+    lang_names.insert(KnownProgLang::Verilog, "Verilog");
+    lang_names.insert(KnownProgLang::Qml, "QML");
+    lang_names.insert(KnownProgLang::Assembly, "Assembly");
+    lang_names.insert(KnownProgLang::Marko, "Marko");
+    lang_names.insert(KnownProgLang::DObjDump, "D-ObjDump");
+    lang_names.insert(KnownProgLang::P4, "P4");
+    lang_names.insert(KnownProgLang::Sed, "sed");
+    lang_names.insert(KnownProgLang::Rouge, "Rouge");
+    lang_names.insert(KnownProgLang::Pan, "Pan");
+    lang_names.insert(KnownProgLang::DnsZone, "DNS Zone");
+    lang_names.insert(KnownProgLang::RpmSpec, "RPM Spec");
+    lang_names.insert(KnownProgLang::JavaScript, "JavaScript");
+    lang_names.insert(KnownProgLang::SystemVerilog, "SystemVerilog");
+    lang_names.insert(KnownProgLang::Wollok, "Wollok");
+    lang_names.insert(KnownProgLang::R, "R");
+    lang_names.insert(KnownProgLang::Latte, "Latte");
+    lang_names.insert(KnownProgLang::Mathematica, "Mathematica");
+    lang_names.insert(KnownProgLang::Ebnf, "EBNF");
+    lang_names.insert(KnownProgLang::Rebol, "Rebol");
+    lang_names.insert(KnownProgLang::Swig, "SWIG");
+    lang_names.insert(KnownProgLang::JFlex, "JFlex");
+    lang_names.insert(KnownProgLang::FigletFont, "FIGlet Font");
+    lang_names.insert(KnownProgLang::Dircolors, "dircolors");
+    lang_names.insert(KnownProgLang::Shen, "Shen");
+    lang_names.insert(KnownProgLang::Scala, "Scala");
+    lang_names.insert(KnownProgLang::AgsScript, "AGS Script");
+    lang_names.insert(KnownProgLang::LilyPond, "LilyPond");
+    lang_names.insert(KnownProgLang::StandardMl, "Standard ML");
+    lang_names.insert(KnownProgLang::Bluespec, "Bluespec");
+    lang_names.insert(KnownProgLang::Unity3DAsset, "Unity3D Asset");
+    lang_names.insert(KnownProgLang::Markdown, "Markdown");
+    lang_names.insert(KnownProgLang::ApiBlueprint, "API Blueprint");
+    lang_names.insert(KnownProgLang::Logos, "Logos");
+    lang_names.insert(KnownProgLang::ReadlineConfig, "Readline Config");
+    lang_names.insert(KnownProgLang::Cool, "Cool");
+    lang_names.insert(KnownProgLang::RealBasic, "REALbasic");
+    lang_names.insert(KnownProgLang::CodeQl, "CodeQL");
+    lang_names.insert(KnownProgLang::WebIdl, "WebIDL");
+    lang_names.insert(KnownProgLang::Clips, "CLIPS");
+    lang_names.insert(KnownProgLang::Gap, "GAP");
+    lang_names.insert(KnownProgLang::Nu, "Nu");
+    lang_names.insert(KnownProgLang::GameMakerLanguage, "Game Maker Language");
+    lang_names.insert(KnownProgLang::PostScript, "PostScript");
+    lang_names.insert(KnownProgLang::HaProxy, "HAProxy");
+    lang_names.insert(KnownProgLang::Groovy, "Groovy");
+    lang_names.insert(KnownProgLang::Myghty, "Myghty");
+    lang_names.insert(KnownProgLang::PureScript, "PureScript");
+    lang_names.insert(KnownProgLang::Tsql, "TSQL");
+    lang_names.insert(KnownProgLang::JavaProperties, "Java Properties");
+    lang_names.insert(KnownProgLang::EcereProjects, "Ecere Projects");
+    lang_names.insert(KnownProgLang::TypeLanguage, "Type Language");
+    lang_names.insert(KnownProgLang::Raml, "RAML");
+    lang_names.insert(KnownProgLang::CommonLisp, "Common Lisp");
+    lang_names.insert(KnownProgLang::Creole, "Creole");
+    lang_names.insert(KnownProgLang::Modelica, "Modelica");
+    lang_names.insert(KnownProgLang::TeX, "TeX");
+    lang_names.insert(KnownProgLang::Elixir, "Elixir");
+    lang_names.insert(KnownProgLang::NetLink, "NetLink");
+    lang_names.insert(KnownProgLang::Zig, "Zig");
+    lang_names.insert(KnownProgLang::Riot, "Riot");
+    lang_names.insert(KnownProgLang::Php, "PHP");
+    lang_names.insert(KnownProgLang::OpenEdgeAbl, "OpenEdge ABL");
+    lang_names.insert(KnownProgLang::AsciiDoc, "AsciiDoc");
+    lang_names.insert(KnownProgLang::LookMl, "LookML");
+    lang_names.insert(KnownProgLang::SourcePawn, "Source Pawn");
+    lang_names.insert(KnownProgLang::Yacc, "Yacc");
+    lang_names.insert(KnownProgLang::ApacheConf, "ApacheConf");
+    lang_names.insert(KnownProgLang::Txl, "TXL");
+    lang_names.insert(KnownProgLang::PowerShell, "PowerShell");
+    lang_names.insert(KnownProgLang::Gaml, "GAML");
+    lang_names.insert(KnownProgLang::XCompose, "XCompose");
+    lang_names.insert(KnownProgLang::CSharp, "C#");
+    lang_names.insert(KnownProgLang::Scilab, "Scilab");
+    lang_names.insert(KnownProgLang::RobotFramework, "RobotFramework");
+    lang_names.insert(KnownProgLang::Cython, "Cython");
+    lang_names.insert(KnownProgLang::EmacsLisp, "Emacs Lisp");
+    lang_names.insert(KnownProgLang::Metal, "Metal");
+    lang_names.insert(KnownProgLang::JavaScriptPlusErb, "JavaScript+ERB");
+    lang_names.insert(KnownProgLang::DataWeave, "DataWeave");
+    lang_names.insert(KnownProgLang::Logtalk, "Logtalk");
+    lang_names.insert(KnownProgLang::PlPgSql, "PLpgSQL");
+    lang_names.insert(KnownProgLang::Augeas, "Augeas");
+    lang_names.insert(KnownProgLang::Mlir, "MLIR");
+    lang_names.insert(KnownProgLang::PovRaySdl, "POV-Ray SDL");
+    lang_names.insert(KnownProgLang::Solidity, "Solidity");
+    lang_names.insert(KnownProgLang::Mercury, "Mercury");
+    lang_names.insert(KnownProgLang::Clojure, "Clojure");
+    lang_names.insert(KnownProgLang::Genshi, "Genshi");
+    lang_names.insert(KnownProgLang::Csound, "Csound");
+    lang_names.insert(KnownProgLang::Monkey, "Monkey");
+    lang_names.insert(KnownProgLang::Boo, "Boo");
+    lang_names.insert(KnownProgLang::UnixAssembly, "Unix Assembly");
+    lang_names.insert(KnownProgLang::MaxScript, "MAXScript");
+    lang_names.insert(KnownProgLang::RichTextFormat, "Rich Text Format");
+    lang_names.insert(KnownProgLang::Faust, "Faust");
+    lang_names.insert(KnownProgLang::Erlang, "Erlang");
+    lang_names.insert(KnownProgLang::Filterscript, "Filterscript");
+    lang_names.insert(KnownProgLang::Stylus, "Stylus");
+    lang_names.insert(KnownProgLang::Mupad, "mupad");
+    lang_names.insert(KnownProgLang::Org, "Org");
+    lang_names.insert(KnownProgLang::Glyph, "Glyph");
+    lang_names.insert(KnownProgLang::SubRipText, "SubRip Text");
+    lang_names.insert(KnownProgLang::Pod, "Pod");
+    lang_names.insert(KnownProgLang::XQuery, "XQuery");
+    lang_names.insert(KnownProgLang::CMake, "CMake");
+    lang_names.insert(KnownProgLang::Gnuplot, "Gnuplot");
+    lang_names.insert(KnownProgLang::PythonTraceback, "Python traceback");
+    lang_names.insert(KnownProgLang::DarcsPatch, "Darcs Patch");
+    lang_names.insert(KnownProgLang::Zap, "ZAP");
+    lang_names.insert(KnownProgLang::PublicKey, "Public Key");
+    lang_names.insert(KnownProgLang::Hy, "Hy");
+    lang_names.insert(KnownProgLang::Lfe, "LFE");
+    lang_names.insert(KnownProgLang::WavefrontMaterial, "Wavefront Material");
+    lang_names.insert(KnownProgLang::AutoHotKey, "AutoHotKey");
+    lang_names.insert(KnownProgLang::Svg, "SVG");
+    lang_names.insert(KnownProgLang::Zimpl, "Zimpl");
+    lang_names.insert(KnownProgLang::HiveQL, "HiveQL");
+    lang_names.insert(KnownProgLang::J, "J");
+    lang_names.insert(KnownProgLang::XPages, "XPages");
+    lang_names.insert(KnownProgLang::PropellerSpin, "Propeller Spin");
+    lang_names.insert(KnownProgLang::VbScript, "VBScript");
+    lang_names.insert(KnownProgLang::ReStructuredText, "reStructuredText");
+    lang_names.insert(KnownProgLang::Pic, "Pic");
+    lang_names.insert(KnownProgLang::Wdl, "wdl");
+    lang_names.insert(KnownProgLang::LTspiceSymbol, "LTspice Symbol");
+    lang_names.insert(KnownProgLang::Rpc, "RPC");
+    lang_names.insert(KnownProgLang::VimScript, "Vim script");
+    lang_names.insert(KnownProgLang::TypeScript, "TypeScript");
+    lang_names.insert(KnownProgLang::Dockerfile, "Dockerfile");
+    lang_names.insert(KnownProgLang::QMake, "QMake");
+    lang_names.insert(KnownProgLang::GitConfig, "Git Config");
+    lang_names.insert(KnownProgLang::Reason, "Reason");
+    lang_names.insert(KnownProgLang::SplineFontDatabase, "Spline Font Database");
+    lang_names.insert(KnownProgLang::OCaml, "OCaml");
+    lang_names.insert(KnownProgLang::Mtml, "MTML");
+    lang_names.insert(KnownProgLang::Pike, "Pike");
+    lang_names.insert(KnownProgLang::ObjectiveC, "Objective-C");
+    lang_names.insert(KnownProgLang::ShellSession, "ShellSession");
+    lang_names.insert(KnownProgLang::Meson, "Meson");
+    lang_names.insert(KnownProgLang::Ox, "Ox");
+    lang_names.insert(
+        KnownProgLang::ModuleManagementSystem,
+        "Module Management System",
+    );
+    lang_names.insert(KnownProgLang::Coq, "Coq");
+    lang_names.insert(KnownProgLang::XBitMap, "X BitMap");
+    lang_names.insert(KnownProgLang::XFontDirectoryIndex, "X Font Directory Index");
+    lang_names.insert(KnownProgLang::Terra, "Terra");
+    lang_names.insert(KnownProgLang::SugarSS, "SugarSS");
+    lang_names.insert(KnownProgLang::Wisp, "wisp");
+    lang_names.insert(KnownProgLang::OpenQasm, "OpenQASM");
+    lang_names.insert(KnownProgLang::Rascal, "Rascal");
+    lang_names.insert(KnownProgLang::Chapel, "Chapel");
+    lang_names.insert(KnownProgLang::C2hsHaskell, "C2hs Haskell");
+    lang_names.insert(KnownProgLang::Cuda, "Cuda");
+    lang_names.insert(KnownProgLang::LiveScript, "LiveScript");
+    lang_names.insert(KnownProgLang::Ncl, "NCL");
+    lang_names.insert(KnownProgLang::Haxe, "Haxe");
+    lang_names.insert(KnownProgLang::AdobeFontMetrics, "AdobeFontMetrics");
+    lang_names.insert(KnownProgLang::Java, "Java");
+    lang_names.insert(KnownProgLang::SqlPl, "SQLPL");
+    lang_names.insert(KnownProgLang::Dm, "DM");
+    lang_names.insert(KnownProgLang::Opal, "Opal");
+    lang_names.insert(KnownProgLang::CoffeeScript, "CoffeeScript");
+    lang_names.insert(KnownProgLang::OpenPolicyAgent, "Open Policy Agent");
+    lang_names.insert(KnownProgLang::Formatted, "Formatted");
+    lang_names.insert(KnownProgLang::Roff, "Roff");
+    lang_names.insert(KnownProgLang::UnifiedParallelC, "Unified Parallel C");
+    lang_names.insert(KnownProgLang::GerberImage, "Gerber Image");
+    lang_names.insert(KnownProgLang::BlitzMax, "BlitzMax");
+    lang_names.insert(KnownProgLang::Moonscript, "Moonscript");
+    lang_names.insert(KnownProgLang::Agda, "Agda");
+    lang_names.insert(KnownProgLang::Tcl, "Tcl");
+    lang_names.insert(KnownProgLang::Max, "Max");
+    lang_names.insert(KnownProgLang::Hack, "Hack");
+    lang_names.insert(KnownProgLang::Jison, "Jison");
+    lang_names.insert(KnownProgLang::Click, "Click");
+    lang_names.insert(KnownProgLang::Mako, "Mako");
+    lang_names.insert(KnownProgLang::Runoff, "RUNOFF");
+    lang_names.insert(KnownProgLang::MiniD, "MiniD");
+    lang_names.insert(KnownProgLang::Odin, "Odin");
+    lang_names.insert(KnownProgLang::RDoc, "RDoc");
+    lang_names.insert(KnownProgLang::Cirru, "Cirru");
+    lang_names.insert(KnownProgLang::HtmlPlusEcr, "HTML+ECR");
+    lang_names.insert(KnownProgLang::Css, "CSS");
+    lang_names.insert(KnownProgLang::Ada, "Ada");
+    lang_names.insert(KnownProgLang::Omgrofl, "Omgrofl");
+    lang_names.insert(KnownProgLang::Dart, "Dart");
+    lang_names.insert(KnownProgLang::Yaml, "YAML");
+    lang_names.insert(KnownProgLang::Clarion, "Clarion");
+    lang_names.insert(KnownProgLang::KiCadSchematic, "KiCad Schematic");
+    lang_names.insert(KnownProgLang::NpmConfig, "NPM Config");
+    lang_names.insert(KnownProgLang::OneCEnterprise, "1C Enterprise");
+    lang_names.insert(KnownProgLang::LinuxKernelModule, "Linux Kernel Module");
+    lang_names.insert(KnownProgLang::Dylan, "Dylan");
+    lang_names.insert(KnownProgLang::Gn, "Gn");
+    lang_names.insert(KnownProgLang::Redcode, "Redcode");
+    lang_names.insert(KnownProgLang::Eagle, "Eagle");
+    lang_names.insert(KnownProgLang::Vcl, "VCL");
+    lang_names.insert(KnownProgLang::LabView, "LabVIEW");
+    lang_names.insert(KnownProgLang::ParrotAssembly, "Parrot Assembly");
+    lang_names.insert(KnownProgLang::GraphvizDot, "Graphviz (DOT)");
+    lang_names.insert(KnownProgLang::XBase, "xBase");
+    lang_names.insert(KnownProgLang::ComponentPascal, "ComponentPascal");
+    lang_names.insert(KnownProgLang::Ninja, "Ninja");
+    lang_names.insert(KnownProgLang::Prisma, "Prisma");
+    lang_names.insert(KnownProgLang::Xs, "XS");
+    lang_names.insert(KnownProgLang::Clean, "Clean");
+    lang_names.insert(KnownProgLang::Charity, "Charity");
+    lang_names.insert(KnownProgLang::ProtocolBuffer, "Protocol Buffer");
+    lang_names.insert(KnownProgLang::Kit, "Kit");
+    lang_names.insert(KnownProgLang::D, "D");
+    lang_names.insert(KnownProgLang::Bison, "Bison");
+    lang_names.insert(KnownProgLang::FilebenchWml, "Filebench WML");
+    lang_names.insert(KnownProgLang::Limbo, "Limbo");
+    lang_names.insert(
+        KnownProgLang::GlyphBitmapDistributionFormat,
+        "Glyph Bitmap Distribution Format",
+    );
+    lang_names.insert(KnownProgLang::WgetConfig, "Wget Config");
+    lang_names.insert(KnownProgLang::Haskell, "Haskell");
+    lang_names.insert(KnownProgLang::GdScript, "GDScript");
+    lang_names.insert(KnownProgLang::Gdb, "GDB");
+    lang_names.insert(KnownProgLang::PicoLisp, "PicoLisp");
+    lang_names.insert(KnownProgLang::FreeMarker, "FreeMarker");
+    lang_names.insert(
+        KnownProgLang::ApolloGuidanceComputer,
+        "Apollo Guidance Computer",
+    );
+    lang_names.insert(KnownProgLang::GentooEclass, "Gentoo Eclass");
+    lang_names.insert(KnownProgLang::PowerBuilder, "PowerBuilder");
+    lang_names.insert(KnownProgLang::AspectJ, "AspectJ");
+    lang_names.insert(KnownProgLang::LiterateCoffeeScript, "Literate CoffeeScript");
+    lang_names.insert(KnownProgLang::Squirrel, "Squirrel");
+    lang_names.insert(KnownProgLang::Ooc, "ooc");
+    lang_names.insert(KnownProgLang::Pascal, "Pascal");
+    lang_names.insert(KnownProgLang::Nsis, "NSIS");
+    lang_names.insert(KnownProgLang::CsoundDocument, "Csound Document");
+    lang_names.insert(KnownProgLang::Sass, "Sass");
+    lang_names.insert(
+        KnownProgLang::GraphModelingLanguage,
+        "Graph Modeling Language",
+    );
+    lang_names.insert(KnownProgLang::Twig, "Twig");
+    lang_names.insert(KnownProgLang::HolyC, "HolyC");
+    lang_names.insert(KnownProgLang::OpenTypeFeatureFile, "OpenType Feature File");
+    lang_names.insert(KnownProgLang::XmlPropertyList, "XML Property List");
+    lang_names.insert(KnownProgLang::Pawn, "Pawn");
+    lang_names.insert(KnownProgLang::C, "C");
+    lang_names.insert(KnownProgLang::SmPl, "SmPL");
+    lang_names.insert(KnownProgLang::Nl, "NL");
+    lang_names.insert(KnownProgLang::NetLogo, "NetLogo");
+    lang_names.insert(KnownProgLang::CppObjDump, "Cpp-ObjDump");
+    lang_names.insert(KnownProgLang::Json5, "JSON5");
+    lang_names.insert(KnownProgLang::Proguard, "Proguard");
+    lang_names.insert(KnownProgLang::Abnf, "ABNF");
+    lang_names.insert(KnownProgLang::PureBasic, "PureBasic");
+    lang_names.insert(KnownProgLang::XProc, "XProc");
+    lang_names.insert(KnownProgLang::GraphQl, "GraphQL");
+    lang_names.insert(KnownProgLang::Vala, "Vala");
+    lang_names.insert(KnownProgLang::Nasl, "NASL");
+    lang_names.insert(KnownProgLang::Perl, "Perl");
+    lang_names.insert(KnownProgLang::Haml, "Haml");
+    lang_names.insert(KnownProgLang::LiterateAgda, "Literate Agda");
+    lang_names.insert(KnownProgLang::Liquid, "Liquid");
+    lang_names.insert(KnownProgLang::RenderScript, "RenderScript");
+    lang_names.insert(KnownProgLang::LiterateHaskell, "Literate Haskell");
+    lang_names.insert(KnownProgLang::PogoScript, "PogoScript");
+    lang_names.insert(
+        KnownProgLang::WorldOfWarcraftAddonData,
+        "World of Warcraft Addon Data",
+    );
+    lang_names.insert(KnownProgLang::Fish, "fish");
+    lang_names.insert(KnownProgLang::Nit, "Nit");
+    lang_names.insert(KnownProgLang::WebVtt, "WebVTT");
+    lang_names.insert(KnownProgLang::RMarkdown, "RMarkdown");
+    lang_names.insert(
+        KnownProgLang::GccMachineDescription,
+        "GCC Machine Description",
+    );
+    lang_names.insert(KnownProgLang::Ejs, "EJS");
+    lang_names.insert(KnownProgLang::Lasso, "Lasso");
+    lang_names.insert(KnownProgLang::Processing, "Processing");
+    lang_names.insert(KnownProgLang::ClosureTemplates, "Closure Templates");
+    lang_names.insert(KnownProgLang::PigLatin, "PigLatin");
+    lang_names.insert(KnownProgLang::Xtend, "Xtend");
+    lang_names.insert(KnownProgLang::Toml, "TOML");
+    lang_names.insert(KnownProgLang::NetLinkxPlusERB, "NetLinx+ERB");
+    lang_names.insert(KnownProgLang::Easybuild, "Easybuild");
+    lang_names.insert(KnownProgLang::FourD, "4D");
+    lang_names.insert(KnownProgLang::CabalConfig, "Cabal Config");
+    lang_names.insert(
+        KnownProgLang::MicrosoftDeveloperStudioProject,
+        "Microsoft Developer Studio Project",
+    );
+    lang_names.insert(KnownProgLang::Nextflow, "Nextflow");
+    lang_names.insert(KnownProgLang::XPixMap, "X PixMap");
+    lang_names.insert(KnownProgLang::Xslt, "XSLT");
+    lang_names.insert(KnownProgLang::Textfile, "Textile");
+    lang_names.insert(KnownProgLang::M, "M");
+    lang_names.insert(KnownProgLang::JsonIq, "JSONiq");
+    lang_names.insert(KnownProgLang::KiCadLegacyLayout, "KiCad Legacy Layout");
+    lang_names.insert(KnownProgLang::Dogescript, "Dogescript");
+    lang_names.insert(KnownProgLang::Jsonnet, "Jsonnet");
+    lang_names.insert(KnownProgLang::Ragel, "Ragel");
+    lang_names.insert(KnownProgLang::Uno, "Uno");
+    lang_names.insert(KnownProgLang::Hxml, "HXML");
+    lang_names.insert(KnownProgLang::Hlsl, "HLSL");
+    lang_names.insert(KnownProgLang::Ats, "ATS");
+    lang_names.insert(KnownProgLang::Eiffel, "Eiffel");
+    lang_names.insert(KnownProgLang::LinkerScript, "Linker Script");
+    lang_names.insert(KnownProgLang::Tea, "Tea");
+    lang_names.insert(KnownProgLang::Quake, "Quake");
+    lang_names.insert(KnownProgLang::Kotlin, "Kotlin");
+    lang_names.insert(KnownProgLang::Puppet, "Puppet");
+    lang_names.insert(KnownProgLang::Vue, "Vue");
+    lang_names.insert(KnownProgLang::Parrot, "Parrot");
+    lang_names.insert(KnownProgLang::Ioke, "Ioke");
+    lang_names.insert(KnownProgLang::Lua, "Lua");
+    lang_names.insert(KnownProgLang::Sqf, "SQF");
+    lang_names.insert(KnownProgLang::Mql4, "MQL4");
+    lang_names.insert(KnownProgLang::Xml, "XML");
+    lang_names.insert(KnownProgLang::Red, "Red");
+    lang_names.insert(KnownProgLang::Moocode, "Moocode");
+    lang_names.insert(KnownProgLang::Julia, "Julia");
+    lang_names.insert(KnownProgLang::RawTokenData, "Raw token data");
+    lang_names.insert(KnownProgLang::Smalltalk, "Smalltalk");
+    lang_names.insert(KnownProgLang::M4Sugar, "M4Sugar");
+    lang_names.insert(KnownProgLang::Zil, "ZIL");
+    lang_names.insert(KnownProgLang::Mcfunction, "mcfunction");
+    lang_names.insert(KnownProgLang::ColdFusionCfc, "ColdFusion CFC");
+    lang_names.insert(KnownProgLang::AppleScript, "AppleScript");
+    lang_names.insert(KnownProgLang::E, "E");
+    lang_names.insert(KnownProgLang::Eq, "EQ");
+    lang_names.insert(KnownProgLang::GroovyServerPages, "Groovy Server Pages");
+    lang_names.insert(KnownProgLang::ObjDump, "ObjDump");
+    lang_names.insert(KnownProgLang::Ruby, "Ruby");
+    lang_names.insert(KnownProgLang::VisualBasicDotNet, "Visual Basic .NET");
+    lang_names.insert(KnownProgLang::Thrift, "Thrift");
+    lang_names.insert(KnownProgLang::IgorPro, "IGOR Pro");
+    lang_names.insert(KnownProgLang::Asymptote, "Asymptote");
+    lang_names.insert(KnownProgLang::Glsl, "GLSL");
+    lang_names.insert(KnownProgLang::Nearly, "Nearly");
+    lang_names.insert(KnownProgLang::SshConfig, "SSH Config");
+    lang_names.insert(KnownProgLang::Shell, "Shell");
+    lang_names.insert(KnownProgLang::Csv, "CSV");
+    lang_names.insert(KnownProgLang::Edn, "edn");
+    lang_names.insert(KnownProgLang::HtmlPlusErb, "HTML+ERB");
+    lang_names.insert(KnownProgLang::Ceylon, "Ceylon");
+    lang_names.insert(KnownProgLang::Lex, "Lex");
+    lang_names.insert(KnownProgLang::CartoCss, "CartoCSS");
+    lang_names.insert(KnownProgLang::EmberScript, "EmberScript");
+    lang_names.insert(KnownProgLang::JsonLd, "JSONLD");
+    lang_names.insert(KnownProgLang::Pickle, "Pickle");
+    lang_names.insert(KnownProgLang::Prolog, "Prolog");
+    lang_names.insert(KnownProgLang::TiProgram, "TI Program");
+    lang_names.insert(KnownProgLang::AutoIt, "AutoIt");
+    lang_names.insert(KnownProgLang::ObjectScript, "ObjectScript");
+    lang_names.insert(KnownProgLang::CsoundScore, "Csound Score");
+    lang_names.insert(KnownProgLang::Papyrus, "Papyrus");
+    lang_names.insert(KnownProgLang::Turtle, "Turtle");
+    lang_names.insert(KnownProgLang::Yara, "YARA");
+    lang_names.insert(KnownProgLang::CapnProto, "Cap'n Proto");
+    lang_names.insert(KnownProgLang::PostCss, "PostCSS");
+    lang_names.insert(KnownProgLang::UrWeb, "UrWeb");
+    lang_names.insert(KnownProgLang::Muse, "Muse");
+    lang_names.insert(KnownProgLang::Muf, "MUF");
+    lang_names.insert(KnownProgLang::AlpineAbuild, "Alpine Abuild");
+    lang_names.insert(KnownProgLang::CObjDump, "C-ObjDump");
+    lang_names.insert(KnownProgLang::Html, "HTML");
+    lang_names.insert(KnownProgLang::Rust, "Rust");
+    lang_names.insert(KnownProgLang::Frege, "Frege");
+    lang_names.insert(KnownProgLang::IsabelleRoot, "Isabelle ROOT");
+    lang_names.insert(
+        KnownProgLang::WindowsRegistryEntries,
+        "Windows Registry Entries",
+    );
+    lang_names.insert(KnownProgLang::Tcsh, "Tcsh");
+    lang_names.insert(KnownProgLang::Racket, "Racket");
+    lang_names.insert(KnownProgLang::Slim, "Slim");
+    lang_names.insert(KnownProgLang::HtmlPlusPhp, "HTML+PHP");
+    lang_names.insert(KnownProgLang::Fantom, "Fantom");
+    lang_names.insert(KnownProgLang::JupyterNotebook, "Jupyter Notebook");
+    lang_names.insert(KnownProgLang::Http, "HTTP");
+    lang_names.insert(
+        KnownProgLang::OpenStepPropertyList,
+        "OpenStep Property List",
+    );
+    lang_names.insert(KnownProgLang::BlitzBasic, "BlitzBasic");
+    lang_names.insert(KnownProgLang::Batchfile, "Batchfile");
+
+    lang_names
+});
+
+impl Display for KnownProgLang {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            LANG_NAMES
+                .get(self)
+                .expect("all KnownProgLang entries should be present")
+        )
+    }
+}
+
+impl FromStr for KnownProgLang {
+    type Err = EmbeddingError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        LANG_NAMES
+            .iter()
+            .find(|(_, name)| **name == s)
+            .map(|(lang, _)| *lang)
+            .ok_or_else(|| EmbeddingError::UnknownProgLang(s.clone_as_boxstr()))
+    }
 }
