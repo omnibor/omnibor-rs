@@ -100,7 +100,7 @@ impl Step for CheckDependencies {
             "cargo-release",
         ]
         .into_iter()
-        .inspect(|name| log::info!("checking command '{}'", name))
+        .inspect(|name| log::info!("checking command '{name}'"))
         .filter(|name| which::which(name).is_err())
         .collect::<Vec<_>>();
 
@@ -143,7 +143,7 @@ impl Step for CheckGitReady {
                 bail!(msg);
             }
 
-            log::warn!("{}", msg);
+            log::warn!("{msg}");
         }
 
         // 3. Check for uncommitted changes in the index.
@@ -161,7 +161,7 @@ impl Step for CheckGitReady {
                 bail!(msg);
             }
 
-            log::warn!("{}", msg);
+            log::warn!("{msg}");
         }
 
         Ok(())

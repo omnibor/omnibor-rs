@@ -21,12 +21,12 @@ fn main() -> ExitCode {
     };
 
     if let Err(err) = res {
-        log::error!("{}", err);
+        log::error!("{err}");
 
         // We skip the first error in the chain because it's the
         // exact error we've just printed.
         for err in err.chain().skip(1) {
-            log::error!("\tcaused by: {}", err);
+            log::error!("\tcaused by: {err}");
         }
 
         return ExitCode::FAILURE;
