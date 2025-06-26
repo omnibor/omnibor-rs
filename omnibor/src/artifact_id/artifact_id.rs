@@ -2,7 +2,7 @@ use {
     super::ArtifactIdBuilder,
     crate::{
         error::ArtifactIdError, gitoid::GitOid, hash_algorithm::HashAlgorithm,
-        hash_provider::HashProvider, object_type::Blob, util::clone_as_boxstr::CloneAsBoxstr,
+        hash_provider::HashProvider, object_type::Blob,
     },
     core::{
         cmp::Ordering,
@@ -11,7 +11,6 @@ use {
     },
     serde::{de::Deserializer, Deserialize, Serialize, Serializer},
     std::{fmt::Display, path::PathBuf, result::Result as StdResult, str::FromStr},
-    url::Url,
 };
 
 #[cfg(doc)]
@@ -55,51 +54,9 @@ impl<H: HashAlgorithm> ArtifactId<H> {
         ArtifactId { gitoid }
     }
 
-    /// Construct an [`ArtifactId`] from a `gitoid`-scheme [`Url`].
-    ///
-    /// This validates that the provided URL has a hashing scheme which matches the one
-    /// selected for your [`ArtifactId`] (today, only `sha256` is supported), and has the
-    /// `blob` object type. It also validates that the provided hash is a valid hash for
-    /// the specified hashing scheme. If any of these checks fail, the function returns
-    /// an [`ArtifactIdError`](crate::error::ArtifactIdError).
-    ///
-    /// Note that this expects a `gitoid`-scheme URL, as defined by IANA. This method
-    /// _does not_ expect an HTTP or HTTPS URL to access, retrieve contents, and hash
-    /// those contents to produce an identifier.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use omnibor::ArtifactId;
-    /// # use omnibor::hash_algorithm::Sha256;
-    /// # use url::Url;
-    /// let url = Url::parse("gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03").unwrap();
-    /// let id: ArtifactId<Sha256> = ArtifactId::try_from_url(url).unwrap();
-    /// println!("Artifact ID: {}", id);
-    /// ```
-    pub fn try_from_url(url: Url) -> Result<ArtifactId<H>, ArtifactIdError> {
-        ArtifactId::try_from(url)
-    }
-
     /// Try to construct an [`ArtifactId`] from a filesystem-safe representation.
     pub fn try_from_safe_name(s: &str) -> Result<ArtifactId<H>, ArtifactIdError> {
         ArtifactId::from_str(&s.replace('_', ":"))
-    }
-
-    /// Get the [`Url`] representation of the [`ArtifactId`].
-    ///
-    /// This returns a `gitoid`-scheme URL for the [`ArtifactId`].
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
-    /// # use omnibor::hash_algorithm::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
-    /// println!("Artifact ID URL: {}", id.url());
-    /// ```
-    pub fn url(&self) -> Url {
-        self.gitoid.url()
     }
 
     /// Get a filesystem-safe representation of the [`ArtifactId`].
@@ -110,7 +67,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// What that means for us is that the `:` separator character is
     /// replaced with `_`.
     pub fn as_file_name(&self) -> PathBuf {
-        let name = self.gitoid.url().to_string().replace(':', "_");
+        let name = self.gitoid.to_string().replace(':', "_");
         let mut path = PathBuf::from(name);
         path.set_extension("manifest");
         path
@@ -207,10 +164,8 @@ impl<H: HashAlgorithm> FromStr for ArtifactId<H> {
     type Err = ArtifactIdError;
 
     fn from_str(s: &str) -> Result<ArtifactId<H>, ArtifactIdError> {
-        let url = Url::parse(s).map_err(|source| {
-            ArtifactIdError::FailedToParseUrl(s.clone_as_boxstr(), Box::new(source))
-        })?;
-        ArtifactId::try_from_url(url)
+        let gitoid = GitOid::from_str(s)?;
+        Ok(ArtifactId::from_gitoid(gitoid))
     }
 }
 
@@ -276,15 +231,6 @@ impl<'r, H: HashAlgorithm> TryFrom<&'r str> for ArtifactId<H> {
 
     fn try_from(s: &'r str) -> Result<Self, ArtifactIdError> {
         ArtifactId::from_str(s)
-    }
-}
-
-impl<H: HashAlgorithm> TryFrom<Url> for ArtifactId<H> {
-    type Error = ArtifactIdError;
-
-    fn try_from(url: Url) -> Result<ArtifactId<H>, ArtifactIdError> {
-        let gitoid = GitOid::try_from_url(url)?;
-        Ok(ArtifactId::from_gitoid(gitoid))
     }
 }
 

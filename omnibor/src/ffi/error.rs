@@ -22,7 +22,6 @@ use {
         str::Utf8Error,
     },
     std::{error::Error as StdError, ffi::NulError, panic::catch_unwind},
-    url::ParseError as UrlError,
 };
 
 thread_local! {
@@ -86,7 +85,6 @@ pub(crate) enum Error {
     ArtifactIdPtrIsNull,
     Utf8UnexpectedEnd,
     Utf8InvalidByte(usize, usize),
-    NotValidUrl(UrlError),
     NotArtifactIdUrl(ArtifactIdError),
     StringHadInteriorNul(usize),
 }
@@ -103,7 +101,6 @@ impl Display for Error {
                 "invalid {}-byte UTF-8 sequence, starting at byte {}",
                 len, start
             ),
-            Error::NotValidUrl(_) => write!(f, "string is not a valid URL"),
             Error::NotArtifactIdUrl(_) => write!(f, "string is not a valid ArtifactId URL"),
             Error::StringHadInteriorNul(loc) => {
                 write!(f, "string had interior NUL at byte {}", loc)
@@ -115,7 +112,6 @@ impl Display for Error {
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
-            Error::NotValidUrl(e) => Some(e),
             Error::NotArtifactIdUrl(e) => Some(e),
             _ => None,
         }
@@ -128,12 +124,6 @@ impl From<Utf8Error> for Error {
             None => Error::Utf8UnexpectedEnd,
             Some(len) => Error::Utf8InvalidByte(utf8_error.valid_up_to(), len),
         }
-    }
-}
-
-impl From<UrlError> for Error {
-    fn from(url_error: UrlError) -> Error {
-        Error::NotValidUrl(url_error)
     }
 }
 

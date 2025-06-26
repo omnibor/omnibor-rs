@@ -4,7 +4,6 @@ use {
         fmt::{Display, Formatter, Result as FmtResult},
         io::{Error as IoError, SeekFrom},
     },
-    url::ParseError as UrlError,
 };
 
 #[cfg(doc)]
@@ -35,6 +34,10 @@ pub enum ArtifactIdError {
     /// Failed to check reader position.
     #[error("failed to check reader position")]
     FailedCheckReaderPos(#[source] Box<IoError>),
+
+    /// Missing scheme in URL.
+    #[error("missing scheme in URL '{0}'")]
+    MissingScheme(Box<str>),
 
     /// Invalid scheme in URL.
     #[error("invalid scheme in URL '{0}'")]
@@ -73,10 +76,6 @@ pub enum ArtifactIdError {
     /// Invalid hex string.
     #[error("invalid hex string '{0}'")]
     InvalidHex(Box<str>, #[source] Box<HexError>),
-
-    /// URL for Artifact ID is not a valid URL
-    #[error("URL for Artifact ID is not a valid URL '{0}'")]
-    FailedToParseUrl(Box<str>, #[source] Box<UrlError>),
 }
 
 /// Helper struct to implement `Display` from `SeekFrom`.

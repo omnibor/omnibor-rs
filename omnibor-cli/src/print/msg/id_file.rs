@@ -2,12 +2,11 @@ use crate::print::{CommandOutput, Status};
 use console::Style;
 use serde_json::json;
 use std::path::PathBuf;
-use url::Url;
 
 #[derive(Debug, Clone)]
 pub struct IdFileMsg {
     pub path: PathBuf,
-    pub id: Url,
+    pub id: String,
 }
 
 impl IdFileMsg {
@@ -16,7 +15,7 @@ impl IdFileMsg {
     }
 
     fn id_string(&self) -> String {
-        self.id.to_string()
+        self.id.clone()
     }
 }
 

@@ -7,9 +7,8 @@ use {
     },
     anyhow::Result,
     serde_test::{assert_tokens, Token},
-    std::fs::File,
+    std::{fs::File, str::FromStr},
     tokio::{fs::File as AsyncFile, runtime::Runtime},
-    url::Url,
 };
 
 /// SHA-256 hash of a file containing "hello world"
@@ -119,62 +118,59 @@ fn validate_uri() -> Result<()> {
     let content = b"hello world";
     let artifact_id = ArtifactIdBuilder::with_rustcrypto().identify_bytes(content);
 
-    assert_eq!(
-        artifact_id.url().to_string(),
-        ARTIFACT_ID_HELLO_WORLD_SHA256
-    );
+    assert_eq!(artifact_id.to_string(), ARTIFACT_ID_HELLO_WORLD_SHA256);
 
     Ok(())
 }
 
 #[test]
 #[should_panic]
-fn try_from_url_bad_scheme() {
-    let url = Url::parse("gitiod:blob:sha1:95d09f2b10159347eece71399a7e2e907ea3df4f").unwrap();
-    ArtifactId::<Sha256>::try_from_url(url).unwrap();
+fn try_from_str_bad_scheme() {
+    let s = "gitiod:blob:sha1:95d09f2b10159347eece71399a7e2e907ea3df4f";
+    ArtifactId::<Sha256>::from_str(s).unwrap();
 }
 
 #[test]
 #[should_panic]
-fn try_from_url_missing_object_type() {
-    let url = Url::parse("gitoid:").unwrap();
-    ArtifactId::<Sha256>::try_from_url(url).unwrap();
+fn try_from_str_missing_object_type() {
+    let s = "gitoid:";
+    ArtifactId::<Sha256>::from_str(s).unwrap();
 }
 
 #[test]
 #[should_panic]
-fn try_from_url_bad_object_type() {
-    let url = Url::parse("gitoid:whatever").unwrap();
-    ArtifactId::<Sha256>::try_from_url(url).unwrap();
+fn try_from_str_bad_object_type() {
+    let s = "gitoid:whatever";
+    ArtifactId::<Sha256>::from_str(s).unwrap();
 }
 
 #[test]
 #[should_panic]
-fn try_from_url_missing_hash_algorithm() {
-    let url = Url::parse("gitoid:blob:").unwrap();
-    ArtifactId::<Sha256>::try_from_url(url).unwrap();
+fn try_from_str_missing_hash_algorithm() {
+    let s = "gitoid:blob:";
+    ArtifactId::<Sha256>::from_str(s).unwrap();
 }
 
 #[test]
 #[should_panic]
-fn try_from_url_bad_hash_algorithm() {
-    let url = Url::parse("gitoid:blob:sha10000").unwrap();
-    ArtifactId::<Sha256>::try_from_url(url).unwrap();
+fn try_from_str_bad_hash_algorithm() {
+    let s = "gitoid:blob:sha10000";
+    ArtifactId::<Sha256>::from_str(s).unwrap();
 }
 
 #[test]
 #[should_panic]
-fn try_from_url_missing_hash() {
-    let url = Url::parse("gitoid:blob:sha256:").unwrap();
-    ArtifactId::<Sha256>::try_from_url(url).unwrap();
+fn try_from_str_missing_hash() {
+    let s = "gitoid:blob:sha256:";
+    ArtifactId::<Sha256>::from_str(s).unwrap();
 }
 
 #[test]
-fn try_url_roundtrip() {
-    let url = Url::parse(ARTIFACT_ID_HELLO_WORLD_SHA256).unwrap();
-    let artifact_id = ArtifactId::<Sha256>::try_from_url(url.clone()).unwrap();
-    let output = artifact_id.url();
-    assert_eq!(url, output);
+fn try_from_str_roundtrip() {
+    let s = ARTIFACT_ID_HELLO_WORLD_SHA256;
+    let artifact_id = ArtifactId::<Sha256>::from_str(s).unwrap();
+    let output = artifact_id.to_string();
+    assert_eq!(s, output);
 }
 
 #[test]

@@ -104,7 +104,7 @@
 //! [omnibor]: https://omnibor.io
 
 mod gitoid;
-mod gitoid_url_parser;
+mod gitoid_parser;
 pub(crate) mod internal;
 
 pub use crate::gitoid::gitoid::GitOid;

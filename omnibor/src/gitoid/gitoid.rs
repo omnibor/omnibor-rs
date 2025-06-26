@@ -2,9 +2,8 @@
 
 use {
     crate::{
-        error::ArtifactIdError, gitoid::gitoid_url_parser::GitOidUrlParser,
-        hash_algorithm::HashAlgorithm, object_type::ObjectType,
-        util::clone_as_boxstr::CloneAsBoxstr,
+        error::ArtifactIdError, gitoid::gitoid_parser::GitOidParser, hash_algorithm::HashAlgorithm,
+        object_type::ObjectType,
     },
     serde::{
         de::{Deserializer, Error as DeserializeError, Visitor},
@@ -18,7 +17,6 @@ use {
         result::Result as StdResult,
         str::FromStr,
     },
-    url::Url,
 };
 
 /// A struct that computes [gitoids][g] based on the selected algorithm
@@ -44,18 +42,6 @@ where
     H: HashAlgorithm,
     O: ObjectType,
 {
-    /// Construct a new `GitOid` from a `Url`.
-    pub fn try_from_url(url: Url) -> Result<GitOid<H, O>, ArtifactIdError> {
-        GitOid::try_from(url)
-    }
-
-    /// Get a URL for the current `GitOid`.
-    pub fn url(&self) -> Url {
-        // PANIC SAFETY: We know that this is a valid URL;
-        //               our `Display` impl is the URL representation.
-        Url::parse(&self.to_string()).unwrap()
-    }
-
     /// Get the underlying bytes of the hash.
     pub fn as_bytes(&self) -> &[u8] {
         &self.value[..]
@@ -90,10 +76,7 @@ where
     type Err = ArtifactIdError;
 
     fn from_str(s: &str) -> Result<GitOid<H, O>, ArtifactIdError> {
-        let url = Url::parse(s).map_err(|source| {
-            ArtifactIdError::FailedToParseUrl(s.clone_as_boxstr(), Box::new(source))
-        })?;
-        GitOid::try_from_url(url)
+        GitOidParser::new(s).parse()
     }
 }
 
@@ -205,7 +188,7 @@ where
         S: Serializer,
     {
         // Serialize self as the URL string.
-        let self_as_url_str = self.url().to_string();
+        let self_as_url_str = self.to_string();
         serializer.serialize_str(&self_as_url_str)
     }
 }
@@ -233,24 +216,11 @@ where
             where
                 E: DeserializeError,
             {
-                let url = Url::parse(value).map_err(E::custom)?;
-                let id = GitOid::try_from(url).map_err(E::custom)?;
+                let id = GitOid::from_str(value).map_err(E::custom)?;
                 Ok(id)
             }
         }
 
         deserializer.deserialize_str(GitOidVisitor(PhantomData, PhantomData))
-    }
-}
-
-impl<H, O> TryFrom<Url> for GitOid<H, O>
-where
-    H: HashAlgorithm,
-    O: ObjectType,
-{
-    type Error = ArtifactIdError;
-
-    fn try_from(url: Url) -> Result<GitOid<H, O>, ArtifactIdError> {
-        GitOidUrlParser::new(&url).parse()
     }
 }

@@ -1,7 +1,4 @@
-use {
-    std::path::{Path, PathBuf},
-    url::Url,
-};
+use std::path::{Path, PathBuf};
 
 pub trait CloneAsBoxstr {
     fn clone_as_boxstr(self) -> Box<str>;
@@ -28,11 +25,5 @@ impl CloneAsBoxstr for &Path {
 impl CloneAsBoxstr for &PathBuf {
     fn clone_as_boxstr(self) -> Box<str> {
         self.display().to_string().into_boxed_str()
-    }
-}
-
-impl CloneAsBoxstr for &Url {
-    fn clone_as_boxstr(self) -> Box<str> {
-        self.clone().to_string().into_boxed_str()
     }
 }

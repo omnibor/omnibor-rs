@@ -13,7 +13,6 @@ use omnibor::{hash_algorithm::Sha256, ArtifactId, ArtifactIdBuilder};
 use std::path::{Path, PathBuf};
 use tokio::{fs::File as AsyncFile, task::JoinSet};
 use tracing::debug;
-use url::Url;
 
 // Identify, recursively, all the files under a directory.
 pub async fn id_directory(
@@ -123,12 +122,12 @@ pub async fn id_file(
     format: Format,
     hash: SelectedHash,
 ) -> Result<()> {
-    let url = hash_file(hash, file, path).await?;
+    let s = hash_file(hash, file, path).await?;
 
     tx.send(PrinterCmd::msg(
         IdFileMsg {
             path: path.to_path_buf(),
-            id: url.clone(),
+            id: s.clone(),
         },
         format,
     ))
@@ -138,9 +137,11 @@ pub async fn id_file(
 }
 
 /// Hash the file and produce a `gitoid`-scheme URL.
-pub async fn hash_file(hash: SelectedHash, file: &mut AsyncFile, path: &Path) -> Result<Url> {
+pub async fn hash_file(hash: SelectedHash, file: &mut AsyncFile, path: &Path) -> Result<String> {
     match hash {
-        SelectedHash::Sha256 => sha256_id_async_file(file, path).await.map(|id| id.url()),
+        SelectedHash::Sha256 => sha256_id_async_file(file, path)
+            .await
+            .map(|id| id.to_string()),
     }
 }
 

@@ -16,7 +16,6 @@ use {
         slice::{from_raw_parts, from_raw_parts_mut},
     },
     std::{ffi::CString, fs::File},
-    url::Url,
 };
 
 #[cfg(target_family = "unix")]
@@ -24,6 +23,7 @@ use std::os::unix::prelude::{FromRawFd, RawFd};
 
 #[cfg(target_family = "windows")]
 use std::os::windows::{io::FromRawHandle, prelude::RawHandle};
+use std::str::FromStr;
 
 /// Get the last-written error message written to a buffer.
 ///
@@ -142,12 +142,12 @@ pub unsafe extern "C" fn ob_aid_sha256_id_str(s: *const c_char) -> *const Artifa
 ///
 /// The returned `ArtifactId` must be freed.
 #[no_mangle]
-pub unsafe extern "C" fn ob_aid_sha256_try_from_url(s: *const c_char) -> *const ArtifactIdSha256 {
+pub unsafe extern "C" fn ob_aid_sha256_try_from_str(s: *const c_char) -> *const ArtifactIdSha256 {
     let output = catch_panic(|| {
         check_null(s, Error::StringPtrIsNull)?;
-        let raw_url = unsafe { CStr::from_ptr(s) }.to_str()?;
-        let url = Url::parse(raw_url)?;
-        let artifact_id = ArtifactId::<Sha256>::try_from_url(url)?;
+        let raw_str = unsafe { CStr::from_ptr(s) }.to_str()?;
+        let s = raw_str.to_string();
+        let artifact_id = ArtifactId::<Sha256>::from_str(&s)?;
         let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
@@ -207,12 +207,12 @@ pub unsafe extern "C" fn ob_aid_sha256_id_reader(handle: RawHandle) -> *const Ar
 ///
 /// Returns a `NULL` pointer if the URL construction fails.
 #[no_mangle]
-pub unsafe extern "C" fn ob_aid_sha256_url(ptr: *const ArtifactIdSha256) -> *const c_char {
+pub unsafe extern "C" fn ob_aid_sha256_str(ptr: *const ArtifactIdSha256) -> *const c_char {
     let output = catch_panic(|| {
         check_null(ptr, Error::ArtifactIdPtrIsNull)?;
         let artifact_id = unsafe { &*ptr };
         let artifact_id: ArtifactId<Sha256> = const_transmute(artifact_id);
-        let url = CString::new(artifact_id.url().as_str())?;
+        let url = CString::new(artifact_id.to_string())?;
         Ok(url.into_raw() as *const _)
     });
 

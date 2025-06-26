@@ -2,7 +2,7 @@
 
 use crate::{
     app::App,
-    cli::{IdFindArgs, Format, SelectedHash},
+    cli::{Format, IdFindArgs, SelectedHash},
     error::{Error, Result},
     fs::*,
     print::{msg::find_file::FindFileMsg, PrintSender, PrinterCmd},
@@ -13,12 +13,11 @@ use futures_util::pin_mut;
 use std::path::PathBuf;
 use tokio::task::JoinSet;
 use tracing::debug;
-use url::Url;
 
 /// Run the `artifact find` subcommand.
 pub async fn run(app: &App, args: &IdFindArgs) -> Result<()> {
     let IdFindArgs { aid, path } = args;
-    let url = aid.url();
+    let url = aid.to_string();
 
     let (sender, receiver) = bounded(app.config.perf.work_queue_size());
 
@@ -54,7 +53,7 @@ async fn open_and_match_files(
     path_rx: Receiver<PathBuf>,
     tx: PrintSender,
     format: Format,
-    url: Url,
+    s: String,
 ) -> Result<()> {
     pin_mut!(path_rx);
 
@@ -62,11 +61,11 @@ async fn open_and_match_files(
         let mut file = open_async_file(&path).await?;
         let file_url = hash_file(SelectedHash::Sha256, &mut file, &path).await?;
 
-        if url == file_url {
+        if s == file_url {
             tx.send(PrinterCmd::msg(
                 FindFileMsg {
                     path: path.to_path_buf(),
-                    id: url.clone(),
+                    id: s.clone(),
                 },
                 format,
             ))
