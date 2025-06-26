@@ -1,38 +1,36 @@
-use {crate::error::ArtifactIdError, std::io::Error as IoError};
+use {
+    crate::error::ArtifactIdError,
+    std::error::Error,
+    std::fmt::{Display, Formatter, Result as FmtResult},
+    std::io::Error as IoError,
+};
 
 #[cfg(doc)]
 use crate::{artifact_id::ArtifactId, input_manifest::InputManifest};
 
 /// An error arising from Input Manifest operations.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 #[non_exhaustive]
 pub enum InputManifestError {
     /// Input manifest missing header line.
-    #[error("input manifest missing header line")]
     ManifestMissingHeader,
 
     /// Missing 'gitoid' in manifest header.
-    #[error("missing 'gitoid' in manifest header")]
     MissingGitOidInHeader,
 
     /// Missing 'blob' in manifest header.
-    #[error("missing object type 'blob' in manifest header")]
     MissingObjectTypeInHeader,
 
     /// Missing one or more header parts.
-    #[error("missing one or more header parts")]
     MissingHeaderParts,
 
     /// Missing bom indicator in relation.
-    #[error("missing bom indicator in relation")]
     MissingBomIndicatorInRelation,
 
     /// Missing one or more relation parts.
-    #[error("missing one or more relation parts in '{0}'")]
     MissingRelationParts(Box<str>),
 
     /// Wrong hash algorithm.
-    #[error("wrong hash algorithm; expected '{expected}', got '{got}'")]
     WrongHashAlgorithm {
         /// The expected hash algorithm.
         expected: Box<str>,
@@ -41,125 +39,185 @@ pub enum InputManifestError {
     },
 
     /// Failed to read input manifest file.
-    #[error("failed to read input manifest file")]
-    FailedManifestRead(#[source] Box<IoError>),
+    FailedManifestRead(Box<IoError>),
 
     /// Failed to read the target artifact during input manifest creation.
-    #[error("failed to read the target artifact during input manifest creation")]
-    FailedTargetArtifactRead(#[source] Box<IoError>),
+    FailedTargetArtifactRead(Box<IoError>),
 
     /// An error arising from an Artifact ID problem.
-    #[error(transparent)]
-    ArtifactIdError(#[from] ArtifactIdError),
+    ArtifactIdError(ArtifactIdError),
 
     /// No storage root found.
-    #[error("no storage root found; provide one or set the 'OMNIBOR_DIR' environment variable")]
     NoStorageRoot,
 
     /// Can't access storage root.
-    #[error("unable to access file system storage root '{0}'; please check permissions")]
-    CantAccessRoot(Box<str>, #[source] Box<IoError>),
+    CantAccessRoot(Box<str>, Box<IoError>),
 
     /// Object store is not a directory.
-    #[error("object store is not a directory; '{0}'")]
     ObjectStoreNotDir(Box<str>),
 
     /// Object store path is not valid.
-    #[error("not a valid object store path; '{0}'")]
     InvalidObjectStorePath(Box<str>),
 
     /// Object store is not empty.
-    #[error("object store is not empty; '{0}'")]
     ObjectStoreDirNotEmpty(Box<str>),
 
     /// Can't create object store.
-    #[error("can't create object store '{0}'")]
-    CantCreateObjectStoreDir(Box<str>, #[source] Box<IoError>),
+    CantCreateObjectStoreDir(Box<str>, Box<IoError>),
 
     /// Can't write manifest directory.
-    #[error("can't write manifest directory '{0}'")]
-    CantWriteManifestDir(Box<str>, #[source] Box<IoError>),
+    CantWriteManifestDir(Box<str>, Box<IoError>),
 
     /// Can't open target index file.
-    #[error("can't open target index file '{0}'")]
-    CantOpenTargetIndex(Box<str>, #[source] Box<IoError>),
+    CantOpenTargetIndex(Box<str>, Box<IoError>),
 
     /// Can't create target index file.
-    #[error("can't create target index file '{0}'")]
-    CantCreateTargetIndex(Box<str>, #[source] Box<IoError>),
+    CantCreateTargetIndex(Box<str>, Box<IoError>),
 
     /// Can't open target index temp file during an upsert.
-    #[error("can't open target index temp file for upsert '{0}'")]
-    CantOpenTargetIndexTemp(Box<str>, #[source] Box<IoError>),
+    CantOpenTargetIndexTemp(Box<str>, Box<IoError>),
 
     /// Can't write to target index temp file for upsert.
-    #[error("can't write to target index temp file for upsert '{0}'")]
-    CantWriteTargetIndexTemp(Box<str>, #[source] Box<IoError>),
+    CantWriteTargetIndexTemp(Box<str>, Box<IoError>),
 
     /// Can't delete target index temp file during an upsert.
-    #[error("can't delete target index temp file for upsert '{0}'")]
-    CantDeleteTargetIndexTemp(Box<str>, #[source] Box<IoError>),
+    CantDeleteTargetIndexTemp(Box<str>, Box<IoError>),
 
     /// Can't replace target index with temp file.
-    #[error("can't replace target index '{index}' with temp file '{temp}'")]
     CantReplaceTargetIndexWithTemp {
         /// The path to the target index temp file.
         temp: Box<str>,
         /// The path to the target index file.
         index: Box<str>,
         /// The underlying IO error.
-        #[source]
         source: Box<IoError>,
     },
 
     /// Can't write manifest file.
-    #[error("can't write manifest file '{0}'")]
-    CantWriteManifest(Box<str>, #[source] Box<IoError>),
+    CantWriteManifest(Box<str>, Box<IoError>),
 
     /// Target index entry is malformed.
-    #[error("target index entry '{line_no}' is malformed")]
     TargetIndexMalformedEntry {
         /// The line of the malformed entry.
         line_no: usize,
     },
 
     /// Can't read entry of the target index file.
-    #[error("can't read entry '{line_no}' of the target index file")]
     CantReadTargetIndexLine {
         /// The line of the entry we can't read.
         line_no: usize,
         /// The underlying IO error.
-        #[source]
         source: Box<IoError>,
     },
 
     /// An Artifact ID is missing from target index upsert.
-    #[error("missing manifest_aid or target_aid from target index upsert operation")]
     InvalidTargetIndexUpsert,
 
     /// Failed to clean up storage root.
-    #[error("failed to clean up storage root '{0}'")]
-    FailedStorageCleanup(Box<str>, #[source] Box<IoError>),
+    FailedStorageCleanup(Box<str>, Box<IoError>),
 
     /// Can't find manifest for target Artifact ID.
-    #[error("can't find manifest for target Artifact ID '{0}'")]
     CantFindManifestForTarget(Box<str>),
 
     /// Can't find manifest with Artifact ID.
-    #[error("can't find manifest with Artifact ID '{0}'")]
     CantFindManifestWithId(Box<str>),
 
     /// Missing target index removal criteria.
-    #[error(
-        "missing target index removal criteria; make sure to set a target or manifest Artifact ID"
-    )]
     MissingTargetIndexRemoveCriteria,
 
     /// No manifest found to remove in the target index
-    #[error("no manifest found to remove in the target index")]
     NoManifestFoundToRemove,
 
     /// Can't remove manifest from storage.
-    #[error("can't remove manifest from storage")]
-    CantRemoveManifest(#[source] Box<IoError>),
+    CantRemoveManifest(Box<IoError>),
+}
+
+impl Display for InputManifestError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            InputManifestError::ManifestMissingHeader => write!(f, "input manifest missing header line"),
+            InputManifestError::MissingGitOidInHeader => write!(f, "missing 'gitoid' in manifest header"),
+            InputManifestError::MissingObjectTypeInHeader => write!(f, "missing object type 'blob' in manifest header"),
+            InputManifestError::MissingHeaderParts => write!(f, "missing one or more header parts"),
+            InputManifestError::MissingBomIndicatorInRelation => write!(f, "missing bom indicator in relation"),
+            InputManifestError::MissingRelationParts(s) => write!(f, "missing one or more relation parts in '{}'", s),
+            InputManifestError::WrongHashAlgorithm { expected, got } => {
+                write!(f, "wrong hash algorithm; expected '{}', got '{}'", expected, got)
+            }
+            InputManifestError::FailedManifestRead(_) => write!(f, "failed to read input manifest file"),
+            InputManifestError::FailedTargetArtifactRead(_) => write!(f, "failed to read the target artifact during input manifest creation"),
+            InputManifestError::ArtifactIdError(source) => write!(f, "{}", source),
+            InputManifestError::NoStorageRoot => write!(f, "no storage root found; provide one or set the 'OMNIBOR_DIR' environment variable"),
+            InputManifestError::CantAccessRoot(s, ..) => write!(f, "unable to access file system storage root '{}'; please check permissions", s),
+            InputManifestError::ObjectStoreNotDir(s) => write!(f, "object store is not a directory; '{}'", s),
+            InputManifestError::InvalidObjectStorePath(s) => write!(f, "not a valid object store path; '{}'", s),
+            InputManifestError::ObjectStoreDirNotEmpty(s) => write!(f, "object store is not empty; '{}'", s),
+            InputManifestError::CantCreateObjectStoreDir(s, ..) => write!(f, "can't create object store '{}'", s),
+            InputManifestError::CantWriteManifestDir(s, _) => write!(f, "can't write manifest directory '{}'", s),
+            InputManifestError::CantOpenTargetIndex(s, _) => write!(f, "can't open target index file '{}'", s),
+            InputManifestError::CantCreateTargetIndex(s, _) => write!(f, "can't create target index file '{}'", s),
+            InputManifestError::CantOpenTargetIndexTemp(s, _) => write!(f, "can't open target index temp file for upsert '{}'", s),
+            InputManifestError::CantWriteTargetIndexTemp(s, _) => write!(f, "can't write to target index temp file for upsert '{}'", s),
+            InputManifestError::CantDeleteTargetIndexTemp(s, _) => write!(f, "can't delete target index temp file for upsert '{}'", s),
+            InputManifestError::CantReplaceTargetIndexWithTemp { temp, index, .. } => {
+                write!(f, "can't replace target index '{}' with temp file '{}'", temp, index)
+            }
+            InputManifestError::CantWriteManifest(s, _) => write!(f, "can't write manifest file '{}'", s),
+            InputManifestError::TargetIndexMalformedEntry { line_no } => write!(f, "target index entry '{}' is malformed", line_no),
+            InputManifestError::CantReadTargetIndexLine { line_no, .. } => write!(f, "can't read entry '{}' of the target index file", line_no),
+            InputManifestError::InvalidTargetIndexUpsert => write!(f, "missing manifest_aid or target_aid from target index upsert operation"),
+            InputManifestError::FailedStorageCleanup(s, _) => write!(f, "failed to clean up storage root '{}'", s),
+            InputManifestError::CantFindManifestForTarget(s) => write!(f, "can't find manifest for target Artifact ID '{}'", s),
+            InputManifestError::CantFindManifestWithId(s) => write!(f, "can't find manifest with Artifact ID '{}'", s),
+            InputManifestError::MissingTargetIndexRemoveCriteria => write!(f, "missing target index removal criteria; make sure to set a target or manifest Artifact ID"),
+            InputManifestError::NoManifestFoundToRemove => write!(f, "no manifest found to remove in the target index"),
+            InputManifestError::CantRemoveManifest(_) => write!(f, "can't remove manifest from storage"),
+        }
+    }
+}
+
+impl Error for InputManifestError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            InputManifestError::ManifestMissingHeader
+            | InputManifestError::MissingGitOidInHeader
+            | InputManifestError::MissingObjectTypeInHeader
+            | InputManifestError::MissingHeaderParts
+            | InputManifestError::MissingBomIndicatorInRelation
+            | InputManifestError::MissingRelationParts(_)
+            | InputManifestError::WrongHashAlgorithm { .. }
+            | InputManifestError::NoStorageRoot
+            | InputManifestError::ObjectStoreNotDir(_)
+            | InputManifestError::InvalidObjectStorePath(_)
+            | InputManifestError::ObjectStoreDirNotEmpty(_)
+            | InputManifestError::TargetIndexMalformedEntry { .. }
+            | InputManifestError::InvalidTargetIndexUpsert
+            | InputManifestError::CantFindManifestForTarget(_)
+            | InputManifestError::CantFindManifestWithId(_)
+            | InputManifestError::MissingTargetIndexRemoveCriteria
+            | InputManifestError::NoManifestFoundToRemove => None,
+            InputManifestError::FailedManifestRead(source) => Some(source),
+            InputManifestError::FailedTargetArtifactRead(source) => Some(source),
+            InputManifestError::ArtifactIdError(source) => Some(source),
+            InputManifestError::CantAccessRoot(_, source) => Some(source),
+            InputManifestError::CantCreateObjectStoreDir(_, source) => Some(source),
+            InputManifestError::CantWriteManifestDir(_, source) => Some(source),
+            InputManifestError::CantOpenTargetIndex(_, source) => Some(source),
+            InputManifestError::CantCreateTargetIndex(_, source) => Some(source),
+            InputManifestError::CantOpenTargetIndexTemp(_, source) => Some(source),
+            InputManifestError::CantWriteTargetIndexTemp(_, source) => Some(source),
+            InputManifestError::CantDeleteTargetIndexTemp(_, source) => Some(source),
+            InputManifestError::CantReplaceTargetIndexWithTemp { source, .. } => Some(source),
+            InputManifestError::CantWriteManifest(_, source) => Some(source),
+            InputManifestError::CantReadTargetIndexLine { source, .. } => Some(source),
+            InputManifestError::FailedStorageCleanup(_, source) => Some(source),
+            InputManifestError::CantRemoveManifest(source) => Some(source),
+        }
+    }
+}
+
+impl From<ArtifactIdError> for InputManifestError {
+    fn from(value: ArtifactIdError) -> Self {
+        InputManifestError::ArtifactIdError(value)
+    }
 }
