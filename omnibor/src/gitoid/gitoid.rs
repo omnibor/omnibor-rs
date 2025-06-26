@@ -5,18 +5,22 @@ use {
         error::ArtifactIdError, gitoid::gitoid_parser::GitOidParser, hash_algorithm::HashAlgorithm,
         object_type::ObjectType,
     },
-    serde::{
-        de::{Deserializer, Error as DeserializeError, Visitor},
-        Deserialize, Serialize, Serializer,
-    },
     std::{
         cmp::Ordering,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
         hash::{Hash, Hasher},
         marker::PhantomData,
-        result::Result as StdResult,
         str::FromStr,
     },
+};
+
+#[cfg(feature = "serde")]
+use {
+    serde::{
+        de::{Deserializer, Error as DeserializeError, Visitor},
+        Deserialize, Serialize, Serializer,
+    },
+    std::result::Result as StdResult,
 };
 
 /// A struct that computes [gitoids][g] based on the selected algorithm
@@ -178,6 +182,7 @@ where
     }
 }
 
+#[cfg(feature = "serde")]
 impl<H, O> Serialize for GitOid<H, O>
 where
     H: HashAlgorithm,
@@ -193,6 +198,7 @@ where
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de, H, O> Deserialize<'de> for GitOid<H, O>
 where
     H: HashAlgorithm,

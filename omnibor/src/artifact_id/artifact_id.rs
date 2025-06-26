@@ -9,8 +9,13 @@ use {
         fmt::{Debug, Formatter, Result as FmtResult},
         hash::{Hash, Hasher},
     },
+    std::{fmt::Display, path::PathBuf, str::FromStr},
+};
+
+#[cfg(feature = "serde")]
+use {
     serde::{de::Deserializer, Deserialize, Serialize, Serializer},
-    std::{fmt::Display, path::PathBuf, result::Result as StdResult, str::FromStr},
+    std::result::Result as StdResult,
 };
 
 #[cfg(doc)]
@@ -234,6 +239,7 @@ impl<'r, H: HashAlgorithm> TryFrom<&'r str> for ArtifactId<H> {
     }
 }
 
+#[cfg(feature = "serde")]
 impl<H: HashAlgorithm> Serialize for ArtifactId<H> {
     fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
     where
@@ -243,6 +249,7 @@ impl<H: HashAlgorithm> Serialize for ArtifactId<H> {
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de, H: HashAlgorithm> Deserialize<'de> for ArtifactId<H> {
     fn deserialize<D>(deserializer: D) -> StdResult<Self, D::Error>
     where

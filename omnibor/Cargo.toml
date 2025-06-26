@@ -51,7 +51,7 @@ bindet = "0.3.2"
 bytecount = { version = "0.6.8", features = ["runtime-dispatch-simd"] }
 hex = "0.4.3"
 hyperpolyglot = "0.1.7"
-serde = { version = "1.0.197", features = ["derive"] }
+serde = { version = "1.0.197", features = ["derive"], optional = true }
 tokio = { version = "1.36.0", features = ["io-util", "fs"] }
 walkdir = { version = "2.5.0" }
 
@@ -88,6 +88,9 @@ backend-boringssl = ["dep:boring"]
 
 # Enable using OpenSSL as a cryptography backend.
 backend-openssl = ["dep:openssl"]
+
+# Support serialization and deserialized with Serde.
+serde = ["dep:serde"]
 
 [[bench]]
 name = "benchmark"

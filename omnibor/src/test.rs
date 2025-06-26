@@ -6,10 +6,12 @@ use {
         hash_algorithm::Sha256,
     },
     anyhow::Result,
-    serde_test::{assert_tokens, Token},
     std::{fs::File, str::FromStr},
     tokio::{fs::File as AsyncFile, runtime::Runtime},
 };
+
+#[cfg(feature = "serde")]
+use serde_test::{assert_tokens, Token};
 
 /// SHA-256 hash of a file containing "hello world"
 ///
@@ -173,6 +175,7 @@ fn try_from_str_roundtrip() {
     assert_eq!(s, output);
 }
 
+#[cfg(feature = "serde")]
 #[test]
 fn valid_artifact_id_ser_de() {
     let id = ArtifactIdBuilder::with_rustcrypto().identify_string("hello world");
