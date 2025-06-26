@@ -35,19 +35,19 @@ impl Display for EmbeddingError {
                 write!(f, "unknown file type for manifest ID embedding")
             }
             EmbeddingError::CantEmbedInTarget(s, _) => {
-                write!(f, "can't embed manifest Artifact ID in target '{}'", s)
+                write!(f, "can't embed manifest Artifact ID in target '{s}'")
             }
             EmbeddingError::UnsupportedBinaryFormat(s) => {
-                write!(f, "unsupported binary format for embedding '{}'", s)
+                write!(f, "unsupported binary format for embedding '{s}'")
             }
             EmbeddingError::FormatDoesntSupportEmbedding(s) => {
-                write!(f, "format doesn't support embedding '{}'", s)
+                write!(f, "format doesn't support embedding '{s}'")
             }
             EmbeddingError::UnknownEmbeddingSupport(s) => {
-                write!(f, "unknown embedding support for language '{}'", s)
+                write!(f, "unknown embedding support for language '{s}'")
             }
             EmbeddingError::UnknownProgLang(s) => {
-                write!(f, "unknown programming language: '{}'", s)
+                write!(f, "unknown programming language: '{s}'")
             }
         }
     }

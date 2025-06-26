@@ -55,10 +55,9 @@ fn embed_in_text_file_with_prefix_comment<H: HashAlgorithm>(
         .open(path)
         .map_err(|source| InputManifestError::FailedTargetArtifactRead(Box::new(source)))?;
 
-    let result =
-        writeln!(&mut file, "{} {}: {}", prefix, EMBED_KEY, manifest_aid).map_err(|source| {
-            EmbeddingError::CantEmbedInTarget(path.clone_as_boxstr(), Box::new(source))
-        });
+    let result = writeln!(&mut file, "{prefix} {EMBED_KEY}: {manifest_aid}").map_err(|source| {
+        EmbeddingError::CantEmbedInTarget(path.clone_as_boxstr(), Box::new(source))
+    });
 
     Ok(result)
 }
@@ -74,12 +73,10 @@ fn embed_in_text_file_with_wrapped_comment<H: HashAlgorithm>(
         .open(path)
         .map_err(|source| InputManifestError::FailedTargetArtifactRead(Box::new(source)))?;
 
-    let result = writeln!(
-        &mut file,
-        "{} {}: {} {}",
-        prefix, EMBED_KEY, manifest_aid, suffix
-    )
-    .map_err(|source| EmbeddingError::CantEmbedInTarget(path.clone_as_boxstr(), Box::new(source)));
+    let result =
+        writeln!(&mut file, "{prefix} {EMBED_KEY}: {manifest_aid} {suffix}").map_err(|source| {
+            EmbeddingError::CantEmbedInTarget(path.clone_as_boxstr(), Box::new(source))
+        });
 
     Ok(result)
 }

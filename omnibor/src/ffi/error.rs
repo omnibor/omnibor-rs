@@ -64,7 +64,7 @@ where
             set_error_msg(match err.source() {
                 None => err.to_string(),
                 Some(source_err) => {
-                    format!("{}: {}", err, source_err)
+                    format!("{err}: {source_err}")
                 }
             });
             None
@@ -98,12 +98,11 @@ impl Display for Error {
             Error::Utf8UnexpectedEnd => write!(f, "UTF-8 byte sequence ended unexpectedly"),
             Error::Utf8InvalidByte(start, len) => write!(
                 f,
-                "invalid {}-byte UTF-8 sequence, starting at byte {}",
-                len, start
+                "invalid {len}-byte UTF-8 sequence, starting at byte {start}",
             ),
             Error::NotArtifactIdUrl(_) => write!(f, "string is not a valid ArtifactId URL"),
             Error::StringHadInteriorNul(loc) => {
-                write!(f, "string had interior NUL at byte {}", loc)
+                write!(f, "string had interior NUL at byte {loc}")
             }
         }
     }
@@ -156,7 +155,7 @@ enum ErrorMsg {
 impl Display for ErrorMsg {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            ErrorMsg::Known(s) => write!(f, "{}", s),
+            ErrorMsg::Known(s) => write!(f, "{s}"),
             ErrorMsg::Unknown => write!(f, "an unknown error occured"),
         }
     }

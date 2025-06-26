@@ -70,7 +70,7 @@ impl Display for ArtifactIdError {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             ArtifactIdError::FailedToOpenFileForId { path, .. } => {
-                write!(f, "failed to open file for identification '{}'", path)
+                write!(f, "failed to open file for identification '{path}'")
             }
             ArtifactIdError::FailedRead(_) => write!(f, "failed to asynchronously read the reader"),
             ArtifactIdError::FailedSeek(seek_from, _) => write!(
@@ -81,26 +81,24 @@ impl Display for ArtifactIdError {
             ArtifactIdError::FailedCheckReaderPos(_) => {
                 write!(f, "failed to check reader position")
             }
-            ArtifactIdError::MissingScheme(s) => write!(f, "missing scheme in URL '{}'", s),
-            ArtifactIdError::InvalidScheme(s) => write!(f, "invalid scheme in URL '{}'", s),
+            ArtifactIdError::MissingScheme(s) => write!(f, "missing scheme in URL '{s}'"),
+            ArtifactIdError::InvalidScheme(s) => write!(f, "invalid scheme in URL '{s}'"),
             ArtifactIdError::MissingObjectType(s) => {
-                write!(f, "missing object type in URL '{}'", s)
+                write!(f, "missing object type in URL '{s}'")
             }
             ArtifactIdError::MissingHashAlgorithm(s) => {
-                write!(f, "missing hash algorithm in URL '{}'", s)
+                write!(f, "missing hash algorithm in URL '{s}'")
             }
-            ArtifactIdError::MissingHash(s) => write!(f, "missing hash in URL '{}'", s),
+            ArtifactIdError::MissingHash(s) => write!(f, "missing hash in URL '{s}'"),
             ArtifactIdError::MismatchedObjectType { expected, got } => write!(
                 f,
-                "mismatched object type; expected '{}', got '{}'",
-                expected, got
+                "mismatched object type; expected '{expected}', got '{got}'",
             ),
             ArtifactIdError::MismatchedHashAlgorithm { expected, got } => write!(
                 f,
-                "mismatched hash algorithm; expected '{}', got '{}'",
-                expected, got
+                "mismatched hash algorithm; expected '{expected}', got '{got}'",
             ),
-            ArtifactIdError::InvalidHex(s, _) => write!(f, "invalid hex string '{}'", s),
+            ArtifactIdError::InvalidHex(s, _) => write!(f, "invalid hex string '{s}'"),
         }
     }
 }
@@ -130,9 +128,9 @@ struct SeekFromDisplay<'s>(&'s SeekFrom);
 impl Display for SeekFromDisplay<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self.0 {
-            SeekFrom::Start(pos) => write!(f, "{} bytes from start", pos),
-            SeekFrom::End(pos) => write!(f, "{} bytes from end", pos),
-            SeekFrom::Current(pos) => write!(f, "{} bytes from current position", pos),
+            SeekFrom::Start(pos) => write!(f, "{pos} bytes from start"),
+            SeekFrom::End(pos) => write!(f, "{pos} bytes from end"),
+            SeekFrom::Current(pos) => write!(f, "{pos} bytes from current position"),
         }
     }
 }

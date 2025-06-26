@@ -28,7 +28,7 @@ impl ErrorMsg {
 fn error_string(error: &dyn StdError) -> String {
     fn error_string_inner(err_string: &mut String, error: &dyn StdError, inner: bool) {
         if inner {
-            err_string.push_str(&format!(", {}", error));
+            err_string.push_str(&format!(", {error}"));
         } else {
             err_string.push_str(&error.to_string());
         }

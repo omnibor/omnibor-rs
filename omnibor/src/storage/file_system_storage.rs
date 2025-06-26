@@ -313,9 +313,9 @@ fn artifact_id_from_dir_entry<H: HashAlgorithm>(entry: &DirEntry) -> Option<Arti
         let remainder = path_components.get(n_components - 1)?;
         let prefix = path_components.get(n_components - 2)?;
         let meta = path_components.get(n_components - 3)?;
-        let hash = format!("{}{}", prefix, remainder);
+        let hash = format!("{prefix}{remainder}");
         let front = meta.replace('_', ":");
-        format!("{}:{}", front, hash)
+        format!("{front}:{hash}")
     };
 
     ArtifactId::<H>::from_str(&gitoid_url).ok()
@@ -510,7 +510,7 @@ impl<H: HashAlgorithm> TargetIndexRemove<H> {
         // Write the updated in-memory data to the tempfile.
         let mut writer = BufWriter::new(&mut tempfile);
         for (manifest_aid, target_aid) in target_index {
-            if let Err(source) = writeln!(writer, "{} {}", manifest_aid, target_aid) {
+            if let Err(source) = writeln!(writer, "{manifest_aid} {target_aid}") {
                 fs::remove_file(self.tempfile()).map_err(|source| {
                     InputManifestError::CantDeleteTargetIndexTemp(
                         self.tempfile().clone_as_boxstr(),
@@ -634,7 +634,7 @@ impl<H: HashAlgorithm> TargetIndexUpsert<H> {
 
         let mut writer = BufWriter::new(&mut tempfile);
         for (manifest_aid, target_aid) in target_index {
-            if let Err(source) = writeln!(writer, "{} {}", manifest_aid, target_aid) {
+            if let Err(source) = writeln!(writer, "{manifest_aid} {target_aid}") {
                 fs::remove_file(self.tempfile()).map_err(|source| {
                     InputManifestError::CantDeleteTargetIndexTemp(
                         self.tempfile().clone_as_boxstr(),

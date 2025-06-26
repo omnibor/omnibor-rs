@@ -211,7 +211,7 @@ impl Display for PipelineError {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             PipelineError::Forward { forward } => {
-                write!(f, "{}, but rollback was successful", forward)
+                write!(f, "{forward}, but rollback was successful")
             }
             PipelineError::Rollback {
                 forward_name,
@@ -219,8 +219,7 @@ impl Display for PipelineError {
                 ..
             } => write!(
                 f,
-                "step '{}' failed and step '{}' failed to rollback",
-                forward_name, backward_name
+                "step '{forward_name}' failed and step '{backward_name}' failed to rollback"
             ),
         }
     }
