@@ -44,7 +44,7 @@ where
     }
 
     let manifest = manifest_builder
-        .finish(&args.target)
+        .finish_with_auto_embedding(&args.target)
         .map_err(Error::ManifestBuildFailed)?
         .or_else(|embedding_error| {
             warn!("embedding failed; '{}'", embedding_error);

@@ -4,13 +4,13 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use omnibor::ArtifactIdBuilder;
 
 #[cfg(not(any(
-    feature = "backend-rustcrypto",
-    feature = "backend-boringssl",
-    feature = "backend-openssl"
+    feature = "provider-rustcrypto",
+    feature = "provider-boringssl",
+    feature = "provider-openssl"
 )))]
 compile_error!(
     r#"At least one cryptography backend must be active: "#
-    r#""backend-rustcrypto", "backend-boringssl", "backend-openssl""#
+    r#""provider-rustcrypto", "provider-boringssl", "provider-openssl""#
 );
 
 /*===============================================================================================
@@ -19,7 +19,7 @@ compile_error!(
  * Define the benchmark functions based on the selected features.
  */
 
-#[cfg(feature = "backend-rustcrypto")]
+#[cfg(feature = "provider-rustcrypto")]
 fn bench_rustcrypto_sha256_small(c: &mut Criterion) {
     let name = "OmniBOR RustCrypto SHA-256 11B";
     let input = b"hello world";
@@ -30,7 +30,7 @@ fn bench_rustcrypto_sha256_small(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "backend-boringssl")]
+#[cfg(feature = "provider-boringssl")]
 fn bench_boring_sha256_small(c: &mut Criterion) {
     let name = "OmniBOR BoringSSL SHA-256 11B";
     let input = b"hello world";
@@ -41,7 +41,7 @@ fn bench_boring_sha256_small(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "backend-openssl")]
+#[cfg(feature = "provider-openssl")]
 fn bench_openssl_sha256_small(c: &mut Criterion) {
     let name = "OmniBOR OpenSSL SHA-256 11B";
     let input = b"hello world";
@@ -52,7 +52,7 @@ fn bench_openssl_sha256_small(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "backend-rustcrypto")]
+#[cfg(feature = "provider-rustcrypto")]
 fn bench_rustcrypto_sha256_large(c: &mut Criterion) {
     let name = "OmniBOR RustCrypto SHA-256 100MB";
     let input = &[0; 1024 * 1024 * 100]; // 100 MB
@@ -63,7 +63,7 @@ fn bench_rustcrypto_sha256_large(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "backend-boringssl")]
+#[cfg(feature = "provider-boringssl")]
 fn bench_boring_sha256_large(c: &mut Criterion) {
     let name = "OmniBOR BoringSSL SHA-256 100MB";
     let input = &[0; 1024 * 1024 * 100]; // 100 MB
@@ -74,7 +74,7 @@ fn bench_boring_sha256_large(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "backend-openssl")]
+#[cfg(feature = "provider-openssl")]
 fn bench_openssl_sha256_large(c: &mut Criterion) {
     let name = "OmniBOR OpenSSL SHA-256 100MB";
     let input = &[0; 1024 * 1024 * 100]; // 100 MB
@@ -91,21 +91,21 @@ fn bench_openssl_sha256_large(c: &mut Criterion) {
  * Define the benchmark groups based on the selected features.
  */
 
-#[cfg(feature = "backend-rustcrypto")]
+#[cfg(feature = "provider-rustcrypto")]
 criterion_group!(
     name = rustcrypto_benches;
     config = Criterion::default();
     targets = bench_rustcrypto_sha256_small, bench_rustcrypto_sha256_large
 );
 
-#[cfg(feature = "backend-boringssl")]
+#[cfg(feature = "provider-boringssl")]
 criterion_group!(
     name = boringssl_benches;
     config = Criterion::default();
     targets = bench_boring_sha256_small, bench_boring_sha256_large
 );
 
-#[cfg(feature = "backend-openssl")]
+#[cfg(feature = "provider-openssl")]
 criterion_group!(
     name = openssl_benches;
     config = Criterion::default();
@@ -120,50 +120,50 @@ criterion_group!(
  */
 
 #[cfg(all(
-    feature = "backend-rustcrypto",
-    feature = "backend-boringssl",
-    feature = "backend-openssl"
+    feature = "provider-rustcrypto",
+    feature = "provider-boringssl",
+    feature = "provider-openssl"
 ))]
 criterion_main!(rustcrypto_benches, boringssl_benches, openssl_benches);
 
 #[cfg(all(
-    feature = "backend-rustcrypto",
-    feature = "backend-boringssl",
-    not(feature = "backend-openssl")
+    feature = "provider-rustcrypto",
+    feature = "provider-boringssl",
+    not(feature = "provider-openssl")
 ))]
 criterion_main!(rustcrypto_benches, boringssl_benches);
 
 #[cfg(all(
-    not(feature = "backend-rustcrypto"),
-    feature = "backend-boringssl",
-    feature = "backend-openssl"
+    not(feature = "provider-rustcrypto"),
+    feature = "provider-boringssl",
+    feature = "provider-openssl"
 ))]
 criterion_main!(boringssl_benches, openssl_benches);
 
 #[cfg(all(
-    feature = "backend-rustcrypto",
-    not(feature = "backend-boringssl"),
-    feature = "backend-openssl"
+    feature = "provider-rustcrypto",
+    not(feature = "provider-boringssl"),
+    feature = "provider-openssl"
 ))]
 criterion_main!(rustcrypto_benches, openssl_benches);
 
 #[cfg(all(
-    feature = "backend-rustcrypto",
-    not(feature = "backend-boringssl"),
-    not(feature = "backend-openssl"),
+    feature = "provider-rustcrypto",
+    not(feature = "provider-boringssl"),
+    not(feature = "provider-openssl"),
 ))]
 criterion_main!(rustcrypto_benches);
 
 #[cfg(all(
-    not(feature = "backend-rustcrypto"),
-    feature = "backend-boringssl",
-    not(feature = "backend-openssl")
+    not(feature = "provider-rustcrypto"),
+    feature = "provider-boringssl",
+    not(feature = "provider-openssl")
 ))]
 criterion_main!(boringssl_benches);
 
 #[cfg(all(
-    not(feature = "backend-rustcrypto"),
-    not(feature = "backend-boringssl"),
-    feature = "backend-openssl"
+    not(feature = "provider-rustcrypto"),
+    not(feature = "provider-boringssl"),
+    feature = "provider-openssl"
 ))]
 criterion_main!(openssl_benches);

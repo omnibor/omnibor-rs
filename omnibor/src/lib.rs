@@ -224,7 +224,7 @@
 //! We also provide convenience methods to choose one of the built-in providers.
 //!
 //! Providers are conditionally compiled in based on crate features. By default,
-//! only the `backend-rustcrypto` feature is turned on. Any combination of
+//! only the `provider-rustcrypto` feature is turned on. Any combination of
 //! these may be included. In all cases, they are vendored in and do not link
 //! to any system instances of these libraries.
 //!
@@ -408,13 +408,13 @@
  */
 
 #[cfg(not(any(
-    feature = "backend-rustcrypto",
-    feature = "backend-boringssl",
-    feature = "backend-openssl"
+    feature = "provider-rustcrypto",
+    feature = "provider-boringssl",
+    feature = "provider-openssl"
 )))]
 compile_error!(
-    r#"At least one of the "backend-rustcrypto", "backend-boringssl", \n"#
-    r#"\tor "backend-openssl" features must be enabled"#
+    r#"At least one of the "provider-rustcrypto", "provider-boringssl", \n"#
+    r#"\tor "provider-openssl" features must be enabled"#
 );
 
 /*===============================================================================================
@@ -432,7 +432,7 @@ pub(crate) mod util;
  * Testing
  */
 
-#[cfg(feature = "backend-rustcrypto")]
+#[cfg(feature = "provider-rustcrypto")]
 #[cfg(test)]
 mod test;
 

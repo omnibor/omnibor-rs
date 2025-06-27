@@ -47,13 +47,15 @@ openssl = { version = "0.10.66", optional = true }
 sha2 = { version = "0.10.8", features = ["std"], optional = true }
 
 # Required crates.
-bindet = "0.3.2"
 bytecount = { version = "0.6.8", features = ["runtime-dispatch-simd"] }
 hex = "0.4.3"
-hyperpolyglot = "0.1.7"
-serde = { version = "1.0.197", features = ["derive"], optional = true }
 tokio = { version = "1.36.0", features = ["io-util", "fs"] }
 walkdir = { version = "2.5.0" }
+
+# Other optional crates.
+bindet = { version = "0.3.2", optional = true }
+hyperpolyglot = { version = "0.1.7", optional = true }
+serde = { version = "1.0.197", features = ["derive"], optional = true }
 
 [dev-dependencies]
 
@@ -75,21 +77,23 @@ tokio-test = "0.4.3"
 
 # By default, you get:
 #
-# - Async support.
-# - The 'rustcrypto' backend.
-# - Standard library support.
-default = ["backend-rustcrypto"]
+# - The 'rustcrypto' provider.
+# - Automatic inference of filetypes for embedding.
+default = ["provider-rustcrypto"]
 
-# Enable using RustCrypto as a cryptography backend.
-backend-rustcrypto = ["dep:sha2"]
+# Enable using RustCrypto as a cryptography provider.
+provider-rustcrypto = ["dep:sha2"]
 
-# Enable using BoringSLL as a cryptography backend.
-backend-boringssl = ["dep:boring"]
+# Enable using BoringSLL as a cryptography provider.
+provider-boringssl = ["dep:boring"]
 
-# Enable using OpenSSL as a cryptography backend.
-backend-openssl = ["dep:openssl"]
+# Enable using OpenSSL as a cryptography provider.
+provider-openssl = ["dep:openssl"]
 
-# Support serialization and deserialized with Serde.
+# Support automatic filetype inference for embedding.
+infer-filetypes = ["dep:bindet", "dep:hyperpolyglot"]
+
+# Support serialization and deserialization with Serde.
 serde = ["dep:serde"]
 
 [[bench]]

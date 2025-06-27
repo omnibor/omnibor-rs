@@ -2,7 +2,7 @@ use super::FileSystemStorage;
 use crate::{artifact_id::ArtifactId, hash_algorithm::Sha256, pathbuf};
 use std::str::FromStr;
 
-#[cfg(feature = "backend-rustcrypto")]
+#[cfg(feature = "provider-rustcrypto")]
 #[test]
 fn correct_aid_storage_path() {
     use crate::hash_provider::RustCrypto;

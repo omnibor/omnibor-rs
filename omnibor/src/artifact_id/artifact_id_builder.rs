@@ -27,7 +27,7 @@ pub struct ArtifactIdBuilder<H: HashAlgorithm, P: HashProvider<H>> {
     provider: P,
 }
 
-#[cfg(feature = "backend-rustcrypto")]
+#[cfg(feature = "provider-rustcrypto")]
 impl ArtifactIdBuilder<Sha256, crate::hash_provider::RustCrypto> {
     /// Create a new [`ArtifactIdBuilder`] with `RustCrypto` as the [`HashProvider`].
     pub fn with_rustcrypto() -> Self {
@@ -38,7 +38,7 @@ impl ArtifactIdBuilder<Sha256, crate::hash_provider::RustCrypto> {
     }
 }
 
-#[cfg(feature = "backend-boringssl")]
+#[cfg(feature = "provider-boringssl")]
 impl ArtifactIdBuilder<Sha256, crate::hash_provider::BoringSsl> {
     /// Create a new [`ArtifactIdBuilder`] with `BoringSsl` as the [`HashProvider`].
     pub fn with_boringssl() -> Self {
@@ -49,7 +49,7 @@ impl ArtifactIdBuilder<Sha256, crate::hash_provider::BoringSsl> {
     }
 }
 
-#[cfg(feature = "backend-openssl")]
+#[cfg(feature = "provider-openssl")]
 impl ArtifactIdBuilder<Sha256, crate::hash_provider::OpenSsl> {
     /// Create a new [`ArtifactIdBuilder`] with `OpenSsl` as the [`HashProvider`].
     pub fn with_openssl() -> Self {

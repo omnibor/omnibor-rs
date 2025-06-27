@@ -9,19 +9,19 @@ use crate::artifact_id::ArtifactId;
 use crate::hash_algorithm::HashAlgorithm;
 use digest::Digest;
 
-#[cfg(feature = "backend-boringssl")]
+#[cfg(feature = "provider-boringssl")]
 mod boringssl;
-#[cfg(feature = "backend-boringssl")]
+#[cfg(feature = "provider-boringssl")]
 pub use crate::hash_provider::boringssl::BoringSsl;
 
-#[cfg(feature = "backend-openssl")]
+#[cfg(feature = "provider-openssl")]
 mod openssl;
-#[cfg(feature = "backend-openssl")]
+#[cfg(feature = "provider-openssl")]
 pub use crate::hash_provider::openssl::OpenSsl;
 
-#[cfg(feature = "backend-rustcrypto")]
+#[cfg(feature = "provider-rustcrypto")]
 mod rustcrypto;
-#[cfg(feature = "backend-rustcrypto")]
+#[cfg(feature = "provider-rustcrypto")]
 pub use crate::hash_provider::rustcrypto::RustCrypto;
 
 /// A cryptography library for producing [`ArtifactId`]s with SHA-256.

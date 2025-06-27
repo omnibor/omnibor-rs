@@ -5,7 +5,7 @@ use {
         error::{EmbeddingError, InputManifestError},
         hash_algorithm::HashAlgorithm,
         hash_provider::HashProvider,
-        input_manifest::{embed::embed_manifest_in_target, InputManifest, InputManifestRelation},
+        input_manifest::{embed_provider::EmbedProvider, InputManifest, InputManifestRelation},
         storage::Storage,
     },
     std::{
@@ -14,6 +14,9 @@ use {
         path::Path,
     },
 };
+
+#[cfg(feature = "infer-filetypes")]
+use crate::input_manifest::embed::embed_manifest_in_target;
 
 /// A builder for [`InputManifest`]s.
 pub struct InputManifestBuilder<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> {
@@ -72,8 +75,9 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
         Ok(self)
     }
 
+    #[cfg(feature = "infer-filetypes")]
     /// Finish building the manifest, updating the artifact if embedding is on.
-    pub fn finish(
+    pub fn finish_with_auto_embedding(
         &mut self,
         target: &Path,
     ) -> Result<Result<InputManifest<H>, EmbeddingError>, InputManifestError> {
@@ -108,6 +112,50 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
         Ok(Ok(manifest))
     }
 
+    /// Finish with a custom embedding function.
+    pub fn finish_with_custom_embedding<F>(
+        &mut self,
+        target: &Path,
+        custom_embedding: F,
+    ) -> Result<Result<InputManifest<H>, EmbeddingError>, InputManifestError>
+    where
+        F: Fn(
+            &Path,
+            ArtifactId<H>,
+            EmbedProvider,
+        ) -> Result<Result<(), EmbeddingError>, InputManifestError>,
+    {
+        let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
+
+        // Construct a new input manifest.
+        let mut manifest = InputManifest::with_relations(self.relations.iter().cloned());
+
+        // Write the manifest to storage.
+        let manifest_aid = self.storage.write_manifest(&manifest)?;
+
+        // Try to embed the manifest's Artifact ID in the target if we're in embedding mode.
+        if self.mode == EmbeddingMode::Embed {
+            if let Err(err) = custom_embedding(target, manifest_aid, EmbedProvider::new())? {
+                return Ok(Err(err));
+            }
+        }
+
+        // Get the Artifact ID of the target.
+        let target_aid = builder.identify_path(target)?;
+
+        // Update the manifest in storage with the target ArtifactID.
+        self.storage
+            .update_target_for_manifest(manifest_aid, target_aid)?;
+
+        // Update the manifest in memory with the target ArtifactID.
+        manifest.set_target(Some(target_aid));
+
+        // Clear out the set of relations so you can reuse the builder.
+        self.relations.clear();
+
+        Ok(Ok(manifest))
+    }
+
     /// Finish building the manifest without embedding in the target.
     pub fn finish_without_embedding(
         &mut self,
@@ -121,7 +169,9 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
         };
 
         // PANIC SAFETY: Since the embedding node is NoEmbed this will never panic.
-        let res = builder.finish(target).map(|res| res.unwrap());
+        let res = builder
+            .finish_with_custom_embedding(target, |_, _, _| Ok(Ok(())))
+            .map(|res| res.unwrap());
 
         self.relations.clear();
 
@@ -151,7 +201,7 @@ mod tests {
         },
     };
 
-    #[cfg(feature = "backend-rustcrypto")]
+    #[cfg(feature = "provider-rustcrypto")]
     /// A basic builder test that creates a single manifest and validates it.
     fn basic_builder_test(storage: impl Storage<Sha256>) {
         use crate::hash_provider::RustCrypto;
@@ -177,8 +227,7 @@ mod tests {
         .unwrap()
         .add_relation(second_input_aid)
         .unwrap()
-        .finish(&target)
-        .unwrap()
+        .finish_without_embedding(&target)
         .unwrap();
 
         // Check the first relation in the manifest.
@@ -196,7 +245,7 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "backend-rustcrypto")]
+    #[cfg(feature = "provider-rustcrypto")]
     #[test]
     fn in_memory_builder_works() {
         use crate::hash_provider::RustCrypto;
@@ -205,7 +254,7 @@ mod tests {
         basic_builder_test(storage);
     }
 
-    #[cfg(feature = "backend-rustcrypto")]
+    #[cfg(feature = "provider-rustcrypto")]
     #[test]
     fn file_system_builder_works() {
         use crate::hash_provider::RustCrypto;
