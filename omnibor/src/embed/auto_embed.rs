@@ -1,6 +1,6 @@
 use {
     crate::{
-        artifact_id::ArtifactId,
+        embed::embed_provider::EmbedProvider,
         error::{EmbeddingError, InputManifestError},
         hash_algorithm::HashAlgorithm,
         util::clone_as_boxstr::CloneAsBoxstr,
@@ -23,17 +23,17 @@ const EMBED_KEY: &str = "OmniBOR-Input-Manifest";
 /// Embed the manifest's [`ArtifactId`] into the target file.
 pub(crate) fn embed_manifest_in_target<H: HashAlgorithm>(
     target_path: &Path,
-    manifest_aid: ArtifactId<H>,
+    embed_provider: EmbedProvider<H>,
 ) -> Result<Result<(), EmbeddingError>, InputManifestError> {
     match TargetType::infer(target_path)? {
         TargetType::KnownBinaryType(binary_type) => Ok(Err(
             EmbeddingError::UnsupportedBinaryFormat(binary_type.name().clone_as_boxstr()),
         )),
         TargetType::KnownTextType(TextType::PrefixComments { prefix }) => {
-            embed_in_text_file_with_prefix_comment(target_path, manifest_aid, prefix)
+            embed_in_text_file_with_prefix_comment(target_path, embed_provider, prefix)
         }
         TargetType::KnownTextType(TextType::WrappedComments { prefix, suffix }) => {
-            embed_in_text_file_with_wrapped_comment(target_path, manifest_aid, prefix, suffix)
+            embed_in_text_file_with_wrapped_comment(target_path, embed_provider, prefix, suffix)
         }
         TargetType::KnownTextType(TextType::NoComments(name)) => Ok(Err(
             EmbeddingError::FormatDoesntSupportEmbedding(name.clone_as_boxstr()),
@@ -47,13 +47,15 @@ pub(crate) fn embed_manifest_in_target<H: HashAlgorithm>(
 
 fn embed_in_text_file_with_prefix_comment<H: HashAlgorithm>(
     path: &Path,
-    manifest_aid: ArtifactId<H>,
+    embed_provider: EmbedProvider<H>,
     prefix: &str,
 ) -> Result<Result<(), EmbeddingError>, InputManifestError> {
     let mut file = OpenOptions::new()
         .append(true)
         .open(path)
         .map_err(|source| InputManifestError::FailedTargetArtifactRead(Box::new(source)))?;
+
+    let manifest_aid = embed_provider.get_str_embed();
 
     let result = writeln!(&mut file, "{prefix} {EMBED_KEY}: {manifest_aid}").map_err(|source| {
         EmbeddingError::CantEmbedInTarget(path.clone_as_boxstr(), Box::new(source))
@@ -64,7 +66,7 @@ fn embed_in_text_file_with_prefix_comment<H: HashAlgorithm>(
 
 fn embed_in_text_file_with_wrapped_comment<H: HashAlgorithm>(
     path: &Path,
-    manifest_aid: ArtifactId<H>,
+    embed_provider: EmbedProvider<H>,
     prefix: &str,
     suffix: &str,
 ) -> Result<Result<(), EmbeddingError>, InputManifestError> {
@@ -72,6 +74,8 @@ fn embed_in_text_file_with_wrapped_comment<H: HashAlgorithm>(
         .append(true)
         .open(path)
         .map_err(|source| InputManifestError::FailedTargetArtifactRead(Box::new(source)))?;
+
+    let manifest_aid = embed_provider.get_str_embed();
 
     let result =
         writeln!(&mut file, "{prefix} {EMBED_KEY}: {manifest_aid} {suffix}").map_err(|source| {

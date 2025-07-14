@@ -1,11 +1,11 @@
 use {
     crate::{
         artifact_id::{ArtifactId, ArtifactIdBuilder},
-        embedding_mode::EmbeddingMode,
+        embed::{embed_provider::EmbedProvider, Embed},
         error::{EmbeddingError, InputManifestError},
         hash_algorithm::HashAlgorithm,
         hash_provider::HashProvider,
-        input_manifest::{embed_provider::EmbedProvider, InputManifest, InputManifestRelation},
+        input_manifest::{InputManifest, InputManifestRelation},
         storage::Storage,
     },
     std::{
@@ -15,39 +15,61 @@ use {
     },
 };
 
-#[cfg(feature = "infer-filetypes")]
-use crate::input_manifest::embed::embed_manifest_in_target;
-
 /// A builder for [`InputManifest`]s.
-pub struct InputManifestBuilder<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> {
+pub struct InputManifestBuilder<H, P, S, E>
+where
+    H: HashAlgorithm,
+    P: HashProvider<H>,
+    S: Storage<H>,
+    E: Embed<H>,
+{
     /// The relations to be written to a new manifest by this transaction.
     relations: BTreeSet<InputManifestRelation<H>>,
 
     /// Indicates whether manifests should be embedded in the artifact or not.
-    mode: EmbeddingMode,
+    ///
+    /// This must be set during the process of configuring the builder. If not,
+    /// then building will fail.
+    embed: E,
 
     /// The cryptography library providing the hash implementation.
     hash_provider: P,
 
     /// The storage system used to store manifests.
+    ///
+    /// The builder needs to have access to storage because it both reads from
+    /// storage to potentially fill-in artifact IDs for the input manifests of
+    /// build inputs and to write out created input manifests to storage at
+    /// completion time.
     storage: S,
 }
 
-impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> Debug for InputManifestBuilder<H, P, S> {
+impl<H, P, S, E> Debug for InputManifestBuilder<H, P, S, E>
+where
+    H: HashAlgorithm,
+    P: HashProvider<H>,
+    S: Storage<H>,
+    E: Embed<H>,
+{
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("InputManifestBuilder")
-            .field("mode", &self.mode)
             .field("relations", &self.relations)
             .finish_non_exhaustive()
     }
 }
 
-impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H, P, S> {
+impl<H, P, S, E> InputManifestBuilder<H, P, S, E>
+where
+    H: HashAlgorithm,
+    P: HashProvider<H>,
+    S: Storage<H>,
+    E: Embed<H>,
+{
     /// Construct a new [`InputManifestBuilder`].
-    pub fn new(mode: EmbeddingMode, storage: S, hash_provider: P) -> Self {
+    pub fn new(storage: S, hash_provider: P, mode: E) -> Self {
         Self {
             relations: BTreeSet::new(),
-            mode,
+            embed: mode,
             storage,
             hash_provider,
         }
@@ -75,9 +97,21 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
         Ok(self)
     }
 
-    #[cfg(feature = "infer-filetypes")]
-    /// Finish building the manifest, updating the artifact if embedding is on.
-    pub fn finish_with_auto_embedding(
+    /// Update embedding mode.
+    pub fn set_embed<E2>(self, embed: E2) -> InputManifestBuilder<H, P, S, E2>
+    where
+        E2: Embed<H>,
+    {
+        InputManifestBuilder {
+            embed,
+            relations: self.relations,
+            hash_provider: self.hash_provider,
+            storage: self.storage,
+        }
+    }
+
+    /// Finish with a custom embedding function.
+    pub fn finish(
         &mut self,
         target: &Path,
     ) -> Result<Result<InputManifest<H>, EmbeddingError>, InputManifestError> {
@@ -90,10 +124,11 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
         let manifest_aid = self.storage.write_manifest(&manifest)?;
 
         // Try to embed the manifest's Artifact ID in the target if we're in embedding mode.
-        if self.mode == EmbeddingMode::Embed {
-            if let Err(err) = embed_manifest_in_target(target, manifest_aid)? {
-                return Ok(Err(err));
-            }
+        if let Err(err) = self
+            .embed
+            .try_embed(target, EmbedProvider::new(manifest_aid))?
+        {
+            return Ok(Err(err));
         }
 
         // Get the Artifact ID of the target.
@@ -110,72 +145,6 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
         self.relations.clear();
 
         Ok(Ok(manifest))
-    }
-
-    /// Finish with a custom embedding function.
-    pub fn finish_with_custom_embedding<F>(
-        &mut self,
-        target: &Path,
-        custom_embedding: F,
-    ) -> Result<Result<InputManifest<H>, EmbeddingError>, InputManifestError>
-    where
-        F: Fn(
-            &Path,
-            ArtifactId<H>,
-            EmbedProvider,
-        ) -> Result<Result<(), EmbeddingError>, InputManifestError>,
-    {
-        let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
-
-        // Construct a new input manifest.
-        let mut manifest = InputManifest::with_relations(self.relations.iter().cloned());
-
-        // Write the manifest to storage.
-        let manifest_aid = self.storage.write_manifest(&manifest)?;
-
-        // Try to embed the manifest's Artifact ID in the target if we're in embedding mode.
-        if self.mode == EmbeddingMode::Embed {
-            if let Err(err) = custom_embedding(target, manifest_aid, EmbedProvider::new())? {
-                return Ok(Err(err));
-            }
-        }
-
-        // Get the Artifact ID of the target.
-        let target_aid = builder.identify_path(target)?;
-
-        // Update the manifest in storage with the target ArtifactID.
-        self.storage
-            .update_target_for_manifest(manifest_aid, target_aid)?;
-
-        // Update the manifest in memory with the target ArtifactID.
-        manifest.set_target(Some(target_aid));
-
-        // Clear out the set of relations so you can reuse the builder.
-        self.relations.clear();
-
-        Ok(Ok(manifest))
-    }
-
-    /// Finish building the manifest without embedding in the target.
-    pub fn finish_without_embedding(
-        &mut self,
-        target: &Path,
-    ) -> Result<InputManifest<H>, InputManifestError> {
-        let mut builder = InputManifestBuilder {
-            relations: self.relations.clone(),
-            mode: EmbeddingMode::NoEmbed,
-            hash_provider: self.hash_provider,
-            storage: &mut self.storage,
-        };
-
-        // PANIC SAFETY: Since the embedding node is NoEmbed this will never panic.
-        let res = builder
-            .finish_with_custom_embedding(target, |_, _, _| Ok(Ok(())))
-            .map(|res| res.unwrap());
-
-        self.relations.clear();
-
-        res
     }
 
     /// Access the underlying storage for the builder.
@@ -183,9 +152,9 @@ impl<H: HashAlgorithm, P: HashProvider<H>, S: Storage<H>> InputManifestBuilder<H
         &self.storage
     }
 
-    /// Whether the builder will embed in the target artifact.
+    /// Check if the builder will try to embed in the target artifact.
     pub fn will_embed(&self) -> bool {
-        self.mode == EmbeddingMode::Embed
+        self.embed.will_embed()
     }
 }
 
@@ -194,7 +163,6 @@ mod tests {
     use {
         super::*,
         crate::{
-            embedding_mode::EmbeddingMode,
             hash_algorithm::Sha256,
             pathbuf,
             storage::{FileSystemStorage, InMemoryStorage},
@@ -204,7 +172,7 @@ mod tests {
     #[cfg(feature = "provider-rustcrypto")]
     /// A basic builder test that creates a single manifest and validates it.
     fn basic_builder_test(storage: impl Storage<Sha256>) {
-        use crate::hash_provider::RustCrypto;
+        use crate::{embed::NoEmbed, hash_provider::RustCrypto};
 
         let builder = ArtifactIdBuilder::with_rustcrypto();
 
@@ -218,17 +186,15 @@ mod tests {
         let first_input_aid = builder.identify_string("test_1");
         let second_input_aid = builder.identify_string("test_2");
 
-        let manifest = InputManifestBuilder::<Sha256, _, _>::new(
-            EmbeddingMode::NoEmbed,
-            storage,
-            RustCrypto::new(),
-        )
-        .add_relation(first_input_aid)
-        .unwrap()
-        .add_relation(second_input_aid)
-        .unwrap()
-        .finish_without_embedding(&target)
-        .unwrap();
+        let manifest =
+            InputManifestBuilder::<Sha256, _, _, _>::new(storage, RustCrypto::new(), NoEmbed)
+                .add_relation(first_input_aid)
+                .unwrap()
+                .add_relation(second_input_aid)
+                .unwrap()
+                .finish(&target)
+                .unwrap()
+                .unwrap();
 
         // Check the first relation in the manifest.
         let first_relation = &manifest.relations()[0];

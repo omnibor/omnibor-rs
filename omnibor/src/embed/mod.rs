@@ -1,0 +1,82 @@
+//! Control whether an [`InputManifest`](crate::InputManifest)'s [`ArtifactId`](crate::ArtifactId) is stored in an artifact.
+
+#[cfg(feature = "infer-filetypes")]
+pub(crate) mod auto_embed;
+pub(crate) mod embed_provider;
+
+use crate::{
+    embed::embed_provider::EmbedProvider,
+    error::{EmbeddingError, InputManifestError},
+    hash_algorithm::HashAlgorithm,
+};
+use std::path::Path;
+
+#[cfg(feature = "infer-filetypes")]
+use crate::embed::auto_embed::embed_manifest_in_target;
+
+/// Defines how embedding should be handled in target artifacts.
+pub trait Embed<H>
+where
+    H: HashAlgorithm,
+{
+    /// Attempt to embed the manifest's Artifact ID in the target artifact.
+    fn try_embed(
+        &self,
+        target_path: &Path,
+        embed_provider: EmbedProvider<H>,
+    ) -> Result<Result<(), EmbeddingError>, InputManifestError>;
+
+    /// Indicates if the embedder will actually try to embed.
+    fn will_embed(&self) -> bool {
+        true
+    }
+}
+
+/// Do not embed in the target file.
+#[derive(Debug, Copy, Clone)]
+pub struct NoEmbed;
+
+impl<H: HashAlgorithm> Embed<H> for NoEmbed {
+    // Do nothing, as we're not actually embedding.
+    fn try_embed(
+        &self,
+        _target_path: &Path,
+        _embed_provider: EmbedProvider<H>,
+    ) -> Result<Result<(), EmbeddingError>, InputManifestError> {
+        Ok(Ok(()))
+    }
+
+    fn will_embed(&self) -> bool {
+        false
+    }
+}
+
+#[cfg(feature = "infer-filetypes")]
+/// Automatically infer the filetype of the target file, and attempt to embed.
+#[derive(Debug, Copy, Clone)]
+pub struct AutoEmbed;
+
+#[cfg(feature = "infer-filetypes")]
+impl<H: HashAlgorithm> Embed<H> for AutoEmbed {
+    fn try_embed(
+        &self,
+        target_path: &Path,
+        embed_provider: EmbedProvider<H>,
+    ) -> Result<Result<(), EmbeddingError>, InputManifestError> {
+        embed_manifest_in_target(target_path, embed_provider)
+    }
+}
+
+impl<H, F> Embed<H> for F
+where
+    H: HashAlgorithm,
+    F: Fn(&Path, EmbedProvider<H>) -> Result<Result<(), EmbeddingError>, InputManifestError>,
+{
+    fn try_embed(
+        &self,
+        target_path: &Path,
+        embed_provider: EmbedProvider<H>,
+    ) -> Result<Result<(), EmbeddingError>, InputManifestError> {
+        self(target_path, embed_provider)
+    }
+}

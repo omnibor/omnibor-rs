@@ -422,7 +422,6 @@ compile_error!(
  */
 
 pub(crate) mod artifact_id;
-pub(crate) mod embedding_mode;
 pub(crate) mod gitoid;
 pub(crate) mod input_manifest;
 pub(crate) mod object_type;
@@ -447,6 +446,7 @@ pub mod ffi;
  * Public API
  */
 
+pub mod embed;
 pub mod error;
 pub mod hash_algorithm;
 pub mod hash_provider;
@@ -454,7 +454,6 @@ pub mod storage;
 
 pub use crate::artifact_id::ArtifactId;
 pub use crate::artifact_id::ArtifactIdBuilder;
-pub use crate::embedding_mode::EmbeddingMode;
 pub use crate::input_manifest::InputManifest;
 pub use crate::input_manifest::InputManifestBuilder;
 pub use crate::input_manifest::InputManifestRelation;

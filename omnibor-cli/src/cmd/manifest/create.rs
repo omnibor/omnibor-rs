@@ -7,10 +7,11 @@ use crate::{
     print::{msg::manifest_create::ManifestCreateMsg, PrinterCmd},
 };
 use omnibor::{
+    embed::{AutoEmbed, Embed, NoEmbed},
     hash_algorithm::Sha256,
     hash_provider::{HashProvider, RustCrypto},
     storage::Storage,
-    EmbeddingMode, InputManifestBuilder,
+    InputManifestBuilder,
 };
 use std::ops::Not as _;
 use tracing::warn;
@@ -20,21 +21,22 @@ pub async fn run(app: &App, args: &ManifestCreateArgs) -> Result<()> {
     let storage = app.storage()?;
 
     let manifest_builder =
-        InputManifestBuilder::<Sha256, _, _>::new(EmbeddingMode::Embed, storage, RustCrypto::new());
+        InputManifestBuilder::<Sha256, _, _, _>::new(storage, RustCrypto::new(), AutoEmbed);
 
     create_with_builder(app, args, manifest_builder).await?;
 
     Ok(())
 }
 
-async fn create_with_builder<P, S>(
+async fn create_with_builder<P, S, E>(
     app: &App,
     args: &ManifestCreateArgs,
-    mut manifest_builder: InputManifestBuilder<Sha256, P, S>,
+    mut manifest_builder: InputManifestBuilder<Sha256, P, S, E>,
 ) -> Result<()>
 where
     P: HashProvider<Sha256>,
     S: Storage<Sha256>,
+    E: Embed<Sha256>,
 {
     for input in &args.inputs {
         let input_aid = input.clone().into_artifact_id().map_err(Error::IdFailed)?;
@@ -43,13 +45,18 @@ where
             .map_err(Error::AddRelationFailed)?;
     }
 
+    let will_embed = manifest_builder.will_embed();
+
     let manifest = manifest_builder
-        .finish_with_auto_embedding(&args.target)
+        .finish(&args.target)
         .map_err(Error::ManifestBuildFailed)?
         .or_else(|embedding_error| {
             warn!("embedding failed; '{}'", embedding_error);
             manifest_builder
-                .finish_without_embedding(&args.target)
+                .set_embed(NoEmbed)
+                .finish(&args.target)
+                // PANIC SAFETY: We know we're set to not embed, so this is safe.
+                .map(|inner| inner.unwrap())
                 .map_err(Error::ManifestBuildFailed)
         })?;
 
@@ -59,7 +66,7 @@ where
             .map_err(Error::FailedToAddManifest)?;
     }
 
-    if args.store.not() && manifest_builder.will_embed().not() {
+    if args.store.not() && will_embed.not() {
         warn!("manifest is *detached*; if adding to OmniBOR store separately, pass --target to retain target information")
     }
 
