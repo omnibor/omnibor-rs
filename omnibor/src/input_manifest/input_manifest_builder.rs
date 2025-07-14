@@ -110,41 +110,56 @@ where
         }
     }
 
-    /// Finish with a custom embedding function.
-    pub fn finish(
+    /// Build the input manifest, possibly embedding in the target artifact.
+    pub fn build(
         &mut self,
-        target: &Path,
+        target: impl AsRef<Path>,
     ) -> Result<Result<InputManifest<H>, EmbeddingError>, InputManifestError> {
-        let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
-
-        // Construct a new input manifest.
-        let mut manifest = InputManifest::with_relations(self.relations.iter().cloned());
-
-        // Write the manifest to storage.
-        let manifest_aid = self.storage.write_manifest(&manifest)?;
-
-        // Try to embed the manifest's Artifact ID in the target if we're in embedding mode.
-        if let Err(err) = self
-            .embed
-            .try_embed(target, EmbedProvider::new(manifest_aid))?
+        fn inner<H2, P2, S2, E2>(
+            manifest_builder: &mut InputManifestBuilder<H2, P2, S2, E2>,
+            target: &Path,
+        ) -> Result<Result<InputManifest<H2>, EmbeddingError>, InputManifestError>
+        where
+            H2: HashAlgorithm,
+            P2: HashProvider<H2>,
+            S2: Storage<H2>,
+            E2: Embed<H2>,
         {
-            return Ok(Err(err));
+            let aid_builder = ArtifactIdBuilder::with_provider(manifest_builder.hash_provider);
+
+            // Construct a new input manifest.
+            let mut manifest =
+                InputManifest::with_relations(manifest_builder.relations.iter().cloned());
+
+            // Write the manifest to storage.
+            let manifest_aid = manifest_builder.storage.write_manifest(&manifest)?;
+
+            // Try to embed the manifest's Artifact ID in the target if we're in embedding mode.
+            if let Err(err) = manifest_builder
+                .embed
+                .try_embed(target, EmbedProvider::new(manifest_aid))?
+            {
+                return Ok(Err(err));
+            }
+
+            // Get the Artifact ID of the target.
+            let target_aid = aid_builder.identify_path(target)?;
+
+            // Update the manifest in storage with the target ArtifactID.
+            manifest_builder
+                .storage
+                .update_target_for_manifest(manifest_aid, target_aid)?;
+
+            // Update the manifest in memory with the target ArtifactID.
+            manifest.set_target(Some(target_aid));
+
+            // Clear out the set of relations so you can reuse the builder.
+            manifest_builder.relations.clear();
+
+            Ok(Ok(manifest))
         }
 
-        // Get the Artifact ID of the target.
-        let target_aid = builder.identify_path(target)?;
-
-        // Update the manifest in storage with the target ArtifactID.
-        self.storage
-            .update_target_for_manifest(manifest_aid, target_aid)?;
-
-        // Update the manifest in memory with the target ArtifactID.
-        manifest.set_target(Some(target_aid));
-
-        // Clear out the set of relations so you can reuse the builder.
-        self.relations.clear();
-
-        Ok(Ok(manifest))
+        inner(self, target.as_ref())
     }
 
     /// Access the underlying storage for the builder.
@@ -192,7 +207,7 @@ mod tests {
                 .unwrap()
                 .add_relation(second_input_aid)
                 .unwrap()
-                .finish(&target)
+                .build(&target)
                 .unwrap()
                 .unwrap();
 

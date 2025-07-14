@@ -1,3 +1,43 @@
+//! This crate provides types for __identifying artifacts__ like binaries and
+//! source code files and for __tracking build dependencies__ in compilers and
+//! other build tools.
+//!
+//! If you're trying to identify a file, here's what that can look like:
+//!
+//! ```
+//! # use omnibor::{ArtifactIdBuilder, error::ArtifactIdError};
+//! let artifact_id = ArtifactIdBuilder::with_rustcrypto()
+//!     .identify_path("./test/data/hello_world.txt")?;
+//!
+//! println!("{}", artifact_id);
+//! # Ok::<(), ArtifactIdError>(())
+//! ```
+//!
+//! If you're trying to build an input manifest, it might look like this:
+//!
+//! ```
+//! # use omnibor::{
+//! #     ArtifactIdBuilder,
+//! #     InputManifestBuilder,
+//! #     storage::InMemoryStorage,
+//! #    hash_provider::RustCrypto,
+//! #    embed::NoEmbed,
+//! #    error::InputManifestError,
+//! # };
+//! let hash_provider = RustCrypto::new();
+//! let storage = InMemoryStorage::new(hash_provider);
+//! let aid_builder = ArtifactIdBuilder::with_rustcrypto();
+//!
+//! let input_manifest = InputManifestBuilder::new(storage, hash_provider, NoEmbed)
+//!     .add_relation(aid_builder.identify_path("./test/data/hello_world.txt")?)?
+//!     .build("./test/data/unix_line.txt")?.unwrap();
+//!
+//! println!("{:?}", input_manifest);
+//! # Ok::<_, InputManifestError>(())
+//! ```
+//!
+//! ---
+//!
 //! [OmniBOR](https://omnibor.io) is a specification for a reproducible
 //! software identifier we call an "Artifact ID" plus a compact record of
 //! build inputs called an "Input Manifest". Together, they let _anyone_
@@ -195,7 +235,7 @@
 //! provider to use, and the storage to use. The usual flow of constructing
 //! an [`InputManifest`] is to create a new [`InputManifestBuilder`], add
 //! entries with [`InputManifestBuilder::add_relation`], and complete
-//! the build with [`InputManifestBuilder::finish`].
+//! the build with [`InputManifestBuilder::build`].
 //!
 //! ## Hash Algorithms and Hash Providers
 //!

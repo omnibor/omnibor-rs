@@ -87,13 +87,25 @@ impl<H: HashAlgorithm, P: HashProvider<H>> ArtifactIdBuilder<H, P> {
     }
 
     /// Create an [`ArtifactId`] for the file at the given path.
-    pub fn identify_path(&self, path: &Path) -> Result<ArtifactId<H>, ArtifactIdError> {
-        let mut file =
-            File::open(path).map_err(|source| ArtifactIdError::FailedToOpenFileForId {
-                path: path.clone_as_boxstr(),
-                source: Box::new(source),
-            })?;
-        self.identify_file(&mut file)
+    pub fn identify_path(&self, path: impl AsRef<Path>) -> Result<ArtifactId<H>, ArtifactIdError> {
+        fn inner<H2, P2>(
+            builder: &ArtifactIdBuilder<H2, P2>,
+            path: &Path,
+        ) -> Result<ArtifactId<H2>, ArtifactIdError>
+        where
+            H2: HashAlgorithm,
+            P2: HashProvider<H2>,
+        {
+            let mut file =
+                File::open(path).map_err(|source| ArtifactIdError::FailedToOpenFileForId {
+                    path: path.clone_as_boxstr(),
+                    source: Box::new(source),
+                })?;
+
+            builder.identify_file(&mut file)
+        }
+
+        inner(self, path.as_ref())
     }
 
     /// Create an [`ArtifactId`] for the given arbitrary seekable reader.

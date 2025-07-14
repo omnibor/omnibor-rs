@@ -48,13 +48,13 @@ where
     let will_embed = manifest_builder.will_embed();
 
     let manifest = manifest_builder
-        .finish(&args.target)
+        .build(&args.target)
         .map_err(Error::ManifestBuildFailed)?
         .or_else(|embedding_error| {
             warn!("embedding failed; '{}'", embedding_error);
             manifest_builder
                 .set_embed(NoEmbed)
-                .finish(&args.target)
+                .build(&args.target)
                 // PANIC SAFETY: We know we're set to not embed, so this is safe.
                 .map(|inner| inner.unwrap())
                 .map_err(Error::ManifestBuildFailed)
