@@ -1,5 +1,10 @@
+//! Reproducible artifact identifier.
+
+pub(crate) mod artifact_id_builder;
+
+pub use crate::artifact_id::artifact_id_builder::ArtifactIdBuilder;
+
 use {
-    super::ArtifactIdBuilder,
     crate::{
         error::ArtifactIdError, gitoid::GitOid, hash_algorithm::HashAlgorithm,
         hash_provider::HashProvider, object_type::Blob,

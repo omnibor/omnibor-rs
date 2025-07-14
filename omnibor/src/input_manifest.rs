@@ -1,4 +1,8 @@
-//! [`InputManifest`] type that represents build inputs for an artifact.
+//! Record of software build inputs by Artifact ID.
+
+pub mod input_manifest_builder;
+
+pub use input_manifest_builder::InputManifestBuilder;
 
 use {
     crate::{

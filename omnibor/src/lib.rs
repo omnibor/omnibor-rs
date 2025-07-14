@@ -358,10 +358,9 @@
 //! stability in this crate with a 1.0.0 release:
 //!
 //! - [ ] Embedding Support
-//!   - [ ] Support for automated filetype inference
-//!   - [ ] Support for embedding for known text file types
 //!   - [ ] Support for embedding in ELF files
-//!   - [ ] Support for custom caller-provided embedding
+//!   - [ ] Support for embedding in Mach-O binary files
+//!   - [ ] Support for embedding in Portable Executable files
 //! - [ ] FFI Support
 //!   - [ ] Exposing the `InputManifestBuilder` API over FFI
 //!   - [ ] Exposing the `InputManifest` API over FFI
@@ -399,7 +398,6 @@
  * Lint Configuration
  */
 
-#![allow(clippy::module_inception)]
 #![deny(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 

@@ -3,7 +3,7 @@
 use {
     crate::{
         error::ArtifactIdError,
-        gitoid::{gitoid::GITOID_URL_SCHEME, GitOid},
+        gitoid::{GitOid, GITOID_URL_SCHEME},
         hash_algorithm::HashAlgorithm,
         object_type::ObjectType,
         util::clone_as_boxstr::CloneAsBoxstr,

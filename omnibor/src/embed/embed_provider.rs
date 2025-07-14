@@ -22,18 +22,8 @@ where
         self.manifest_aid.as_hex()
     }
 
-    /// Get the manifest Artifact ID as little-endian bytes.
-    pub fn get_le_bytes_embed(&self) -> Vec<u8> {
-        todo!()
-    }
-
-    /// Get the manifest Artifact ID as big-endian bytes.
-    pub fn get_be_bytes_embed(&self) -> Vec<u8> {
-        todo!()
-    }
-
-    /// Get the manifest Artifact ID as native-endian bytes.
-    pub fn get_ne_bytes_embed(&self) -> Vec<u8> {
-        todo!()
+    /// Get the manifest Artifact ID as bytes.
+    pub fn get_bytes_embed(&self) -> &[u8] {
+        self.manifest_aid.as_bytes()
     }
 }
