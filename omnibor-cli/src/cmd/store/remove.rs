@@ -36,7 +36,10 @@ async fn remove_by_target(app: &App, target: ArtifactId<Sha256>) -> Result<()> {
         .map_err(Error::CantGetManifests)?
         .ok_or_else(|| Error::ManifestNotFoundForTarget(target))?;
 
-    let manifest_aid = ArtifactIdBuilder::with_rustcrypto().identify_manifest(&manifest);
+    // SAFETY: Unwrapping a manifest is infallible.
+    let manifest_aid = ArtifactIdBuilder::with_rustcrypto()
+        .identify(&manifest)
+        .unwrap();
 
     storage
         .remove_manifest_for_target(target)
@@ -59,7 +62,10 @@ async fn remove_by_id(app: &App, id: ArtifactId<Sha256>) -> Result<()> {
         .map_err(Error::CantGetManifests)?
         .ok_or_else(|| Error::ManifestNotFoundWithId(id))?;
 
-    let manifest_aid = ArtifactIdBuilder::with_rustcrypto().identify_manifest(&manifest);
+    // SAFETY: Unwrapping a manifest is infallible.
+    let manifest_aid = ArtifactIdBuilder::with_rustcrypto()
+        .identify(&manifest)
+        .unwrap();
 
     storage
         .remove_manifest_with_id(id)

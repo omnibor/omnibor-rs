@@ -146,7 +146,8 @@ fn enrich_manifest_with_target<H: HashAlgorithm, P: HashProvider<H>>(
     mut manifest: InputManifest<H>,
 ) -> Result<InputManifest<H>, InputManifestError> {
     // Get the Artifact ID of the manifest
-    let manifest_aid = aid_builder.identify_manifest(&manifest);
+    // SAFETY: identifying a manifest is infallible.
+    let manifest_aid = aid_builder.identify(&manifest).unwrap();
 
     // Get the target Artifact ID for the manifest
     let target_aid = target_index.find(manifest_aid)?;
@@ -192,9 +193,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         let aid_builder = ArtifactIdBuilder::with_provider(self.hash_provider);
 
         self.manifests()
-            .find(|entry| {
-                aid_builder.identify_path(&entry.manifest_path).ok() == Some(manifest_aid)
-            })
+            .find(|entry| aid_builder.identify(&entry.manifest_path).ok() == Some(manifest_aid))
             .map(|entry| {
                 enrich_manifest_with_target(&target_index, &aid_builder, entry.manifest()?)
             })
@@ -205,8 +204,10 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         &mut self,
         manifest: &InputManifest<H>,
     ) -> Result<ArtifactId<H>, InputManifestError> {
-        let manifest_aid =
-            ArtifactIdBuilder::with_provider(self.hash_provider).identify_manifest(manifest);
+        // SAFETY: Identifying a manifest is infallible.
+        let manifest_aid = ArtifactIdBuilder::with_provider(self.hash_provider)
+            .identify(manifest)
+            .unwrap();
 
         let path = self.manifest_path(manifest_aid);
 
@@ -285,9 +286,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         // Find the manifest in the store.
         let manifest_entry: ManifestsEntry<H> = self
             .manifests()
-            .find(|entry| {
-                aid_builder.identify_path(&entry.manifest_path).ok() == Some(manifest_aid)
-            })
+            .find(|entry| aid_builder.identify(&entry.manifest_path).ok() == Some(manifest_aid))
             .ok_or(InputManifestError::NoManifestFoundToRemove)?;
 
         // Get a copy of it to return.

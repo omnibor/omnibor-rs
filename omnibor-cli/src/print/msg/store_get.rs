@@ -28,7 +28,10 @@ impl CommandOutput for StoreGetMsg {
     }
 
     fn short_output(&self) -> String {
-        let manifest_aid = ArtifactIdBuilder::with_rustcrypto().identify_manifest(&self.manifest);
+        // SAFETY: Identifying a manifest is infallible.
+        let manifest_aid = ArtifactIdBuilder::with_rustcrypto()
+            .identify(&self.manifest)
+            .unwrap();
 
         Style::new()
             .blue()

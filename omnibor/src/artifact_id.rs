@@ -1,8 +1,12 @@
 //! Reproducible artifact identifier.
 
 pub(crate) mod artifact_id_builder;
+pub(crate) mod identify;
+pub(crate) mod identify_async;
 
 pub use crate::artifact_id::artifact_id_builder::ArtifactIdBuilder;
+pub use crate::artifact_id::identify::Identify;
+pub use crate::artifact_id::identify_async::IdentifyAsync;
 
 use {
     crate::{

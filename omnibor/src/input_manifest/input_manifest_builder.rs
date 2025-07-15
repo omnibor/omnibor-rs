@@ -88,7 +88,10 @@ where
             .storage
             .get_manifest_for_target(artifact)?
             .map(|manifest| {
-                ArtifactIdBuilder::with_provider(self.hash_provider).identify_manifest(&manifest)
+                // SAFETY: identifying a manifest is infallible.
+                ArtifactIdBuilder::with_provider(self.hash_provider)
+                    .identify(&manifest)
+                    .unwrap()
             });
 
         self.relations
@@ -143,7 +146,7 @@ where
             }
 
             // Get the Artifact ID of the target.
-            let target_aid = aid_builder.identify_path(target)?;
+            let target_aid = aid_builder.identify(target)?;
 
             // Update the manifest in storage with the target ArtifactID.
             manifest_builder
@@ -198,8 +201,8 @@ mod tests {
             "hello_world.txt"
         ];
 
-        let first_input_aid = builder.identify_string("test_1");
-        let second_input_aid = builder.identify_string("test_2");
+        let first_input_aid = builder.identify(b"test_1").unwrap();
+        let second_input_aid = builder.identify(b"test_2").unwrap();
 
         let manifest =
             InputManifestBuilder::<Sha256, _, _, _>::new(storage, RustCrypto::new(), NoEmbed)

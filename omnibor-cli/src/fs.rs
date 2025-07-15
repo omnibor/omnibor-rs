@@ -181,7 +181,7 @@ pub async fn open_async_file(path: &Path) -> Result<AsyncFile> {
 /// Identify a file using a SHA-256 hash.
 pub async fn sha256_id_async_file(file: &mut AsyncFile, path: &Path) -> Result<ArtifactId<Sha256>> {
     ArtifactIdBuilder::with_rustcrypto()
-        .identify_async_file(file)
+        .identify_async(file)
         .await
         .map_err(|source| Error::FileFailedToId {
             path: path.to_path_buf(),

@@ -56,6 +56,7 @@ walkdir = { version = "2.5.0" }
 bindet = { version = "0.3.2", optional = true }
 hyperpolyglot = { version = "0.1.7", optional = true }
 serde = { version = "1.0.197", features = ["derive"], optional = true }
+trait-variant = "0.1.2"
 
 [dev-dependencies]
 

@@ -25,7 +25,9 @@ fn bench_rustcrypto_sha256_small(c: &mut Criterion) {
     let input = b"hello world";
     c.bench_function(name, |b| {
         b.iter(|| {
-            let _ = ArtifactIdBuilder::with_rustcrypto().identify_bytes(black_box(input));
+            let _ = ArtifactIdBuilder::with_rustcrypto()
+                .identify(black_box(input))
+                .unwrap();
         })
     });
 }
@@ -58,7 +60,9 @@ fn bench_rustcrypto_sha256_large(c: &mut Criterion) {
     let input = &[0; 1024 * 1024 * 100]; // 100 MB
     c.bench_function(name, |b| {
         b.iter(|| {
-            let _ = ArtifactIdBuilder::with_rustcrypto().identify_bytes(black_box(input));
+            let _ = ArtifactIdBuilder::with_rustcrypto()
+                .identify(black_box(input))
+                .unwrap();
         })
     });
 }

@@ -213,20 +213,10 @@
 //! - [`ArtifactIdBuilder::with_openssl`]: Build Artifact IDs with OpenSSL.
 //!
 //! Artifact IDs can be made from many different kinds of input types, and
-//! both synchronously and asynchronously. The following builder methods are
-//! available:
-//!
-//! | Method                                       | Input Type                         | Sync or Async? |
-//! |:---------------------------------------------|:-----------------------------------|:---------------|
-//! | [`ArtifactIdBuilder::identify_bytes`]        | `&[u8]`                            | Sync           |
-//! | [`ArtifactIdBuilder::identify_string`]       | `&str`                             | Sync           |
-//! | [`ArtifactIdBuilder::identify_file`]         | `&mut File`                        | Sync           |
-//! | [`ArtifactIdBuilder::identify_path`]         | `&Path`                            | Sync           |
-//! | [`ArtifactIdBuilder::identify_reader`]       | `R: Read + Sync`                   | Sync           |
-//! | [`ArtifactIdBuilder::identify_async_file`]   | `&mut tokio::fs::File`             | Async          |
-//! | [`ArtifactIdBuilder::identify_async_path`]   | `&Path`                            | Async          |
-//! | [`ArtifactIdBuilder::identify_async_reader`] | `R: AsyncRead + AsyncSync + Unpin` | Async          |
-//! | [`ArtifactIdBuilder::identify_manifest`]     | `&InputManifest`                   | Sync           |
+//! both synchronously and asynchronously, using the
+//! [`ArtifactIdBuilder::identify`] and [`ArtifactIdBuilder::identify_async`]
+//! methods, which take types that implement the [`Identify`] and
+//! [`IdentifyAsync`] traits, respectively.
 //!
 //! ## Creating Input Manifests
 //!
@@ -492,6 +482,8 @@ pub mod storage;
 
 pub use crate::artifact_id::ArtifactId;
 pub use crate::artifact_id::ArtifactIdBuilder;
+pub use crate::artifact_id::Identify;
+pub use crate::artifact_id::IdentifyAsync;
 pub use crate::input_manifest::InputManifest;
 pub use crate::input_manifest::InputManifestBuilder;
 pub use crate::input_manifest::InputManifestRelation;

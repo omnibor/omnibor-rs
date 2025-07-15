@@ -86,7 +86,8 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
         manifest: &InputManifest<Sha256>,
     ) -> Result<ArtifactId<Sha256>, InputManifestError> {
         let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
-        let manifest_aid = builder.identify_manifest(manifest);
+        // SAFETY: Identifying a manifest is infallible.
+        let manifest_aid = builder.identify(manifest).unwrap();
 
         self.sha256_manifests.push(ManifestEntry {
             manifest_aid,

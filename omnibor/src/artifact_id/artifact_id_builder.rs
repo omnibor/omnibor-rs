@@ -1,24 +1,10 @@
 use {
     crate::{
-        artifact_id::ArtifactId,
-        error::ArtifactIdError,
-        gitoid::internal::{gitoid_from_async_reader, gitoid_from_buffer, gitoid_from_reader},
+        artifact_id::{identify_async::IdentifyAsync, ArtifactId, Identify},
         hash_algorithm::{HashAlgorithm, Sha256},
         hash_provider::HashProvider,
-        input_manifest::InputManifest,
-        object_type::Blob,
-        util::clone_as_boxstr::CloneAsBoxstr,
     },
-    std::{
-        fs::File,
-        io::{Read, Seek},
-        marker::PhantomData,
-        path::Path,
-    },
-    tokio::{
-        fs::File as AsyncFile,
-        io::{AsyncRead, AsyncSeek},
-    },
+    std::marker::PhantomData,
 };
 
 /// A builder for [`ArtifactId`]s.
@@ -69,85 +55,19 @@ impl<H: HashAlgorithm, P: HashProvider<H>> ArtifactIdBuilder<H, P> {
         }
     }
 
-    /// Create an [`ArtifactId`] for the given bytes.
-    pub fn identify_bytes(&self, bytes: &[u8]) -> ArtifactId<H> {
-        // PANIC SAFETY: We're reading from an in-memory buffer, so no IO errors can arise.
-        let gitoid = gitoid_from_buffer::<H, Blob>(self.provider.digester(), bytes).unwrap();
-        ArtifactId::from_gitoid(gitoid)
+    /// Identify the target artifact.
+    pub fn identify<I>(&self, target: I) -> Result<ArtifactId<H>, I::Error>
+    where
+        I: Identify<H>,
+    {
+        target.identify(self.provider)
     }
 
-    /// Create an [`ArtifactId`] for the given string.
-    pub fn identify_string(&self, s: &str) -> ArtifactId<H> {
-        self.identify_bytes(s.as_bytes())
-    }
-
-    /// Create an [`ArtifactId`] for the given file.
-    pub fn identify_file(&self, file: &mut File) -> Result<ArtifactId<H>, ArtifactIdError> {
-        self.identify_reader(file)
-    }
-
-    /// Create an [`ArtifactId`] for the file at the given path.
-    pub fn identify_path(&self, path: impl AsRef<Path>) -> Result<ArtifactId<H>, ArtifactIdError> {
-        fn inner<H2, P2>(
-            builder: &ArtifactIdBuilder<H2, P2>,
-            path: &Path,
-        ) -> Result<ArtifactId<H2>, ArtifactIdError>
-        where
-            H2: HashAlgorithm,
-            P2: HashProvider<H2>,
-        {
-            let mut file =
-                File::open(path).map_err(|source| ArtifactIdError::FailedToOpenFileForId {
-                    path: path.clone_as_boxstr(),
-                    source: Box::new(source),
-                })?;
-
-            builder.identify_file(&mut file)
-        }
-
-        inner(self, path.as_ref())
-    }
-
-    /// Create an [`ArtifactId`] for the given arbitrary seekable reader.
-    pub fn identify_reader<R: Read + Seek>(
-        &self,
-        reader: R,
-    ) -> Result<ArtifactId<H>, ArtifactIdError> {
-        let gitoid = gitoid_from_reader::<H, Blob, _>(self.provider.digester(), reader)?;
-        Ok(ArtifactId::from_gitoid(gitoid))
-    }
-
-    /// Create an [`ArtifactId`] for the given file, asynchronously.
-    pub async fn identify_async_file(
-        &self,
-        file: &mut AsyncFile,
-    ) -> Result<ArtifactId<H>, ArtifactIdError> {
-        self.identify_async_reader(file).await
-    }
-
-    /// Create an [`ArtifactId`] for the file at the given path, asynchronously.
-    pub async fn identify_async_path(&self, path: &Path) -> Result<ArtifactId<H>, ArtifactIdError> {
-        let mut file = AsyncFile::open(path).await.map_err(|source| {
-            ArtifactIdError::FailedToOpenFileForId {
-                path: path.clone_as_boxstr(),
-                source: Box::new(source),
-            }
-        })?;
-        self.identify_async_file(&mut file).await
-    }
-
-    /// Create an [`ArtifactId`] for the given arbitrary seekable reader, asynchronously.
-    pub async fn identify_async_reader<R: AsyncRead + AsyncSeek + Unpin>(
-        &self,
-        reader: R,
-    ) -> Result<ArtifactId<H>, ArtifactIdError> {
-        let gitoid =
-            gitoid_from_async_reader::<H, Blob, _>(self.provider.digester(), reader).await?;
-        Ok(ArtifactId::from_gitoid(gitoid))
-    }
-
-    /// Create an [`ArtifactId`] for the given [`InputManifest`]
-    pub fn identify_manifest(&self, manifest: &InputManifest<H>) -> ArtifactId<H> {
-        self.identify_bytes(&manifest.as_bytes()[..])
+    /// Identify the target artifact asynchronously.
+    pub async fn identify_async<I>(&self, target: I) -> Result<ArtifactId<H>, I::Error>
+    where
+        I: IdentifyAsync<H>,
+    {
+        target.identify_async(self.provider).await
     }
 }

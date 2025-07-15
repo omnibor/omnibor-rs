@@ -343,9 +343,7 @@ impl IdentifiableArg {
     pub fn into_artifact_id(self) -> Result<ArtifactId<Sha256>, omnibor::error::ArtifactIdError> {
         match self {
             IdentifiableArg::ArtifactId(aid) => Ok(aid),
-            IdentifiableArg::Path(path) => {
-                ArtifactIdBuilder::with_rustcrypto().identify_path(&path)
-            }
+            IdentifiableArg::Path(path) => ArtifactIdBuilder::with_rustcrypto().identify(&path),
         }
     }
 }

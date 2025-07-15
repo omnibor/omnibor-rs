@@ -28,7 +28,9 @@ fn artifact_id_sha256_size() {
 #[test]
 fn generate_sha256_artifact_id_from_bytes() {
     let input = b"hello world";
-    let result = ArtifactIdBuilder::with_rustcrypto().identify_bytes(input);
+    let result = ArtifactIdBuilder::with_rustcrypto()
+        .identify(input)
+        .unwrap();
 
     assert_eq!(result.to_string(), ARTIFACT_ID_HELLO_WORLD_SHA256);
 }
@@ -36,7 +38,7 @@ fn generate_sha256_artifact_id_from_bytes() {
 #[test]
 fn generate_sha256_artifact_id_from_buffer() -> Result<()> {
     let mut file = File::open("test/data/hello_world.txt")?;
-    let result = ArtifactIdBuilder::with_rustcrypto().identify_file(&mut file)?;
+    let result = ArtifactIdBuilder::with_rustcrypto().identify(&mut file)?;
 
     assert_eq!(result.to_string(), ARTIFACT_ID_HELLO_WORLD_SHA256);
 
@@ -49,7 +51,7 @@ fn generate_sha256_artifact_id_from_async_buffer() -> Result<()> {
     runtime.block_on(async {
         let mut file = AsyncFile::open("test/data/hello_world.txt").await?;
         let result = ArtifactIdBuilder::with_rustcrypto()
-            .identify_async_file(&mut file)
+            .identify_async(&mut file)
             .await?;
 
         assert_eq!(result.to_string(), ARTIFACT_ID_HELLO_WORLD_SHA256);
@@ -65,8 +67,8 @@ fn newline_normalization_from_file() -> Result<()> {
 
     let builder = ArtifactIdBuilder::with_rustcrypto();
 
-    let unix_artifact_id = builder.identify_file(&mut unix_file)?;
-    let windows_artifact_id = builder.identify_file(&mut windows_file)?;
+    let unix_artifact_id = builder.identify(&mut unix_file)?;
+    let windows_artifact_id = builder.identify(&mut windows_file)?;
 
     assert_eq!(
         unix_artifact_id.to_string(),
@@ -85,8 +87,8 @@ fn newline_normalization_from_async_file() -> Result<()> {
 
         let builder = ArtifactIdBuilder::with_rustcrypto();
 
-        let unix_artifact_id = builder.identify_async_file(&mut unix_file).await?;
-        let windows_artifact_id = builder.identify_async_file(&mut windows_file).await?;
+        let unix_artifact_id = builder.identify_async(&mut unix_file).await?;
+        let windows_artifact_id = builder.identify_async(&mut windows_file).await?;
 
         assert_eq!(
             unix_artifact_id.to_string(),
@@ -104,8 +106,8 @@ fn newline_normalization_in_memory() -> Result<()> {
 
     let builder = ArtifactIdBuilder::with_rustcrypto();
 
-    let with_crlf_artifact_id = builder.identify_bytes(&with_crlf[..]);
-    let wout_crlf_artifact_id = builder.identify_bytes(&wout_crlf[..]);
+    let with_crlf_artifact_id = builder.identify(&with_crlf[..]).unwrap();
+    let wout_crlf_artifact_id = builder.identify(&wout_crlf[..]).unwrap();
 
     assert_eq!(
         with_crlf_artifact_id.to_string(),
@@ -118,7 +120,9 @@ fn newline_normalization_in_memory() -> Result<()> {
 #[test]
 fn validate_uri() -> Result<()> {
     let content = b"hello world";
-    let artifact_id = ArtifactIdBuilder::with_rustcrypto().identify_bytes(content);
+    let artifact_id = ArtifactIdBuilder::with_rustcrypto()
+        .identify(content)
+        .unwrap();
 
     assert_eq!(artifact_id.to_string(), ARTIFACT_ID_HELLO_WORLD_SHA256);
 
