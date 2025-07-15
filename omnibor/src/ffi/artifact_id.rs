@@ -196,7 +196,8 @@ pub unsafe extern "C" fn ob_aid_sha256_id_reader(fd: RawFd) -> *const ArtifactId
 pub unsafe extern "C" fn ob_aid_sha256_id_reader(handle: RawHandle) -> *const ArtifactIdSha256 {
     let output = catch_panic(|| {
         let mut file = unsafe { File::from_raw_handle(handle) };
-        let artifact_id = ArtifactIdBuilder::with_rustcrypto().identify_file(&mut file)?;
+        let provider = RustCrypto::new();
+        let artifact_id = ArtifactId::identify(provider, &mut file)?;
         let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
