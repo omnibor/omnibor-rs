@@ -3,7 +3,7 @@
 use crate::error::Error;
 use clap::{builder::PossibleValue, ValueEnum};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
-use omnibor::{hash_algorithm::Sha256, ArtifactId, ArtifactIdBuilder};
+use omnibor::{hash_algorithm::Sha256, hash_provider::RustCrypto, ArtifactId};
 use pathbuf::pathbuf;
 use std::{
     default::Default,
@@ -343,7 +343,10 @@ impl IdentifiableArg {
     pub fn into_artifact_id(self) -> Result<ArtifactId<Sha256>, omnibor::error::ArtifactIdError> {
         match self {
             IdentifiableArg::ArtifactId(aid) => Ok(aid),
-            IdentifiableArg::Path(path) => ArtifactIdBuilder::with_rustcrypto().identify(&path),
+            IdentifiableArg::Path(path) => {
+                let provider = RustCrypto::new();
+                ArtifactId::identify(provider, &path)
+            }
         }
     }
 }

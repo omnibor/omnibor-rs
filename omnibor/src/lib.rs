@@ -5,9 +5,8 @@
 //! If you're trying to identify a file, here's what that can look like:
 //!
 //! ```
-//! # use omnibor::{ArtifactIdBuilder, error::ArtifactIdError};
-//! let artifact_id = ArtifactIdBuilder::with_rustcrypto()
-//!     .identify_path("./test/data/hello_world.txt")?;
+//! # use omnibor::{ArtifactId, error::ArtifactIdError, hash_provider::RustCrypto};
+//! let artifact_id = ArtifactId::identify(RustCrypto::new(), "./test/data/hello_world.txt")?;
 //!
 //! println!("{}", artifact_id);
 //! # Ok::<(), ArtifactIdError>(())
@@ -17,19 +16,18 @@
 //!
 //! ```
 //! # use omnibor::{
-//! #     ArtifactIdBuilder,
+//! #     ArtifactId,
 //! #     InputManifestBuilder,
 //! #     storage::InMemoryStorage,
-//! #    hash_provider::RustCrypto,
-//! #    embed::NoEmbed,
-//! #    error::InputManifestError,
+//! #     hash_provider::RustCrypto,
+//! #     embed::NoEmbed,
+//! #     error::InputManifestError,
 //! # };
 //! let hash_provider = RustCrypto::new();
 //! let storage = InMemoryStorage::new(hash_provider);
-//! let aid_builder = ArtifactIdBuilder::with_rustcrypto();
 //!
 //! let input_manifest = InputManifestBuilder::new(storage, hash_provider, NoEmbed)
-//!     .add_relation(aid_builder.identify_path("./test/data/hello_world.txt")?)?
+//!     .add_relation(ArtifactId::identify(RustCrypto::new(), "./test/data/hello_world.txt")?)?
 //!     .build("./test/data/unix_line.txt")?.unwrap();
 //!
 //! println!("{:?}", input_manifest);
@@ -203,18 +201,9 @@
 //!
 //! ## Creating Artifact IDs
 //!
-//! [`ArtifactId`]s are created with an [`ArtifactIdBuilder`]. You can get a
-//! builder with either [`ArtifactId::builder`] or a constructor on
-//! [`ArtifactIdBuilder`] directly. There are convenience constructors for each
-//! of the three built-in [`HashProvider`](crate::hash_provider::HashProvider)s:
-//!
-//! - [`ArtifactIdBuilder::with_rustcrypto`]: Build Artifact IDs with RustCrypto.
-//! - [`ArtifactIdBuilder::with_boringssl`]: Build Artifact IDs with BoringSSL.
-//! - [`ArtifactIdBuilder::with_openssl`]: Build Artifact IDs with OpenSSL.
-//!
 //! Artifact IDs can be made from many different kinds of input types, and
 //! both synchronously and asynchronously, using the
-//! [`ArtifactIdBuilder::identify`] and [`ArtifactIdBuilder::identify_async`]
+//! [`ArtifactId::identify`] and [`ArtifactId::identify_async`]
 //! methods, which take types that implement the [`Identify`] and
 //! [`IdentifyAsync`] traits, respectively.
 //!

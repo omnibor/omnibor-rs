@@ -16,7 +16,7 @@ use {
         fmt::{Debug, Formatter, Result as FmtResult},
         hash::{Hash, Hasher},
     },
-    std::{fmt::Display, path::PathBuf, str::FromStr},
+    std::{fmt::Display, str::FromStr},
 };
 
 #[cfg(feature = "serde")]
@@ -77,25 +77,6 @@ impl<H: HashAlgorithm> ArtifactId<H> {
         ArtifactId { gitoid }
     }
 
-    /// Try to construct an [`ArtifactId`] from a filesystem-safe representation.
-    pub fn try_from_safe_name(s: &str) -> Result<ArtifactId<H>, ArtifactIdError> {
-        ArtifactId::from_str(&s.replace('_', ":"))
-    }
-
-    /// Get a filesystem-safe representation of the [`ArtifactId`].
-    ///
-    /// This is a conservative method that tries to use _only_ characters
-    /// which can be expected to work broadly cross-platform.
-    ///
-    /// What that means for us is that the `:` separator character is
-    /// replaced with `_`.
-    pub fn as_file_name(&self) -> PathBuf {
-        let name = self.gitoid.to_string().replace(':', "_");
-        let mut path = PathBuf::from(name);
-        path.set_extension("manifest");
-        path
-    }
-
     /// Get the underlying bytes of the [`ArtifactId`] hash.
     ///
     /// This slice is the raw underlying buffer of the [`ArtifactId`], exactly
@@ -104,9 +85,10 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
+    /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
+    /// # use omnibor::hash_provider::RustCrypto;
+    /// let id: ArtifactId<Sha256> = ArtifactId::identify(RustCrypto::new(), b"hello, world").unwrap();
     /// println!("Artifact ID bytes: {:?}", id.as_bytes());
     /// ```
     pub fn as_bytes(&self) -> &[u8] {
@@ -122,9 +104,10 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
+    /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
+    /// # use omnibor::hash_provider::RustCrypto;
+    /// let id: ArtifactId<Sha256> = ArtifactId::identify(RustCrypto::new(), b"hello, world").unwrap();
     /// println!("Artifact ID bytes as hex: {}", id.as_hex());
     /// ```
     pub fn as_hex(&self) -> String {
@@ -138,9 +121,10 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
+    /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
+    /// # use omnibor::hash_provider::RustCrypto;
+    /// let id: ArtifactId<Sha256> = ArtifactId::identify(RustCrypto::new(), b"hello, world").unwrap();
     /// println!("Artifact ID hash algorithm: {}", id.hash_algorithm());
     /// ```
     pub const fn hash_algorithm(&self) -> &'static str {
@@ -155,9 +139,10 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
+    /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
+    /// # use omnibor::hash_provider::RustCrypto;
+    /// let id: ArtifactId<Sha256> = ArtifactId::identify(RustCrypto::new(), b"hello, world").unwrap();
     /// println!("Artifact ID object type: {}", id.object_type());
     /// ```
     pub const fn object_type(&self) -> &'static str {
@@ -173,9 +158,10 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # Example
     ///
     /// ```rust
-    /// # use omnibor::{ArtifactId, ArtifactIdBuilder};
+    /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
-    /// let id: ArtifactId<Sha256> = ArtifactIdBuilder::with_rustcrypto().identify_string("hello, world");
+    /// # use omnibor::hash_provider::RustCrypto;
+    /// let id: ArtifactId<Sha256> = ArtifactId::identify(RustCrypto::new(), b"hello, world").unwrap();
     /// println!("Artifact ID hash length in bytes: {}", id.hash_len());
     /// ```
     pub fn hash_len(&self) -> usize {

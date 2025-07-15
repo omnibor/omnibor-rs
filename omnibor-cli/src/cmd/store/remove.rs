@@ -4,7 +4,7 @@ use crate::{
     error::{Error, Result},
     print::{msg::store_remove::StoreRemoveMsg, PrinterCmd},
 };
-use omnibor::{hash_algorithm::Sha256, storage::Storage, ArtifactId, ArtifactIdBuilder};
+use omnibor::{hash_algorithm::Sha256, hash_provider::RustCrypto, storage::Storage, ArtifactId};
 use tracing::warn;
 
 /// Run the `store remove` subcommand.
@@ -36,10 +36,10 @@ async fn remove_by_target(app: &App, target: ArtifactId<Sha256>) -> Result<()> {
         .map_err(Error::CantGetManifests)?
         .ok_or_else(|| Error::ManifestNotFoundForTarget(target))?;
 
+    let provider = RustCrypto::new();
+
     // SAFETY: Unwrapping a manifest is infallible.
-    let manifest_aid = ArtifactIdBuilder::with_rustcrypto()
-        .identify(&manifest)
-        .unwrap();
+    let manifest_aid = ArtifactId::identify(provider, &manifest).unwrap();
 
     storage
         .remove_manifest_for_target(target)
@@ -62,10 +62,10 @@ async fn remove_by_id(app: &App, id: ArtifactId<Sha256>) -> Result<()> {
         .map_err(Error::CantGetManifests)?
         .ok_or_else(|| Error::ManifestNotFoundWithId(id))?;
 
+    let provider = RustCrypto::new();
+
     // SAFETY: Unwrapping a manifest is infallible.
-    let manifest_aid = ArtifactIdBuilder::with_rustcrypto()
-        .identify(&manifest)
-        .unwrap();
+    let manifest_aid = ArtifactId::identify(provider, &manifest).unwrap();
 
     storage
         .remove_manifest_with_id(id)
