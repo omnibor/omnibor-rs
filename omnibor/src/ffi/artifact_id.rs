@@ -1,8 +1,10 @@
 //! The main ArtifactId FFI functions.
 
+use crate::hash_provider::RustCrypto;
+
 use {
     crate::{
-        artifact_id::{ArtifactId, ArtifactIdBuilder},
+        artifact_id::ArtifactId,
         ffi::{
             error::{catch_panic, get_error_msg, Error},
             status::Status,
@@ -104,10 +106,9 @@ pub unsafe extern "C" fn ob_aid_sha256_id_bytes(
     let output = catch_panic(|| {
         check_null(content, Error::ContentPtrIsNull)?;
         let content = unsafe { from_raw_parts(content, content_len) };
+        let provider = RustCrypto::new();
         // SAFETY: Identifying bytes is infallible.
-        let artifact_id = ArtifactIdBuilder::with_rustcrypto()
-            .identify(content)
-            .unwrap();
+        let artifact_id = ArtifactId::identify(provider, content).unwrap();
         let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
@@ -128,7 +129,8 @@ pub unsafe extern "C" fn ob_aid_sha256_id_str(s: *const c_char) -> *const Artifa
     let output = catch_panic(|| {
         check_null(s, Error::StringPtrIsNull)?;
         let s = unsafe { CStr::from_ptr(s) }.to_str()?;
-        let artifact_id = ArtifactIdBuilder::with_rustcrypto().identify(s)?;
+        let provider = RustCrypto::new();
+        let artifact_id = ArtifactId::identify(provider, s)?;
         let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
@@ -171,7 +173,8 @@ pub unsafe extern "C" fn ob_aid_sha256_try_from_str(s: *const c_char) -> *const 
 pub unsafe extern "C" fn ob_aid_sha256_id_reader(fd: RawFd) -> *const ArtifactIdSha256 {
     let output = catch_panic(|| {
         let mut file = unsafe { File::from_raw_fd(fd) };
-        let artifact_id = ArtifactIdBuilder::with_rustcrypto().identify(&mut file)?;
+        let provider = RustCrypto::new();
+        let artifact_id = ArtifactId::identify(provider, &mut file)?;
         let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)

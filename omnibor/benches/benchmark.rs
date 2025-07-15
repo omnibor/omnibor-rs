@@ -1,7 +1,7 @@
 //! Benchmarks comparing cryptography backends.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use omnibor::ArtifactIdBuilder;
+use omnibor::{hash_provider::RustCrypto, ArtifactId};
 
 #[cfg(not(any(
     feature = "provider-rustcrypto",
@@ -25,9 +25,8 @@ fn bench_rustcrypto_sha256_small(c: &mut Criterion) {
     let input = b"hello world";
     c.bench_function(name, |b| {
         b.iter(|| {
-            let _ = ArtifactIdBuilder::with_rustcrypto()
-                .identify(black_box(input))
-                .unwrap();
+            let provider = RustCrypto::new();
+            let _ = ArtifactId::identify(provider, black_box(input)).unwrap();
         })
     });
 }
@@ -60,9 +59,8 @@ fn bench_rustcrypto_sha256_large(c: &mut Criterion) {
     let input = &[0; 1024 * 1024 * 100]; // 100 MB
     c.bench_function(name, |b| {
         b.iter(|| {
-            let _ = ArtifactIdBuilder::with_rustcrypto()
-                .identify(black_box(input))
-                .unwrap();
+            let provider = RustCrypto::new();
+            let _ = ArtifactId::identify(provider, black_box(input)).unwrap();
         })
     });
 }

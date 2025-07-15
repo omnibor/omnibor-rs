@@ -1,12 +1,7 @@
 use {
     crate::{
-        artifact_id::{ArtifactId, ArtifactIdBuilder},
-        error::InputManifestError,
-        hash_algorithm::HashAlgorithm,
-        hash_provider::HashProvider,
-        input_manifest::InputManifest,
-        pathbuf,
-        storage::Storage,
+        artifact_id::ArtifactId, error::InputManifestError, hash_algorithm::HashAlgorithm,
+        hash_provider::HashProvider, input_manifest::InputManifest, pathbuf, storage::Storage,
         util::clone_as_boxstr::CloneAsBoxstr,
     },
     std::{
@@ -142,12 +137,12 @@ impl<H: HashAlgorithm, P: HashProvider<H>> FileSystemStorage<H, P> {
 /// Enrich an InputManifest with its target if stored in the index.
 fn enrich_manifest_with_target<H: HashAlgorithm, P: HashProvider<H>>(
     target_index: &TargetIndex,
-    aid_builder: &ArtifactIdBuilder<H, P>,
+    provider: P,
     mut manifest: InputManifest<H>,
 ) -> Result<InputManifest<H>, InputManifestError> {
     // Get the Artifact ID of the manifest
     // SAFETY: identifying a manifest is infallible.
-    let manifest_aid = aid_builder.identify(&manifest).unwrap();
+    let manifest_aid = ArtifactId::identify(provider, &manifest).unwrap();
 
     // Get the target Artifact ID for the manifest
     let target_aid = target_index.find(manifest_aid)?;
@@ -161,11 +156,10 @@ fn enrich_manifest_with_target<H: HashAlgorithm, P: HashProvider<H>>(
 impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P> {
     fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError> {
         let target_index = self.target_index()?;
-        let aid_builder = ArtifactIdBuilder::with_provider(self.hash_provider);
 
         self.manifests()
             .map(|entry: ManifestsEntry<H>| {
-                enrich_manifest_with_target(&target_index, &aid_builder, entry.manifest()?)
+                enrich_manifest_with_target(&target_index, self.hash_provider, entry.manifest()?)
             })
             .collect()
     }
@@ -175,12 +169,11 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         target_aid: ArtifactId<H>,
     ) -> Result<Option<InputManifest<H>>, InputManifestError> {
         let target_index = self.target_index()?;
-        let aid_builder = ArtifactIdBuilder::with_provider(self.hash_provider);
 
         self.manifests()
             .find(|entry| entry.target_aid == Some(target_aid))
             .map(|entry| {
-                enrich_manifest_with_target(&target_index, &aid_builder, entry.manifest()?)
+                enrich_manifest_with_target(&target_index, self.hash_provider, entry.manifest()?)
             })
             .transpose()
     }
@@ -190,12 +183,14 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         manifest_aid: ArtifactId<H>,
     ) -> Result<Option<InputManifest<H>>, InputManifestError> {
         let target_index = self.target_index()?;
-        let aid_builder = ArtifactIdBuilder::with_provider(self.hash_provider);
 
         self.manifests()
-            .find(|entry| aid_builder.identify(&entry.manifest_path).ok() == Some(manifest_aid))
+            .find(|entry| {
+                ArtifactId::identify(self.hash_provider, &entry.manifest_path).ok()
+                    == Some(manifest_aid)
+            })
             .map(|entry| {
-                enrich_manifest_with_target(&target_index, &aid_builder, entry.manifest()?)
+                enrich_manifest_with_target(&target_index, self.hash_provider, entry.manifest()?)
             })
             .transpose()
     }
@@ -205,9 +200,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         manifest: &InputManifest<H>,
     ) -> Result<ArtifactId<H>, InputManifestError> {
         // SAFETY: Identifying a manifest is infallible.
-        let manifest_aid = ArtifactIdBuilder::with_provider(self.hash_provider)
-            .identify(manifest)
-            .unwrap();
+        let manifest_aid = ArtifactId::identify(self.hash_provider, manifest).unwrap();
 
         let path = self.manifest_path(manifest_aid);
 
@@ -275,7 +268,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         &mut self,
         manifest_aid: ArtifactId<H>,
     ) -> Result<InputManifest<H>, InputManifestError> {
-        let aid_builder = ArtifactIdBuilder::with_provider(self.hash_provider);
+        let provider = self.hash_provider;
 
         // Remove the relevant entry from the target index.
         self.target_index()?
@@ -286,7 +279,9 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         // Find the manifest in the store.
         let manifest_entry: ManifestsEntry<H> = self
             .manifests()
-            .find(|entry| aid_builder.identify(&entry.manifest_path).ok() == Some(manifest_aid))
+            .find(|entry| {
+                ArtifactId::identify(provider, &entry.manifest_path).ok() == Some(manifest_aid)
+            })
             .ok_or(InputManifestError::NoManifestFoundToRemove)?;
 
         // Get a copy of it to return.

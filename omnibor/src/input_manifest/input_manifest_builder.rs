@@ -1,6 +1,6 @@
 use {
     crate::{
-        artifact_id::{ArtifactId, ArtifactIdBuilder},
+        artifact_id::ArtifactId,
         embed::{embed_provider::EmbedProvider, Embed},
         error::{EmbeddingError, InputManifestError},
         hash_algorithm::HashAlgorithm,
@@ -89,9 +89,7 @@ where
             .get_manifest_for_target(artifact)?
             .map(|manifest| {
                 // SAFETY: identifying a manifest is infallible.
-                ArtifactIdBuilder::with_provider(self.hash_provider)
-                    .identify(&manifest)
-                    .unwrap()
+                ArtifactId::identify(self.hash_provider, &manifest).unwrap()
             });
 
         self.relations
@@ -128,8 +126,6 @@ where
             S2: Storage<H2>,
             E2: Embed<H2>,
         {
-            let aid_builder = ArtifactIdBuilder::with_provider(manifest_builder.hash_provider);
-
             // Construct a new input manifest.
             let mut manifest =
                 InputManifest::with_relations(manifest_builder.relations.iter().cloned());
@@ -146,7 +142,7 @@ where
             }
 
             // Get the Artifact ID of the target.
-            let target_aid = aid_builder.identify(target)?;
+            let target_aid = ArtifactId::identify(manifest_builder.hash_provider, target)?;
 
             // Update the manifest in storage with the target ArtifactID.
             manifest_builder
@@ -192,8 +188,6 @@ mod tests {
     fn basic_builder_test(storage: impl Storage<Sha256>) {
         use crate::{embed::NoEmbed, hash_provider::RustCrypto};
 
-        let builder = ArtifactIdBuilder::with_rustcrypto();
-
         let target = pathbuf![
             env!("CARGO_MANIFEST_DIR"),
             "test",
@@ -201,8 +195,9 @@ mod tests {
             "hello_world.txt"
         ];
 
-        let first_input_aid = builder.identify(b"test_1").unwrap();
-        let second_input_aid = builder.identify(b"test_2").unwrap();
+        let provider = RustCrypto::new();
+        let first_input_aid = ArtifactId::identify(provider, b"test_1").unwrap();
+        let second_input_aid = ArtifactId::identify(provider, b"test_2").unwrap();
 
         let manifest =
             InputManifestBuilder::<Sha256, _, _, _>::new(storage, RustCrypto::new(), NoEmbed)

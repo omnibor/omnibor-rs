@@ -481,7 +481,6 @@ pub mod hash_provider;
 pub mod storage;
 
 pub use crate::artifact_id::ArtifactId;
-pub use crate::artifact_id::ArtifactIdBuilder;
 pub use crate::artifact_id::Identify;
 pub use crate::artifact_id::IdentifyAsync;
 pub use crate::input_manifest::InputManifest;

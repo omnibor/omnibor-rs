@@ -1,6 +1,6 @@
 use {
     crate::{
-        artifact_id::{ArtifactId, ArtifactIdBuilder},
+        artifact_id::ArtifactId,
         error::InputManifestError,
         hash_algorithm::{HashAlgorithm, Sha256},
         hash_provider::HashProvider,
@@ -85,9 +85,8 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
         &mut self,
         manifest: &InputManifest<Sha256>,
     ) -> Result<ArtifactId<Sha256>, InputManifestError> {
-        let builder = ArtifactIdBuilder::with_provider(self.hash_provider);
         // SAFETY: Identifying a manifest is infallible.
-        let manifest_aid = builder.identify(manifest).unwrap();
+        let manifest_aid = ArtifactId::identify(self.hash_provider, manifest).unwrap();
 
         self.sha256_manifests.push(ManifestEntry {
             manifest_aid,
