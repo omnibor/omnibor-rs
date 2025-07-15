@@ -9,7 +9,7 @@ use crate::{
     error::{EmbeddingError, InputManifestError},
     hash_algorithm::HashAlgorithm,
 };
-use std::path::Path;
+use std::{marker::PhantomData, path::Path};
 
 #[cfg(feature = "infer-filetypes")]
 use crate::embed::auto_embed::embed_manifest_in_target;
@@ -67,7 +67,31 @@ impl<H: HashAlgorithm> Embed<H> for AutoEmbed {
     }
 }
 
-impl<H, F> Embed<H> for F
+/// A custom embedding function.
+pub struct CustomEmbed<H, F>
+where
+    H: HashAlgorithm,
+    F: Fn(&Path, EmbedProvider<H>) -> Result<Result<(), EmbeddingError>, InputManifestError>,
+{
+    op: F,
+    _phantom: PhantomData<H>,
+}
+
+impl<H, F> CustomEmbed<H, F>
+where
+    H: HashAlgorithm,
+    F: Fn(&Path, EmbedProvider<H>) -> Result<Result<(), EmbeddingError>, InputManifestError>,
+{
+    /// Construct a new custom embedder.
+    pub fn new(op: F) -> Self {
+        CustomEmbed {
+            op,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<H, F> Embed<H> for CustomEmbed<H, F>
 where
     H: HashAlgorithm,
     F: Fn(&Path, EmbedProvider<H>) -> Result<Result<(), EmbeddingError>, InputManifestError>,
@@ -77,6 +101,6 @@ where
         target_path: &Path,
         embed_provider: EmbedProvider<H>,
     ) -> Result<Result<(), EmbeddingError>, InputManifestError> {
-        self(target_path, embed_provider)
+        (self.op)(target_path, embed_provider)
     }
 }
