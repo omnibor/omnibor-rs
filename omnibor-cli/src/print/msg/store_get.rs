@@ -20,7 +20,7 @@ impl CommandOutput for StoreGetMsg {
                 .to_string(),
         );
 
-        for relation in self.manifest.relations() {
+        for relation in self.manifest.inputs() {
             output.push_str(&relation.to_string());
         }
 
@@ -31,7 +31,7 @@ impl CommandOutput for StoreGetMsg {
         let provider = RustCrypto::new();
 
         // SAFETY: Identifying a manifest is infallible.
-        let manifest_aid = ArtifactId::identify(provider, &self.manifest).unwrap();
+        let manifest_aid = ArtifactId::new(provider, &self.manifest).unwrap();
 
         Style::new()
             .blue()

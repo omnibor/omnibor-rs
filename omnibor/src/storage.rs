@@ -1,4 +1,4 @@
-//! How manifests are stored and accessed.
+//! Store and retrieve [`InputManifest`]s.
 //!
 //! __See [Storing Input Manifests][idx] documentation for more info.__
 //!

@@ -1,10 +1,12 @@
 use crate::{hash_algorithm::HashAlgorithm, ArtifactId};
 
+/// A handle to get an [`ArtifactId`] as a hex string or bytes for embedding.
 #[derive(Debug)]
 pub struct EmbedProvider<H>
 where
     H: HashAlgorithm,
 {
+    /// The Artifact ID of the manifest.
     manifest_aid: ArtifactId<H>,
 }
 

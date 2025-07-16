@@ -35,25 +35,28 @@ use {
 /// Relations may additionally refer to the [`InputManifest`] of the
 /// related artifact.
 #[derive(PartialEq, Eq)]
-pub struct InputManifest<H: HashAlgorithm> {
+pub struct InputManifest<H>
+where
+    H: HashAlgorithm,
+{
     /// The artifact the manifest is describing.
     ///
     /// A manifest without this is "detached" because we don't know
     /// what artifact it's describing.
     target: Option<ArtifactId<H>>,
 
-    /// The relations recorded in the manifest.
-    relations: Vec<InputManifestRelation<H>>,
+    /// The inputs recorded in the manifest.
+    inputs: Vec<Input<H>>,
 }
 
 impl<H: HashAlgorithm> InputManifest<H> {
     pub(crate) fn with_relations(
-        relations: impl Iterator<Item = InputManifestRelation<H>>,
+        relations: impl Iterator<Item = Input<H>>,
         target: Option<ArtifactId<H>>,
     ) -> Self {
         InputManifest {
             target,
-            relations: relations.collect(),
+            inputs: relations.collect(),
         }
     }
 
@@ -89,18 +92,16 @@ impl<H: HashAlgorithm> InputManifest<H> {
         format!("gitoid:{}:{}\n", Blob::NAME, H::NAME)
     }
 
-    /// Get the relations inside an [`InputManifest`].
+    /// Get the inputs recorded inside an [`InputManifest`].
     #[inline]
-    pub fn relations(&self) -> &[InputManifestRelation<H>] {
-        &self.relations[..]
+    pub fn inputs(&self) -> &[Input<H>] {
+        &self.inputs[..]
     }
 
     /// Check if the manifest contains the given input.
     #[inline]
     pub fn contains_artifact(&self, artifact_id: ArtifactId<H>) -> bool {
-        self.relations()
-            .iter()
-            .any(|rel| rel.artifact == artifact_id)
+        self.inputs().iter().any(|rel| rel.artifact == artifact_id)
     }
 
     /// Construct an [`InputManifest`] from a file at a specified path.
@@ -151,7 +152,10 @@ impl<H: HashAlgorithm> InputManifest<H> {
             relations.push(relation);
         }
 
-        Ok(InputManifest { target, relations })
+        Ok(InputManifest {
+            target,
+            inputs: relations,
+        })
     }
 
     /// Get the manifest as bytes.
@@ -165,7 +169,7 @@ impl<H: HashAlgorithm> InputManifest<H> {
         // is identical in a manifest and only recorded once at the beginning.
         let _ = write!(bytes, "{}", self.header());
 
-        for relation in &self.relations {
+        for relation in &self.inputs {
             let aid = relation.artifact;
 
             let _ = write!(bytes, "{}", aid.as_hex());
@@ -185,7 +189,7 @@ impl<H: HashAlgorithm> Debug for InputManifest<H> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("InputManifest")
             .field("target", &self.target)
-            .field("relations", &self.relations)
+            .field("relations", &self.inputs)
             .finish()
     }
 }
@@ -194,15 +198,13 @@ impl<H: HashAlgorithm> Clone for InputManifest<H> {
     fn clone(&self) -> Self {
         InputManifest {
             target: self.target,
-            relations: self.relations.clone(),
+            inputs: self.inputs.clone(),
         }
     }
 }
 
 /// Parse a single relation line.
-fn parse_relation<H: HashAlgorithm>(
-    input: &str,
-) -> Result<InputManifestRelation<H>, InputManifestError> {
+fn parse_relation<H: HashAlgorithm>(input: &str) -> Result<Input<H>, InputManifestError> {
     let parts = input.split(' ').collect::<Vec<_>>();
 
     if parts.is_empty() {
@@ -230,12 +232,15 @@ fn parse_relation<H: HashAlgorithm>(
         }
     };
 
-    Ok(InputManifestRelation { artifact, manifest })
+    Ok(Input { artifact, manifest })
 }
 
-/// A single row in an [`InputManifest`].
+/// A single input recorded in an [`InputManifest`].
 #[derive(Copy)]
-pub struct InputManifestRelation<H: HashAlgorithm> {
+pub struct Input<H>
+where
+    H: HashAlgorithm,
+{
     /// The ID of the artifact itself.
     artifact: ArtifactId<H>,
 
@@ -249,7 +254,7 @@ pub struct InputManifestRelation<H: HashAlgorithm> {
 // isn't actually relevant in this case because we don't _really_
 // store a value of type-`H`, we just use it for type-level
 // programming.
-impl<H: HashAlgorithm> Debug for InputManifestRelation<H> {
+impl<H: HashAlgorithm> Debug for Input<H> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("Relation")
             .field("artifact", &self.artifact)
@@ -258,7 +263,7 @@ impl<H: HashAlgorithm> Debug for InputManifestRelation<H> {
     }
 }
 
-impl<H: HashAlgorithm> Display for InputManifestRelation<H> {
+impl<H: HashAlgorithm> Display for Input<H> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "{}", self.artifact.as_hex())?;
 
@@ -270,41 +275,38 @@ impl<H: HashAlgorithm> Display for InputManifestRelation<H> {
     }
 }
 
-impl<H: HashAlgorithm> Clone for InputManifestRelation<H> {
+impl<H: HashAlgorithm> Clone for Input<H> {
     fn clone(&self) -> Self {
-        InputManifestRelation {
+        Input {
             artifact: self.artifact,
             manifest: self.manifest,
         }
     }
 }
 
-impl<H: HashAlgorithm> PartialEq for InputManifestRelation<H> {
+impl<H: HashAlgorithm> PartialEq for Input<H> {
     fn eq(&self, other: &Self) -> bool {
         self.artifact.eq(&other.artifact) && self.manifest.eq(&other.manifest)
     }
 }
 
-impl<H: HashAlgorithm> Eq for InputManifestRelation<H> {}
+impl<H: HashAlgorithm> Eq for Input<H> {}
 
-impl<H: HashAlgorithm> PartialOrd for InputManifestRelation<H> {
+impl<H: HashAlgorithm> PartialOrd for Input<H> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<H: HashAlgorithm> Ord for InputManifestRelation<H> {
+impl<H: HashAlgorithm> Ord for Input<H> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.artifact.cmp(&other.artifact)
     }
 }
 
-impl<H: HashAlgorithm> InputManifestRelation<H> {
-    pub(crate) fn new(
-        artifact: ArtifactId<H>,
-        manifest: Option<ArtifactId<H>>,
-    ) -> InputManifestRelation<H> {
-        InputManifestRelation { artifact, manifest }
+impl<H: HashAlgorithm> Input<H> {
+    pub(crate) fn new(artifact: ArtifactId<H>, manifest: Option<ArtifactId<H>>) -> Input<H> {
+        Input { artifact, manifest }
     }
 
     /// Get the ID of the artifact.

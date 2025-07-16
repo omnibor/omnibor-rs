@@ -4,7 +4,7 @@ use {
         embed::{embed_provider::EmbedProvider, Embed},
         error::InputManifestError,
         hash_algorithm::HashAlgorithm,
-        input_manifest::{InputManifest, InputManifestRelation},
+        input_manifest::{Input, InputManifest},
         storage::Storage,
         Identify,
     },
@@ -23,7 +23,7 @@ where
     S: Storage<H>,
 {
     /// The relations to be written to a new manifest by this transaction.
-    relations: BTreeSet<InputManifestRelation<H>>,
+    relations: BTreeSet<Input<H>>,
 
     /// The storage system used to store manifests.
     ///
@@ -75,18 +75,17 @@ where
     where
         I: Identify<H>,
     {
-        let artifact = ArtifactId::identify(self.storage.get_hash_provider(), target)?;
+        let artifact = ArtifactId::new(self.storage.get_hash_provider(), target)?;
 
         let manifest_aid = self
             .storage
             .get_manifest_for_target(artifact)?
             .map(|manifest| {
                 // SAFETY: identifying a manifest is infallible.
-                ArtifactId::identify(self.storage.get_hash_provider(), &manifest).unwrap()
+                ArtifactId::new(self.storage.get_hash_provider(), &manifest).unwrap()
             });
 
-        self.relations
-            .insert(InputManifestRelation::new(artifact, manifest_aid));
+        self.relations.insert(Input::new(artifact, manifest_aid));
 
         Ok(self)
     }
@@ -114,7 +113,7 @@ where
         {
             // Get the Artifact ID of the target.
             let target_aid =
-                ArtifactId::identify(manifest_builder.storage.get_hash_provider(), target)?;
+                ArtifactId::new(manifest_builder.storage.get_hash_provider(), target)?;
 
             // Construct a new input manifest.
             let manifest = InputManifest::with_relations(
@@ -124,7 +123,7 @@ where
 
             // Get the Artifact ID of the manifest.
             let manifest_aid =
-                ArtifactId::identify(manifest_builder.storage.get_hash_provider(), &manifest)?;
+                ArtifactId::new(manifest_builder.storage.get_hash_provider(), &manifest)?;
 
             // Try to embed the manifest's Artifact ID in the target if we're in embedding mode.
             if let Some(Err(err)) = embed.try_embed(target, EmbedProvider::new(manifest_aid)) {
@@ -185,19 +184,19 @@ mod tests {
             .unwrap();
 
         // Check the first relation in the manifest.
-        let first_relation = &manifest.relations()[0];
+        let first_relation = &manifest.inputs()[0];
         assert_eq!(
             first_relation.artifact().as_hex(),
-            ArtifactId::identify(RustCrypto::new(), b"test_2")
+            ArtifactId::new(RustCrypto::new(), b"test_2")
                 .unwrap()
                 .as_hex()
         );
 
         // Check the second relation in the manifest.
-        let second_relation = &manifest.relations()[1];
+        let second_relation = &manifest.inputs()[1];
         assert_eq!(
             second_relation.artifact().as_hex(),
-            ArtifactId::identify(RustCrypto::new(), b"test_1")
+            ArtifactId::new(RustCrypto::new(), b"test_1")
                 .unwrap()
                 .as_hex()
         );

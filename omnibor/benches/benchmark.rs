@@ -26,7 +26,7 @@ fn bench_rustcrypto_sha256_small(c: &mut Criterion) {
     c.bench_function(name, |b| {
         b.iter(|| {
             let provider = RustCrypto::new();
-            let _ = ArtifactId::identify(provider, black_box(input)).unwrap();
+            let _ = ArtifactId::new(provider, black_box(input)).unwrap();
         })
     });
 }
@@ -60,7 +60,7 @@ fn bench_rustcrypto_sha256_large(c: &mut Criterion) {
     c.bench_function(name, |b| {
         b.iter(|| {
             let provider = RustCrypto::new();
-            let _ = ArtifactId::identify(provider, black_box(input)).unwrap();
+            let _ = ArtifactId::new(provider, black_box(input)).unwrap();
         })
     });
 }

@@ -1,4 +1,4 @@
-//! [`ArtifactIdError`] and [`InputManifestError`] types.
+//! Error types.
 
 pub(crate) mod artifact_id_error;
 pub(crate) mod input_manifest_error;

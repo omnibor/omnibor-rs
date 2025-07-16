@@ -39,7 +39,7 @@ async fn remove_by_target(app: &App, target: ArtifactId<Sha256>) -> Result<()> {
     let provider = RustCrypto::new();
 
     // SAFETY: Unwrapping a manifest is infallible.
-    let manifest_aid = ArtifactId::identify(provider, &manifest).unwrap();
+    let manifest_aid = ArtifactId::new(provider, &manifest).unwrap();
 
     storage
         .remove_manifest_for_target(target)
@@ -65,7 +65,7 @@ async fn remove_by_id(app: &App, id: ArtifactId<Sha256>) -> Result<()> {
     let provider = RustCrypto::new();
 
     // SAFETY: Unwrapping a manifest is infallible.
-    let manifest_aid = ArtifactId::identify(provider, &manifest).unwrap();
+    let manifest_aid = ArtifactId::new(provider, &manifest).unwrap();
 
     storage
         .remove_manifest_with_id(id)

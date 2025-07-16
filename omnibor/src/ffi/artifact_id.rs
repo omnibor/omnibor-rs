@@ -108,7 +108,7 @@ pub unsafe extern "C" fn ob_aid_sha256_id_bytes(
         let content = unsafe { from_raw_parts(content, content_len) };
         let provider = RustCrypto::new();
         // SAFETY: Identifying bytes is infallible.
-        let artifact_id = ArtifactId::identify(provider, content).unwrap();
+        let artifact_id = ArtifactId::new(provider, content).unwrap();
         let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
@@ -130,7 +130,7 @@ pub unsafe extern "C" fn ob_aid_sha256_id_str(s: *const c_char) -> *const Artifa
         check_null(s, Error::StringPtrIsNull)?;
         let s = unsafe { CStr::from_ptr(s) }.to_str()?;
         let provider = RustCrypto::new();
-        let artifact_id = ArtifactId::identify(provider, s)?;
+        let artifact_id = ArtifactId::new(provider, s)?;
         let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)
@@ -174,7 +174,7 @@ pub unsafe extern "C" fn ob_aid_sha256_id_reader(fd: RawFd) -> *const ArtifactId
     let output = catch_panic(|| {
         let mut file = unsafe { File::from_raw_fd(fd) };
         let provider = RustCrypto::new();
-        let artifact_id = ArtifactId::identify(provider, &mut file)?;
+        let artifact_id = ArtifactId::new(provider, &mut file)?;
         let artifact_id: ArtifactIdSha256 = const_transmute(artifact_id);
         let boxed = Box::new(artifact_id);
         Ok(Box::into_raw(boxed) as *const _)

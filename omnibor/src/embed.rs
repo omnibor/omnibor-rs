@@ -1,13 +1,13 @@
-//! Control whether an [`InputManifest`](crate::InputManifest)'s [`ArtifactId`](crate::ArtifactId) is stored in an artifact.
+//! Control whether an [`InputManifest`](crate::InputManifest)'s [`ArtifactId`](crate::ArtifactId) is stored in the target artifact.
 
 #[cfg(feature = "infer-filetypes")]
 pub(crate) mod auto_embed;
 pub(crate) mod embed_provider;
 
-use crate::{
-    embed::embed_provider::EmbedProvider, error::InputManifestError, hash_algorithm::HashAlgorithm,
-};
+use crate::{error::InputManifestError, hash_algorithm::HashAlgorithm};
 use std::{marker::PhantomData, path::Path};
+
+pub use crate::embed::embed_provider::EmbedProvider;
 
 #[cfg(feature = "infer-filetypes")]
 use crate::embed::auto_embed::embed_manifest_in_target;

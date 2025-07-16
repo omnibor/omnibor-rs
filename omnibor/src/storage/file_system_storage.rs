@@ -142,7 +142,7 @@ fn enrich_manifest_with_target<H: HashAlgorithm, P: HashProvider<H>>(
 ) -> Result<InputManifest<H>, InputManifestError> {
     // Get the Artifact ID of the manifest
     // SAFETY: identifying a manifest is infallible.
-    let manifest_aid = ArtifactId::identify(provider, &manifest).unwrap();
+    let manifest_aid = ArtifactId::new(provider, &manifest).unwrap();
 
     // Get the target Artifact ID for the manifest
     let target_aid = target_index.find(manifest_aid)?;
@@ -188,7 +188,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
 
         self.manifests()
             .find(|entry| {
-                ArtifactId::identify(self.hash_provider, &entry.manifest_path).ok()
+                ArtifactId::new(self.hash_provider, &entry.manifest_path).ok()
                     == Some(manifest_aid)
             })
             .map(|entry| {
@@ -202,7 +202,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         manifest: &InputManifest<H>,
     ) -> Result<ArtifactId<H>, InputManifestError> {
         // SAFETY: Identifying a manifest is infallible.
-        let manifest_aid = ArtifactId::identify(self.hash_provider, manifest).unwrap();
+        let manifest_aid = ArtifactId::new(self.hash_provider, manifest).unwrap();
 
         let path = self.manifest_path(manifest_aid);
 
@@ -282,7 +282,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         let manifest_entry: ManifestsEntry<H> = self
             .manifests()
             .find(|entry| {
-                ArtifactId::identify(provider, &entry.manifest_path).ok() == Some(manifest_aid)
+                ArtifactId::new(provider, &entry.manifest_path).ok() == Some(manifest_aid)
             })
             .ok_or(InputManifestError::NoManifestFoundToRemove)?;
 

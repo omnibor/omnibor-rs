@@ -345,7 +345,7 @@ impl IdentifiableArg {
             IdentifiableArg::ArtifactId(aid) => Ok(aid),
             IdentifiableArg::Path(path) => {
                 let provider = RustCrypto::new();
-                ArtifactId::identify(provider, &path)
+                ArtifactId::new(provider, &path)
             }
         }
     }

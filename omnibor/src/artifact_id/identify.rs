@@ -17,7 +17,7 @@ use std::{
     sync::Arc,
 };
 
-/// Produce an [`ArtifactId`].
+/// Types that can be identified with an [`ArtifactId`].
 pub trait Identify<H>
 where
     H: HashAlgorithm,

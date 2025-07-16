@@ -41,18 +41,20 @@ pub struct ArtifactId<H: HashAlgorithm> {
 
 impl<H: HashAlgorithm> ArtifactId<H> {
     /// Identify the target artifact.
-    pub fn identify<P: HashProvider<H>, I: Identify<H>>(
-        provider: P,
-        target: I,
-    ) -> Result<ArtifactId<H>, ArtifactIdError> {
+    pub fn new<P, I>(provider: P, target: I) -> Result<ArtifactId<H>, ArtifactIdError>
+    where
+        P: HashProvider<H>,
+        I: Identify<H>,
+    {
         target.identify(provider)
     }
 
     /// Identify the target artifact asynchronously.
-    pub async fn identify_async<P: HashProvider<H>, I: IdentifyAsync<H>>(
-        provider: P,
-        target: I,
-    ) -> Result<ArtifactId<H>, ArtifactIdError> {
+    pub async fn new_async<P, I>(provider: P, target: I) -> Result<ArtifactId<H>, ArtifactIdError>
+    where
+        P: HashProvider<H>,
+        I: IdentifyAsync<H>,
+    {
         target.identify_async(provider).await
     }
 

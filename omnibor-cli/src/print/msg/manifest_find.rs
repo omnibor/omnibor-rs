@@ -18,7 +18,7 @@ impl CommandOutput for ManifestFindMsg {
 
         output.push_str(&self.manifest.header().to_string());
 
-        for relation in self.manifest.relations() {
+        for relation in self.manifest.inputs() {
             output.push_str(&relation.to_string());
         }
 

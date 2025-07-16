@@ -1,4 +1,4 @@
-//! Cryptography libraries providing hash function implementations.
+//! Cryptography libraries providing hash algorithm implementations.
 //!
 //! __See [Hash Algorithms and Hash Providers][idx] documentation for more info.__
 //!

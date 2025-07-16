@@ -202,7 +202,7 @@
 //!
 //! Artifact IDs can be made from many different kinds of input types, and
 //! both synchronously and asynchronously, using the
-//! [`ArtifactId::identify`] and [`ArtifactId::identify_async`]
+//! [`ArtifactId::new`] and [`ArtifactId::new_async`]
 //! methods, which take types that implement the [`Identify`] and
 //! [`IdentifyAsync`] traits, respectively.
 //!
@@ -376,9 +376,9 @@
 //! stability in this crate with a 1.0.0 release:
 //!
 //! - [ ] Embedding Support
-//!   - [ ] Support for embedding in ELF files
-//!   - [ ] Support for embedding in Mach-O binary files
-//!   - [ ] Support for embedding in Portable Executable files
+//!   - [ ] Support for auto-embedding in ELF files
+//!   - [ ] Support for auto-embedding in Mach-O binary files
+//!   - [ ] Support for auto-embedding in Portable Executable files
 //! - [ ] FFI Support
 //!   - [ ] Exposing the `InputManifestBuilder` API over FFI
 //!   - [ ] Exposing the `InputManifest` API over FFI
@@ -471,6 +471,6 @@ pub mod storage;
 pub use crate::artifact_id::ArtifactId;
 pub use crate::artifact_id::Identify;
 pub use crate::artifact_id::IdentifyAsync;
+pub use crate::input_manifest::Input;
 pub use crate::input_manifest::InputManifest;
 pub use crate::input_manifest::InputManifestBuilder;
-pub use crate::input_manifest::InputManifestRelation;
