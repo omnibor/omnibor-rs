@@ -1,9 +1,7 @@
 use {
     crate::{
-        embed::embed_provider::EmbedProvider,
-        error::{EmbeddingError, InputManifestError},
-        hash_algorithm::HashAlgorithm,
-        util::clone_as_boxstr::CloneAsBoxstr,
+        embed::embed_provider::EmbedProvider, error::InputManifestError,
+        hash_algorithm::HashAlgorithm, util::clone_as_boxstr::CloneAsBoxstr,
     },
     bindet::FileType as BinaryType,
     std::{
@@ -24,24 +22,24 @@ const EMBED_KEY: &str = "OmniBOR-Input-Manifest";
 pub(crate) fn embed_manifest_in_target<H: HashAlgorithm>(
     target_path: &Path,
     embed_provider: EmbedProvider<H>,
-) -> Result<Result<(), EmbeddingError>, InputManifestError> {
+) -> Result<(), InputManifestError> {
     match TargetType::infer(target_path)? {
-        TargetType::KnownBinaryType(binary_type) => Ok(Err(
-            EmbeddingError::UnsupportedBinaryFormat(binary_type.name().clone_as_boxstr()),
-        )),
+        TargetType::KnownBinaryType(binary_type) => Err(
+            InputManifestError::UnsupportedBinaryFormat(binary_type.name().clone_as_boxstr()),
+        ),
         TargetType::KnownTextType(TextType::PrefixComments { prefix }) => {
             embed_in_text_file_with_prefix_comment(target_path, embed_provider, prefix)
         }
         TargetType::KnownTextType(TextType::WrappedComments { prefix, suffix }) => {
             embed_in_text_file_with_wrapped_comment(target_path, embed_provider, prefix, suffix)
         }
-        TargetType::KnownTextType(TextType::NoComments(name)) => Ok(Err(
-            EmbeddingError::FormatDoesntSupportEmbedding(name.clone_as_boxstr()),
-        )),
-        TargetType::KnownTextType(TextType::UnknownComments(name)) => Ok(Err(
-            EmbeddingError::UnknownEmbeddingSupport(name.clone_as_boxstr()),
-        )),
-        TargetType::Unknown => Ok(Err(EmbeddingError::UnknownEmbeddingTarget)),
+        TargetType::KnownTextType(TextType::NoComments(name)) => Err(
+            InputManifestError::FormatDoesntSupportEmbedding(name.clone_as_boxstr()),
+        ),
+        TargetType::KnownTextType(TextType::UnknownComments(name)) => Err(
+            InputManifestError::UnknownEmbeddingSupport(name.clone_as_boxstr()),
+        ),
+        TargetType::Unknown => Err(InputManifestError::UnknownEmbeddingTarget),
     }
 }
 
@@ -49,7 +47,7 @@ fn embed_in_text_file_with_prefix_comment<H: HashAlgorithm>(
     path: &Path,
     embed_provider: EmbedProvider<H>,
     prefix: &str,
-) -> Result<Result<(), EmbeddingError>, InputManifestError> {
+) -> Result<(), InputManifestError> {
     let mut file = OpenOptions::new()
         .append(true)
         .open(path)
@@ -57,11 +55,9 @@ fn embed_in_text_file_with_prefix_comment<H: HashAlgorithm>(
 
     let manifest_aid = embed_provider.get_str_embed();
 
-    let result = writeln!(&mut file, "{prefix} {EMBED_KEY}: {manifest_aid}").map_err(|source| {
-        EmbeddingError::CantEmbedInTarget(path.clone_as_boxstr(), Box::new(source))
-    });
-
-    Ok(result)
+    writeln!(&mut file, "{prefix} {EMBED_KEY}: {manifest_aid}").map_err(|source| {
+        InputManifestError::CantEmbedInTarget(path.clone_as_boxstr(), Box::new(source))
+    })
 }
 
 fn embed_in_text_file_with_wrapped_comment<H: HashAlgorithm>(
@@ -69,7 +65,7 @@ fn embed_in_text_file_with_wrapped_comment<H: HashAlgorithm>(
     embed_provider: EmbedProvider<H>,
     prefix: &str,
     suffix: &str,
-) -> Result<Result<(), EmbeddingError>, InputManifestError> {
+) -> Result<(), InputManifestError> {
     let mut file = OpenOptions::new()
         .append(true)
         .open(path)
@@ -77,12 +73,9 @@ fn embed_in_text_file_with_wrapped_comment<H: HashAlgorithm>(
 
     let manifest_aid = embed_provider.get_str_embed();
 
-    let result =
-        writeln!(&mut file, "{prefix} {EMBED_KEY}: {manifest_aid} {suffix}").map_err(|source| {
-            EmbeddingError::CantEmbedInTarget(path.clone_as_boxstr(), Box::new(source))
-        });
-
-    Ok(result)
+    writeln!(&mut file, "{prefix} {EMBED_KEY}: {manifest_aid} {suffix}").map_err(|source| {
+        InputManifestError::CantEmbedInTarget(path.clone_as_boxstr(), Box::new(source))
+    })
 }
 
 trait BinaryTypeName {
@@ -1406,13 +1399,13 @@ impl Display for KnownProgLang {
 }
 
 impl FromStr for KnownProgLang {
-    type Err = EmbeddingError;
+    type Err = InputManifestError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         LANG_NAMES
             .iter()
             .find(|(_, name)| **name == s)
             .map(|(lang, _)| *lang)
-            .ok_or_else(|| EmbeddingError::UnknownProgLang(s.clone_as_boxstr()))
+            .ok_or_else(|| InputManifestError::UnknownProgLang(s.clone_as_boxstr()))
     }
 }

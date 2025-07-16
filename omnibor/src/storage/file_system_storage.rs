@@ -154,6 +154,8 @@ fn enrich_manifest_with_target<H: HashAlgorithm, P: HashProvider<H>>(
 }
 
 impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P> {
+    type HashProvider = P;
+
     fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError> {
         let target_index = self.target_index()?;
 
@@ -292,6 +294,10 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
             .map_err(|source| InputManifestError::CantRemoveManifest(Box::new(source)))?;
 
         Ok(removed_manifest)
+    }
+
+    fn get_hash_provider(&self) -> Self::HashProvider {
+        self.hash_provider
     }
 }
 

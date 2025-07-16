@@ -44,7 +44,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     pub fn identify<P: HashProvider<H>, I: Identify<H>>(
         provider: P,
         target: I,
-    ) -> Result<ArtifactId<H>, I::Error> {
+    ) -> Result<ArtifactId<H>, ArtifactIdError> {
         target.identify(provider)
     }
 
@@ -52,7 +52,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     pub async fn identify_async<P: HashProvider<H>, I: IdentifyAsync<H>>(
         provider: P,
         target: I,
-    ) -> Result<ArtifactId<H>, I::Error> {
+    ) -> Result<ArtifactId<H>, ArtifactIdError> {
         target.identify_async(provider).await
     }
 

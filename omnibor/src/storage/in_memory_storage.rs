@@ -55,6 +55,8 @@ impl<P: HashProvider<Sha256>> InMemoryStorage<P> {
 }
 
 impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
+    type HashProvider = P;
+
     fn get_manifests(&self) -> Result<Vec<InputManifest<Sha256>>, InputManifestError> {
         Ok(self
             .sha256_manifests
@@ -145,6 +147,10 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
         let manifest = self.sha256_manifests.remove(pos).manifest;
 
         Ok(manifest)
+    }
+
+    fn get_hash_provider(&self) -> Self::HashProvider {
+        self.hash_provider
     }
 }
 

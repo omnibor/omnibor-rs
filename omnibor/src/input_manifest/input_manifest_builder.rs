@@ -2,38 +2,28 @@ use {
     crate::{
         artifact_id::ArtifactId,
         embed::{embed_provider::EmbedProvider, Embed},
-        error::{EmbeddingError, InputManifestError},
+        error::InputManifestError,
         hash_algorithm::HashAlgorithm,
-        hash_provider::HashProvider,
         input_manifest::{InputManifest, InputManifestRelation},
         storage::Storage,
+        Identify,
     },
     std::{
         collections::BTreeSet,
         fmt::{Debug, Formatter, Result as FmtResult},
         path::Path,
     },
+    tracing::warn,
 };
 
 /// A builder for [`InputManifest`]s.
-pub struct InputManifestBuilder<H, P, S, E>
+pub struct InputManifestBuilder<H, S>
 where
     H: HashAlgorithm,
-    P: HashProvider<H>,
     S: Storage<H>,
-    E: Embed<H>,
 {
     /// The relations to be written to a new manifest by this transaction.
     relations: BTreeSet<InputManifestRelation<H>>,
-
-    /// Indicates whether manifests should be embedded in the artifact or not.
-    ///
-    /// This must be set during the process of configuring the builder. If not,
-    /// then building will fail.
-    embed: E,
-
-    /// The cryptography library providing the hash implementation.
-    hash_provider: P,
 
     /// The storage system used to store manifests.
     ///
@@ -42,14 +32,18 @@ where
     /// build inputs and to write out created input manifests to storage at
     /// completion time.
     storage: S,
+
+    /// Indicates whether to continue building without embedding if embedding fails.
+    ///
+    /// By default we require embedding to succeed, so an embedding failure will
+    /// result in a build failing and nothing being written to the store.
+    should_continue: bool,
 }
 
-impl<H, P, S, E> Debug for InputManifestBuilder<H, P, S, E>
+impl<H, S> Debug for InputManifestBuilder<H, S>
 where
     H: HashAlgorithm,
-    P: HashProvider<H>,
     S: Storage<H>,
-    E: Embed<H>,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("InputManifestBuilder")
@@ -58,20 +52,17 @@ where
     }
 }
 
-impl<H, P, S, E> InputManifestBuilder<H, P, S, E>
+impl<H, S> InputManifestBuilder<H, S>
 where
     H: HashAlgorithm,
-    P: HashProvider<H>,
     S: Storage<H>,
-    E: Embed<H>,
 {
     /// Construct a new [`InputManifestBuilder`].
-    pub fn new(storage: S, hash_provider: P, mode: E) -> Self {
+    pub fn new(storage: S) -> Self {
         Self {
             relations: BTreeSet::new(),
-            embed: mode,
             storage,
-            hash_provider,
+            should_continue: false,
         }
     }
 
@@ -80,16 +71,18 @@ where
     /// If an Input Manifest for the given `ArtifactId` is found in the storage
     /// this builder is using, then this relation will also include the
     /// `ArtifactId` of that Input Manifest.
-    pub fn add_relation(
-        &mut self,
-        artifact: ArtifactId<H>,
-    ) -> Result<&mut Self, InputManifestError> {
+    pub fn add_relation<I>(&mut self, target: I) -> Result<&mut Self, InputManifestError>
+    where
+        I: Identify<H>,
+    {
+        let artifact = ArtifactId::identify(self.storage.get_hash_provider(), target)?;
+
         let manifest_aid = self
             .storage
             .get_manifest_for_target(artifact)?
             .map(|manifest| {
                 // SAFETY: identifying a manifest is infallible.
-                ArtifactId::identify(self.hash_provider, &manifest).unwrap()
+                ArtifactId::identify(self.storage.get_hash_provider(), &manifest).unwrap()
             });
 
         self.relations
@@ -98,33 +91,26 @@ where
         Ok(self)
     }
 
-    /// Update embedding mode.
-    pub fn set_embed<E2>(self, embed: E2) -> InputManifestBuilder<H, P, S, E2>
-    where
-        E2: Embed<H>,
-    {
-        InputManifestBuilder {
-            embed,
-            relations: self.relations,
-            hash_provider: self.hash_provider,
-            storage: self.storage,
-        }
+    /// Set if the builder should retry a build on failed embed.
+    pub fn continue_on_failed_embed(&mut self, should_continue: bool) -> &mut Self {
+        self.should_continue = should_continue;
+        self
     }
 
     /// Build the input manifest, possibly embedding in the target artifact.
-    pub fn build(
+    pub fn build_for_target(
         &mut self,
         target: impl AsRef<Path>,
-    ) -> Result<Result<InputManifest<H>, EmbeddingError>, InputManifestError> {
-        fn inner<H2, P2, S2, E2>(
-            manifest_builder: &mut InputManifestBuilder<H2, P2, S2, E2>,
+        embed: impl Embed<H>,
+    ) -> Result<InputManifest<H>, InputManifestError> {
+        fn inner<H2, S2>(
+            manifest_builder: &mut InputManifestBuilder<H2, S2>,
             target: &Path,
-        ) -> Result<Result<InputManifest<H2>, EmbeddingError>, InputManifestError>
+            embed: impl Embed<H2>,
+        ) -> Result<InputManifest<H2>, InputManifestError>
         where
             H2: HashAlgorithm,
-            P2: HashProvider<H2>,
             S2: Storage<H2>,
-            E2: Embed<H2>,
         {
             // Construct a new input manifest.
             let mut manifest =
@@ -134,15 +120,17 @@ where
             let manifest_aid = manifest_builder.storage.write_manifest(&manifest)?;
 
             // Try to embed the manifest's Artifact ID in the target if we're in embedding mode.
-            if let Err(err) = manifest_builder
-                .embed
-                .try_embed(target, EmbedProvider::new(manifest_aid))?
-            {
-                return Ok(Err(err));
+            if let Some(Err(err)) = embed.try_embed(target, EmbedProvider::new(manifest_aid)) {
+                if err.is_embedding_error() && manifest_builder.should_continue {
+                    warn!("{}", err);
+                } else {
+                    return Err(err);
+                }
             }
 
             // Get the Artifact ID of the target.
-            let target_aid = ArtifactId::identify(manifest_builder.hash_provider, target)?;
+            let target_aid =
+                ArtifactId::identify(manifest_builder.storage.get_hash_provider(), target)?;
 
             // Update the manifest in storage with the target ArtifactID.
             manifest_builder
@@ -155,20 +143,15 @@ where
             // Clear out the set of relations so you can reuse the builder.
             manifest_builder.relations.clear();
 
-            Ok(Ok(manifest))
+            Ok(manifest)
         }
 
-        inner(self, target.as_ref())
+        inner(self, target.as_ref(), embed)
     }
 
     /// Access the underlying storage for the builder.
     pub fn storage(&self) -> &S {
         &self.storage
-    }
-
-    /// Check if the builder will try to embed in the target artifact.
-    pub fn will_embed(&self) -> bool {
-        self.embed.will_embed()
     }
 }
 
@@ -195,32 +178,30 @@ mod tests {
             "hello_world.txt"
         ];
 
-        let provider = RustCrypto::new();
-        let first_input_aid = ArtifactId::identify(provider, b"test_1").unwrap();
-        let second_input_aid = ArtifactId::identify(provider, b"test_2").unwrap();
-
-        let manifest =
-            InputManifestBuilder::<Sha256, _, _, _>::new(storage, RustCrypto::new(), NoEmbed)
-                .add_relation(first_input_aid)
-                .unwrap()
-                .add_relation(second_input_aid)
-                .unwrap()
-                .build(&target)
-                .unwrap()
-                .unwrap();
+        let manifest = InputManifestBuilder::<Sha256, _>::new(storage)
+            .add_relation(b"test_1")
+            .unwrap()
+            .add_relation(b"test_2")
+            .unwrap()
+            .build_for_target(&target, NoEmbed)
+            .unwrap();
 
         // Check the first relation in the manifest.
         let first_relation = &manifest.relations()[0];
         assert_eq!(
             first_relation.artifact().as_hex(),
-            second_input_aid.as_hex()
+            ArtifactId::identify(RustCrypto::new(), b"test_2")
+                .unwrap()
+                .as_hex()
         );
 
         // Check the second relation in the manifest.
         let second_relation = &manifest.relations()[1];
         assert_eq!(
             second_relation.artifact().as_hex(),
-            first_input_aid.as_hex()
+            ArtifactId::identify(RustCrypto::new(), b"test_1")
+                .unwrap()
+                .as_hex()
         );
     }
 

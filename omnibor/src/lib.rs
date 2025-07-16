@@ -23,12 +23,11 @@
 //! #     embed::NoEmbed,
 //! #     error::InputManifestError,
 //! # };
-//! let hash_provider = RustCrypto::new();
-//! let storage = InMemoryStorage::new(hash_provider);
+//! let storage = InMemoryStorage::new(RustCrypto::new());
 //!
-//! let input_manifest = InputManifestBuilder::new(storage, hash_provider, NoEmbed)
-//!     .add_relation(ArtifactId::identify(RustCrypto::new(), "./test/data/hello_world.txt")?)?
-//!     .build("./test/data/unix_line.txt")?.unwrap();
+//! let input_manifest = InputManifestBuilder::new(storage)
+//!     .add_relation("./test/data/hello_world.txt")?
+//!     .build_for_target("./test/data/unix_line.txt", NoEmbed)?;
 //!
 //! println!("{:?}", input_manifest);
 //! # Ok::<_, InputManifestError>(())
@@ -214,7 +213,7 @@
 //! provider to use, and the storage to use. The usual flow of constructing
 //! an [`InputManifest`] is to create a new [`InputManifestBuilder`], add
 //! entries with [`InputManifestBuilder::add_relation`], and complete
-//! the build with [`InputManifestBuilder::build`].
+//! the build with [`InputManifestBuilder::build_for_target`].
 //!
 //! ## Hash Algorithms and Hash Providers
 //!

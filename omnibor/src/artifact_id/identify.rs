@@ -8,7 +8,6 @@ use crate::{
     ArtifactId, InputManifest,
 };
 use std::{
-    convert::Infallible,
     ffi::OsStr,
     fs::File,
     io::{BufReader, Cursor, Read, Seek},
@@ -23,11 +22,8 @@ pub trait Identify<H>
 where
     H: HashAlgorithm,
 {
-    /// The error produced during identification.
-    type Error;
-
     /// Produce an [`ArtifactId`] with the given hash provider.
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>;
 }
@@ -36,9 +32,7 @@ impl<H> Identify<H> for &[u8]
 where
     H: HashAlgorithm,
 {
-    type Error = Infallible;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -51,9 +45,7 @@ impl<H, const N: usize> Identify<H> for [u8; N]
 where
     H: HashAlgorithm,
 {
-    type Error = Infallible;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -65,9 +57,7 @@ impl<H, const N: usize> Identify<H> for &[u8; N]
 where
     H: HashAlgorithm,
 {
-    type Error = Infallible;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -79,9 +69,7 @@ impl<H> Identify<H> for &str
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -93,9 +81,7 @@ impl<H> Identify<H> for &OsStr
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -107,9 +93,7 @@ impl<H> Identify<H> for &Path
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -126,9 +110,7 @@ impl<H> Identify<H> for &PathBuf
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -140,9 +122,7 @@ impl<H> Identify<H> for File
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -154,9 +134,7 @@ impl<H> Identify<H> for &File
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -168,9 +146,7 @@ impl<H> Identify<H> for Rc<File>
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -182,9 +158,7 @@ impl<H> Identify<H> for Arc<File>
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -197,9 +171,7 @@ where
     H: HashAlgorithm,
     R: Read + Seek,
 {
-    type Error = ArtifactIdError;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -212,9 +184,7 @@ where
     H: HashAlgorithm,
     R: Read + Seek,
 {
-    type Error = ArtifactIdError;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -227,9 +197,7 @@ where
     H: HashAlgorithm,
     T: AsRef<[u8]>,
 {
-    type Error = ArtifactIdError;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -241,9 +209,7 @@ impl<H> Identify<H> for InputManifest<H>
 where
     H: HashAlgorithm,
 {
-    type Error = Infallible;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -255,12 +221,34 @@ impl<H> Identify<H> for &InputManifest<H>
 where
     H: HashAlgorithm,
 {
-    type Error = Infallible;
-
-    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
         self.as_bytes().identify(provider)
+    }
+}
+
+impl<H> Identify<H> for ArtifactId<H>
+where
+    H: HashAlgorithm,
+{
+    fn identify<P>(self, _provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
+    where
+        P: HashProvider<H>,
+    {
+        Ok(self)
+    }
+}
+
+impl<H> Identify<H> for &ArtifactId<H>
+where
+    H: HashAlgorithm,
+{
+    fn identify<P>(self, _provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
+    where
+        P: HashProvider<H>,
+    {
+        Ok(*self)
     }
 }

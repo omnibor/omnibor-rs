@@ -130,6 +130,39 @@ pub enum InputManifestError {
 
     /// Can't remove manifest from storage.
     CantRemoveManifest(Box<IoError>),
+
+    /// Unknown file type for manifest ID embedding.
+    UnknownEmbeddingTarget,
+
+    /// Can't embed manifest ID in target.
+    CantEmbedInTarget(Box<str>, Box<IoError>),
+
+    /// Unsupported binary format for embedding.
+    UnsupportedBinaryFormat(Box<str>),
+
+    /// Format doesn't support embedding.
+    FormatDoesntSupportEmbedding(Box<str>),
+
+    /// Unknown embedding support.
+    UnknownEmbeddingSupport(Box<str>),
+
+    /// Unknown programming language.
+    UnknownProgLang(Box<str>),
+}
+
+impl InputManifestError {
+    /// Check if the error is from a failed embedding.
+    pub fn is_embedding_error(&self) -> bool {
+        match self {
+            Self::UnknownEmbeddingTarget
+            | Self::CantEmbedInTarget(..)
+            | Self::UnsupportedBinaryFormat(_)
+            | Self::FormatDoesntSupportEmbedding(_)
+            | Self::UnknownEmbeddingSupport(_)
+            | Self::UnknownProgLang(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Display for InputManifestError {
@@ -172,6 +205,24 @@ impl Display for InputManifestError {
             InputManifestError::MissingTargetIndexRemoveCriteria => write!(f, "missing target index removal criteria; make sure to set a target or manifest Artifact ID"),
             InputManifestError::NoManifestFoundToRemove => write!(f, "no manifest found to remove in the target index"),
             InputManifestError::CantRemoveManifest(_) => write!(f, "can't remove manifest from storage"),
+            InputManifestError::UnknownEmbeddingTarget => {
+                write!(f, "unknown file type for manifest ID embedding")
+            }
+            InputManifestError::CantEmbedInTarget(s, _) => {
+                write!(f, "can't embed manifest Artifact ID in target '{s}'")
+            }
+            InputManifestError::UnsupportedBinaryFormat(s) => {
+                write!(f, "unsupported binary format for embedding '{s}'")
+            }
+            InputManifestError::FormatDoesntSupportEmbedding(s) => {
+                write!(f, "format doesn't support embedding '{s}'")
+            }
+            InputManifestError::UnknownEmbeddingSupport(s) => {
+                write!(f, "unknown embedding support for language '{s}'")
+            }
+            InputManifestError::UnknownProgLang(s) => {
+                write!(f, "unknown programming language: '{s}'")
+            }
         }
     }
 }
@@ -195,7 +246,12 @@ impl Error for InputManifestError {
             | InputManifestError::CantFindManifestForTarget(_)
             | InputManifestError::CantFindManifestWithId(_)
             | InputManifestError::MissingTargetIndexRemoveCriteria
-            | InputManifestError::NoManifestFoundToRemove => None,
+            | InputManifestError::NoManifestFoundToRemove
+            | InputManifestError::UnknownEmbeddingTarget
+            | InputManifestError::UnsupportedBinaryFormat(_)
+            | InputManifestError::FormatDoesntSupportEmbedding(_)
+            | InputManifestError::UnknownEmbeddingSupport(_)
+            | InputManifestError::UnknownProgLang(_) => None,
             InputManifestError::FailedManifestRead(source) => Some(source),
             InputManifestError::FailedTargetArtifactRead(source) => Some(source),
             InputManifestError::ArtifactIdError(source) => Some(source),
@@ -212,6 +268,7 @@ impl Error for InputManifestError {
             InputManifestError::CantReadTargetIndexLine { source, .. } => Some(source),
             InputManifestError::FailedStorageCleanup(_, source) => Some(source),
             InputManifestError::CantRemoveManifest(source) => Some(source),
+            InputManifestError::CantEmbedInTarget(_, source) => Some(source),
         }
     }
 }

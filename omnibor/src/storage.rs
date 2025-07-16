@@ -14,11 +14,14 @@ pub use crate::storage::in_memory_storage::InMemoryStorage;
 
 use crate::{
     artifact_id::ArtifactId, error::InputManifestError, hash_algorithm::HashAlgorithm,
-    input_manifest::InputManifest,
+    hash_provider::HashProvider, input_manifest::InputManifest,
 };
 
 /// Represents the interface for storing and querying manifests.
 pub trait Storage<H: HashAlgorithm> {
+    /// The provider the storage uses for hashes.
+    type HashProvider: HashProvider<H>;
+
     /// Get all manifests from the storage.
     fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError>;
 
@@ -64,9 +67,14 @@ pub trait Storage<H: HashAlgorithm> {
         &mut self,
         manifest_aid: ArtifactId<H>,
     ) -> Result<InputManifest<H>, InputManifestError>;
+
+    /// Get the hash provider used by the storage.
+    fn get_hash_provider(&self) -> Self::HashProvider;
 }
 
 impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
+    type HashProvider = S::HashProvider;
+
     fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError> {
         (**self).get_manifests()
     }
@@ -118,5 +126,9 @@ impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
         manifest_aid: ArtifactId<H>,
     ) -> Result<InputManifest<H>, InputManifestError> {
         (**self).remove_manifest_with_id(manifest_aid)
+    }
+
+    fn get_hash_provider(&self) -> Self::HashProvider {
+        (**self).get_hash_provider()
     }
 }

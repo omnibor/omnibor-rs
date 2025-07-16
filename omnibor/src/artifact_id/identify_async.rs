@@ -14,15 +14,12 @@ pub trait IdentifyAsync<H>
 where
     H: HashAlgorithm,
 {
-    /// The error produced during identification.
-    type Error;
-
     // For now, we're bound to Tokio, which uses a work-stealing executor, so
     // we just turn off this warning. In theory it would be nice to be able to
     // be more generic and work with other executors.
     #[allow(async_fn_in_trait)]
     /// Produce an [`ArtifactId`] with the given hash provider asynchronously.
-    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>;
 }
@@ -31,9 +28,7 @@ impl<H> IdentifyAsync<H> for &str
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -45,9 +40,7 @@ impl<H> IdentifyAsync<H> for &OsStr
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -59,9 +52,7 @@ impl<H> IdentifyAsync<H> for &Path
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -80,9 +71,7 @@ impl<H> IdentifyAsync<H> for &mut File
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -95,9 +84,7 @@ impl<H> IdentifyAsync<H> for File
 where
     H: HashAlgorithm,
 {
-    type Error = ArtifactIdError;
-
-    async fn identify_async<P>(mut self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    async fn identify_async<P>(mut self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {
@@ -110,9 +97,7 @@ where
     H: HashAlgorithm,
     R: AsyncRead + AsyncSeek + Unpin,
 {
-    type Error = ArtifactIdError;
-
-    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, Self::Error>
+    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         P: HashProvider<H>,
     {

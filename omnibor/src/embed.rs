@@ -5,9 +5,7 @@ pub(crate) mod auto_embed;
 pub(crate) mod embed_provider;
 
 use crate::{
-    embed::embed_provider::EmbedProvider,
-    error::{EmbeddingError, InputManifestError},
-    hash_algorithm::HashAlgorithm,
+    embed::embed_provider::EmbedProvider, error::InputManifestError, hash_algorithm::HashAlgorithm,
 };
 use std::{marker::PhantomData, path::Path};
 
@@ -20,16 +18,14 @@ where
     H: HashAlgorithm,
 {
     /// Attempt to embed the manifest's Artifact ID in the target artifact.
+    ///
+    /// Returns None if no embedding was attempted. Otherwise returns a Result
+    /// to indicate success or failure.
     fn try_embed(
         &self,
         target_path: &Path,
         embed_provider: EmbedProvider<H>,
-    ) -> Result<Result<(), EmbeddingError>, InputManifestError>;
-
-    /// Indicates if the embedder will actually try to embed.
-    fn will_embed(&self) -> bool {
-        true
-    }
+    ) -> Option<Result<(), InputManifestError>>;
 }
 
 /// Do not embed in the target file.
@@ -42,12 +38,8 @@ impl<H: HashAlgorithm> Embed<H> for NoEmbed {
         &self,
         _target_path: &Path,
         _embed_provider: EmbedProvider<H>,
-    ) -> Result<Result<(), EmbeddingError>, InputManifestError> {
-        Ok(Ok(()))
-    }
-
-    fn will_embed(&self) -> bool {
-        false
+    ) -> Option<Result<(), InputManifestError>> {
+        None
     }
 }
 
@@ -62,8 +54,8 @@ impl<H: HashAlgorithm> Embed<H> for AutoEmbed {
         &self,
         target_path: &Path,
         embed_provider: EmbedProvider<H>,
-    ) -> Result<Result<(), EmbeddingError>, InputManifestError> {
-        embed_manifest_in_target(target_path, embed_provider)
+    ) -> Option<Result<(), InputManifestError>> {
+        Some(embed_manifest_in_target(target_path, embed_provider))
     }
 }
 
@@ -71,7 +63,7 @@ impl<H: HashAlgorithm> Embed<H> for AutoEmbed {
 pub struct CustomEmbed<H, F>
 where
     H: HashAlgorithm,
-    F: Fn(&Path, EmbedProvider<H>) -> Result<Result<(), EmbeddingError>, InputManifestError>,
+    F: Fn(&Path, EmbedProvider<H>) -> Result<(), InputManifestError>,
 {
     op: F,
     _phantom: PhantomData<H>,
@@ -80,7 +72,7 @@ where
 impl<H, F> CustomEmbed<H, F>
 where
     H: HashAlgorithm,
-    F: Fn(&Path, EmbedProvider<H>) -> Result<Result<(), EmbeddingError>, InputManifestError>,
+    F: Fn(&Path, EmbedProvider<H>) -> Result<(), InputManifestError>,
 {
     /// Construct a new custom embedder.
     pub fn new(op: F) -> Self {
@@ -94,13 +86,13 @@ where
 impl<H, F> Embed<H> for CustomEmbed<H, F>
 where
     H: HashAlgorithm,
-    F: Fn(&Path, EmbedProvider<H>) -> Result<Result<(), EmbeddingError>, InputManifestError>,
+    F: Fn(&Path, EmbedProvider<H>) -> Result<(), InputManifestError>,
 {
     fn try_embed(
         &self,
         target_path: &Path,
         embed_provider: EmbedProvider<H>,
-    ) -> Result<Result<(), EmbeddingError>, InputManifestError> {
-        (self.op)(target_path, embed_provider)
+    ) -> Option<Result<(), InputManifestError>> {
+        Some((self.op)(target_path, embed_provider))
     }
 }
