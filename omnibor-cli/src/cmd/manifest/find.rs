@@ -58,8 +58,8 @@ async fn open_and_match_manifests(
     pin_mut!(path_rx);
 
     while let Some(path) = path_rx.next().await {
-        if let Ok(manifest) = InputManifest::<Sha256>::from_path(&path) {
-            if manifest.contains_input(target_aid) {
+        if let Ok(manifest) = InputManifest::<Sha256>::from_path(&path, None) {
+            if manifest.contains_artifact(target_aid) {
                 tx.send(PrinterCmd::msg(
                     ManifestFindMsg {
                         path: path.to_path_buf(),

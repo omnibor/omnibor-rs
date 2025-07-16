@@ -153,15 +153,15 @@ pub enum InputManifestError {
 impl InputManifestError {
     /// Check if the error is from a failed embedding.
     pub fn is_embedding_error(&self) -> bool {
-        match self {
+        matches!(
+            self,
             Self::UnknownEmbeddingTarget
-            | Self::CantEmbedInTarget(..)
-            | Self::UnsupportedBinaryFormat(_)
-            | Self::FormatDoesntSupportEmbedding(_)
-            | Self::UnknownEmbeddingSupport(_)
-            | Self::UnknownProgLang(_) => true,
-            _ => false,
-        }
+                | Self::CantEmbedInTarget(..)
+                | Self::UnsupportedBinaryFormat(_)
+                | Self::FormatDoesntSupportEmbedding(_)
+                | Self::UnknownEmbeddingSupport(_)
+                | Self::UnknownProgLang(_)
+        )
     }
 }
 

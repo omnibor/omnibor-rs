@@ -112,12 +112,19 @@ where
             H2: HashAlgorithm,
             S2: Storage<H2>,
         {
-            // Construct a new input manifest.
-            let mut manifest =
-                InputManifest::with_relations(manifest_builder.relations.iter().cloned());
+            // Get the Artifact ID of the target.
+            let target_aid =
+                ArtifactId::identify(manifest_builder.storage.get_hash_provider(), target)?;
 
-            // Write the manifest to storage.
-            let manifest_aid = manifest_builder.storage.write_manifest(&manifest)?;
+            // Construct a new input manifest.
+            let manifest = InputManifest::with_relations(
+                manifest_builder.relations.iter().cloned(),
+                Some(target_aid),
+            );
+
+            // Get the Artifact ID of the manifest.
+            let manifest_aid =
+                ArtifactId::identify(manifest_builder.storage.get_hash_provider(), &manifest)?;
 
             // Try to embed the manifest's Artifact ID in the target if we're in embedding mode.
             if let Some(Err(err)) = embed.try_embed(target, EmbedProvider::new(manifest_aid)) {
@@ -128,17 +135,8 @@ where
                 }
             }
 
-            // Get the Artifact ID of the target.
-            let target_aid =
-                ArtifactId::identify(manifest_builder.storage.get_hash_provider(), target)?;
-
-            // Update the manifest in storage with the target ArtifactID.
-            manifest_builder
-                .storage
-                .update_target_for_manifest(manifest_aid, target_aid)?;
-
-            // Update the manifest in memory with the target ArtifactID.
-            manifest.set_target(Some(target_aid));
+            // Write the manifest to storage.
+            manifest_builder.storage.write_manifest(&manifest)?;
 
             // Clear out the set of relations so you can reuse the builder.
             manifest_builder.relations.clear();

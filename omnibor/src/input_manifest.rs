@@ -49,9 +49,10 @@ pub struct InputManifest<H: HashAlgorithm> {
 impl<H: HashAlgorithm> InputManifest<H> {
     pub(crate) fn with_relations(
         relations: impl Iterator<Item = InputManifestRelation<H>>,
+        target: Option<ArtifactId<H>>,
     ) -> Self {
         InputManifest {
-            target: None,
+            target,
             relations: relations.collect(),
         }
     }
@@ -71,17 +72,19 @@ impl<H: HashAlgorithm> InputManifest<H> {
     /// Identify if the manifest is a "detached" manifest.
     ///
     /// "Detached" manifests are ones without a target [`ArtifactId`].
+    #[inline]
     pub fn is_detached(&self) -> bool {
         self.target.is_none()
     }
 
     /// Set a new target.
-    pub fn set_target(&mut self, target: Option<ArtifactId<H>>) -> &mut Self {
+    pub(crate) fn set_target(&mut self, target: Option<ArtifactId<H>>) -> &mut Self {
         self.target = target;
         self
     }
 
     /// Get the header used at the top of the [`InputManifest`].
+    #[inline]
     pub fn header(&self) -> String {
         format!("gitoid:{}:{}\n", Blob::NAME, H::NAME)
     }
@@ -93,12 +96,18 @@ impl<H: HashAlgorithm> InputManifest<H> {
     }
 
     /// Check if the manifest contains the given input.
-    pub fn contains_input(&self, input_aid: ArtifactId<H>) -> bool {
-        self.relations().iter().any(|rel| rel.artifact == input_aid)
+    #[inline]
+    pub fn contains_artifact(&self, artifact_id: ArtifactId<H>) -> bool {
+        self.relations()
+            .iter()
+            .any(|rel| rel.artifact == artifact_id)
     }
 
     /// Construct an [`InputManifest`] from a file at a specified path.
-    pub fn from_path(path: &Path) -> Result<Self, InputManifestError> {
+    pub fn from_path(
+        path: &Path,
+        target: Option<ArtifactId<H>>,
+    ) -> Result<Self, InputManifestError> {
         let file = BufReader::new(
             File::open(path)
                 .map_err(|source| InputManifestError::FailedManifestRead(Box::new(source)))?,
@@ -142,10 +151,7 @@ impl<H: HashAlgorithm> InputManifest<H> {
             relations.push(relation);
         }
 
-        Ok(InputManifest {
-            target: None,
-            relations,
-        })
+        Ok(InputManifest { target, relations })
     }
 
     /// Get the manifest as bytes.

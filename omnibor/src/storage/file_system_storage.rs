@@ -333,9 +333,7 @@ struct ManifestsEntry<H: HashAlgorithm> {
 impl<H: HashAlgorithm> ManifestsEntry<H> {
     /// Load the [`InputManifest`] represented by this entry.
     fn manifest(&self) -> Result<InputManifest<H>, InputManifestError> {
-        let mut manifest = InputManifest::from_path(&self.manifest_path)?;
-        manifest.set_target(self.target_aid);
-        Ok(manifest)
+        InputManifest::from_path(&self.manifest_path, self.target_aid)
     }
 }
 

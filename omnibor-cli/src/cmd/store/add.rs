@@ -9,9 +9,6 @@ use omnibor::{hash_algorithm::Sha256, storage::Storage, InputManifest};
 pub async fn run(app: &App, args: &StoreAddArgs) -> Result<()> {
     let mut storage = app.storage()?;
 
-    let mut manifest =
-        InputManifest::<Sha256>::from_path(&args.manifest).map_err(Error::UnableToReadManifest)?;
-
     let target_aid = match &args.target {
         Some(targetable) => {
             let target_aid = targetable
@@ -24,7 +21,8 @@ pub async fn run(app: &App, args: &StoreAddArgs) -> Result<()> {
         None => None,
     };
 
-    manifest.set_target(target_aid);
+    let manifest = InputManifest::<Sha256>::from_path(&args.manifest, target_aid)
+        .map_err(Error::UnableToReadManifest)?;
 
     storage
         .write_manifest(&manifest)
