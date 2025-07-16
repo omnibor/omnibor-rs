@@ -3,7 +3,11 @@ use crate::{
     hash_algorithm::HashAlgorithm, hash_provider::HashProvider, object_type::Blob,
     util::clone_as_boxstr::CloneAsBoxstr, ArtifactId,
 };
-use std::{ffi::OsStr, path::Path};
+use std::{
+    ffi::{OsStr, OsString},
+    ops::Deref,
+    path::{Path, PathBuf},
+};
 use tokio::{
     fs::File,
     io::{AsyncRead, AsyncSeek, BufReader},
@@ -36,7 +40,31 @@ where
     }
 }
 
+impl<H> IdentifyAsync<H> for &String
+where
+    H: HashAlgorithm,
+{
+    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
+    where
+        P: HashProvider<H>,
+    {
+        Path::new(self).identify_async(provider).await
+    }
+}
+
 impl<H> IdentifyAsync<H> for &OsStr
+where
+    H: HashAlgorithm,
+{
+    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
+    where
+        P: HashProvider<H>,
+    {
+        Path::new(self).identify_async(provider).await
+    }
+}
+
+impl<H> IdentifyAsync<H> for &OsString
 where
     H: HashAlgorithm,
 {
@@ -64,6 +92,18 @@ where
             })?
             .identify_async(provider)
             .await
+    }
+}
+
+impl<H> IdentifyAsync<H> for &PathBuf
+where
+    H: HashAlgorithm,
+{
+    async fn identify_async<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
+    where
+        P: HashProvider<H>,
+    {
+        self.deref().identify_async(provider).await
     }
 }
 

@@ -8,7 +8,7 @@ use crate::{
     ArtifactId, InputManifest,
 };
 use std::{
-    ffi::OsStr,
+    ffi::{OsStr, OsString},
     fs::File,
     io::{BufReader, Cursor, Read, Seek},
     ops::Deref,
@@ -77,7 +77,31 @@ where
     }
 }
 
+impl<H> Identify<H> for &String
+where
+    H: HashAlgorithm,
+{
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
+    where
+        P: HashProvider<H>,
+    {
+        Path::new(self).identify(provider)
+    }
+}
+
 impl<H> Identify<H> for &OsStr
+where
+    H: HashAlgorithm,
+{
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
+    where
+        P: HashProvider<H>,
+    {
+        Path::new(self).identify(provider)
+    }
+}
+
+impl<H> Identify<H> for &OsString
 where
     H: HashAlgorithm,
 {
@@ -139,6 +163,18 @@ where
         P: HashProvider<H>,
     {
         gitoid_from_reader::<H, Blob, _>(provider.digester(), self).map(ArtifactId::from_gitoid)
+    }
+}
+
+impl<H> Identify<H> for Box<File>
+where
+    H: HashAlgorithm,
+{
+    fn identify<P>(self, provider: P) -> Result<ArtifactId<H>, ArtifactIdError>
+    where
+        P: HashProvider<H>,
+    {
+        self.deref().identify(provider)
     }
 }
 

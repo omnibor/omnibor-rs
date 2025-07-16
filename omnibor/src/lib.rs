@@ -1,6 +1,6 @@
 //! This crate implements the [OmniBOR][omnibor] specification, so you can
 //! __identify artifacts__ like binaries and source code files and __track
-//! build dependencies__ in compilers and other build tools.
+//! build dependencies__ used to create them.
 //!
 //! You can identify a file like so:
 //!
@@ -48,9 +48,9 @@
 //! Artifact ID in the "target artifact" whose build input it's describing.
 //!
 //! With Input Manifests, you get a [Merkle tree]-like record of build inputs,
-//! describing the full Artifact Dependency Graph (ADG)—every input used to build
-//! the final artifact. Any time a build input changes, all the Artifact IDs
-//! of anything derived from it change too! This enables easy detection of
+//! describing the full Artifact Dependency Graph (ADG)—every input used to
+//! build the final artifact. Any time a build input changes, all the Artifact
+//! IDs of anything derived from it change too! This enables easy detection of
 //! build differences, arbitrarily deep in an ADG.
 //!
 //! There are three ways to use the Rust OmniBOR implementation:
@@ -59,58 +59,95 @@
 //! - The [`omnibor` crate Foreign Function Interface (FFI)][ffi]
 //! - The [OmniBOR CLI][cli]
 //!
-//! # Creating Artifact IDs
+//! # Concepts
 //!
-//! Artifact IDs can be made from many different kinds of input types, and
-//! both synchronously and asynchronously, using the
-//! [`ArtifactId::new`] and [`ArtifactId::new_async`]
-//! methods, which take types that implement the [`Identify`] and
-//! [`IdentifyAsync`] traits, respectively.
+//! In addition to [`ArtifactId`], [`InputManifest`], and
+//! [`InputManifestBuilder`], there are some key traits and types to know:
 //!
-//! # Creating Input Manifests
+//! - __[Identify and IdentifyAsync](#identify-and-identifyasync)__: Traits for
+//!   types that can produce an [`ArtifactId`], synchronously or asynchronously.
+//! - __[Hash Algorithms](#hash-algorithms)__: Types implementing
+//!   [`HashAlgorithm`](crate::hash_algorithm::HashAlgorithm), currently only
+//!   [`Sha256`](crate::hash_algorithm::Sha256).
+//! - __[Hash Providers](#hash-providers)__: Types implementing
+//!   [`HashProvider`](crate::hash_provider::HashProvider), currently
+//!   [`RustCrypto`](crate::hash_provider::RustCrypto),
+//!   [`OpenSsl`](crate::hash_provider::OpenSsl), and
+//!   [`BoringSsl`](crate::hash_provider::BoringSsl).
+//! - __[Storage](#storage)__: Types implementing
+//!   [`Storage`](crate::storage::Storage), currently
+//!   [`FileSystemStorage`](crate::storage::FileSystemStorage) or
+//!   [`InMemoryStorage`](crate::storage::InMemoryStorage).
+//! - __[Embedding](#embedding)__: Types implementing
+//!   [`Embed`](crate::embed::Embed), currently
+//!   [`NoEmbed`](crate::embed::NoEmbed),
+//!   [`AutoEmbed`](crate::embed::AutoEmbed),
+//!   and [`CustomEmbed`](crate::embed::CustomEmbed).
 //!
-//! [`InputManifest`]s are created with an [`InputManifestBuilder`]. This type
-//! is parameterized over three things: the hash algorithm to use, the hash
-//! provider to use, and the storage to use. The usual flow of constructing
-//! an [`InputManifest`] is to create a new [`InputManifestBuilder`], add
-//! entries with [`InputManifestBuilder::add_relation`], and complete
-//! the build with [`InputManifestBuilder::build_for_target`].
+//! ## Identify and IdentifyAsync
 //!
-//! # Hash Algorithms and Hash Providers
+//! There are two traits for types that can produce an [`ArtifactId`]:
 //!
-//! Artifact IDs and Input Manifests are based on a chosen hash algorithm.
+//! - [`Identify`]: Can produce an Artifact ID synchronously.
+//! - [`IdentifyAsync`]: Can produce an Artifact ID asynchronously.
+//!
+//! These traits are used as bounds on functions throughout the crate that
+//! expect an [`ArtifactId`].
+//!
+//! The full list of "identifiable" types, with an explanation of how they're
+//! processed, is as follows:
+//!
+//! | Type                                                             | `impl Identify` | `impl IdentifyAsync` | Explanation                                                  |
+//! |:-----------------------------------------------------------------|:----------------|:---------------------|:-------------------------------------------------------------|
+//! | `&[u8]`                                                          | ✅              |                      | Hash the bytes.                                              |
+//! | `[u8; N]`                                                        | ✅              |                      | Hash the bytes.                                              |
+//! | `&[u8; N]`                                                       | ✅              |                      | Hash the bytes.                                              |
+//! | `&str`                                                           | ✅              | ✅                   | Treat as a path, hash the contents of the file at that path. |
+//! | `&String`                                                        | ✅              | ✅                   | Treat as a path, hash the contents of the file at that path. |
+//! | `&OsStr`                                                         | ✅              | ✅                   | Treat as a path, hash the contents of the file at that path. |
+//! | `&OsString`                                                      | ✅              | ✅                   | Treat as a path, hash the contents of the file at that path. |
+//! | `&Path`                                                          | ✅              | ✅                   | Hash the contents of the file at that path.                  |
+//! | `&PathBuf`                                                       | ✅              | ✅                   | Hash the contents of the file at that path.                  |
+//! | `File`                                                           | ✅              |                      | Hash the contents of the file.                               |
+//! | `&File`                                                          | ✅              |                      | Hash the contents of the file.                               |
+//! | `Box<File>`                                                      | ✅              |                      | Hash the contents of the file.                               |
+//! | `Rc<File>`                                                       | ✅              |                      | Hash the contents of the file.                               |
+//! | `Arc<File>`                                                      | ✅              |                      | Hash the contents of the file.                               |
+//! | `&mut tokio::fs::File`                                           |                 | ✅                   | Hash the contents of the file.                               |
+//! | `tokio::fs::File`                                                |                 | ✅                   | Hash the contents of the file.                               |
+//! | `BufReader<R> where R: Read + Seek`                              | ✅              |                      | Hash the bytes read off the reader.                          |
+//! | `tokio::io::BufReader<R> where R: AsyncRead + AsyncSync + Unpin` |                 | ✅                   | Hash the bytes read off the reader.                          |
+//! | `&mut R where R: Read + Seek`                                    | ✅              |                      | Hash the bytes read off the reader.                          |
+//! | `Cursor<T> where T: AsRef<[u8]>`                                 | ✅              |                      | Hash the bytes read off the cursor.                          |
+//! | `InputManifest<H>`                                               | ✅              |                      | Hash the on-disk representation of the manifest.             |
+//! | `&InputManifest<H>`                                              | ✅              |                      | Hash the on-disk representation of the manifest.             |
+//! | `ArtifactId<H>`                                                  | ✅              |                      | Copy the Artifact ID.                                        |
+//! | `&ArtifactId<H>`                                                 | ✅              |                      | Copy the Artifact ID.                                        |
+//!
+//! ## Hash Algorithms
+//!
+//! Artifact IDs and Input Manifests are based on a hash algorithm.
 //! Today, OmniBOR only supports SHA-256, though alternatives may be added in
 //! the future if SHA-256's cryptographic properties are broken.
 //!
 //! The [`HashAlgorithm`](crate::hash_algorithm::HashAlgorithm) trait is
-//! implemented by the [`Sha256`](crate::hash_algorithm::Sha256) type, and
-//! both [`ArtifactId`]s and [`InputManifest`]s
-//! are parameterized over their [`HashAlgorithm`](crate::hash_algorithm::HashAlgorithm).
+//! implemented by the [`Sha256`](crate::hash_algorithm::Sha256) type, and most
+//! types in this crate are parameterized over the hash algorithm.
 //!
-//! We also support plugging in arbitrary "hash providers," libraries which
-//! provide implementations of cryptographic hashes. Today, we support
-//! [RustCrypto](https://github.com/rustcrypto), [OpenSSL](https://www.openssl.org/),
-//! and [BoringSSL](https://boringssl.googlesource.com/boringssl).
+//! ## Hash Providers
 //!
-//! All hash providers are represented by a type implementing the
-//! [`HashProvider`](crate::hash_provider::HashProvider) trait; so we have
-//! [`RustCrypto`](crate::hash_provider::RustCrypto),
-//! [`OpenSsl`](crate::hash_provider::OpenSsl), and
-//! [`BoringSsl`](crate::hash_provider::BoringSsl), respectively.
-//! All APIs in the crate for creating [`ArtifactId`]s or
-//! [`InputManifest`]s are
-//! parameterized over the [`HashProvider`](crate::hash_provider::HashProvider).
-//! We also provide convenience methods to choose one of the built-in providers.
+//! Hashes are produced by "hash providers," which implement the
+//! [`HashProvider`](crate::hash_provider::HashProvider) trait. Today we
+//! support [RustCrypto], [OpenSSL], and [BoringSSL], which you can turn on or
+//! off at compile time using features:
 //!
-//! Providers are conditionally compiled in based on crate features. By default,
-//! only the `provider-rustcrypto` feature is turned on. Any combination of
-//! these may be included. In all cases, they are vendored in and do not link
-//! to any system instances of these libraries.
+//! | Feature               | Provider   | Type                                             |
+//! |:----------------------|:-----------|:-------------------------------------------------|
+//! | `provider-rustcrypto` | RustCrypto | [`RustCrypto`](crate::hash_provider::RustCrypto) |
+//! | `provider-openssl`    | OpenSSL    | [`OpenSsl`](crate::hash_provider::OpenSsl)       |
+//! | `provider-boringssl`  | BoringSSL  | [`BoringSsl`](crate::hash_provider::BoringSsl)   |
 //!
-//! In the future we plan to support linking to system instances of OpenSSL and
-//! BoringSSL.
-//!
-//! # Storing Input Manifests
+//! ## Storage
 //!
 //! We expose a [`Storage`](crate::storage::Storage) trait, representing the
 //! abstract interface needed for interacting with Input Manifests in memory or
@@ -126,7 +163,31 @@
 //! If you do not need to persist Input Manifests, use
 //! [`InMemoryStorage`](crate::storage::InMemoryStorage).
 //!
-//! # Specification Compliance
+//! ## Embedding
+//!
+//! When [`InputManifest`]s are built with [`InputManifestBuilder`], you pass
+//! in an embedding choice to select whether and how to embed the Artifact ID
+//! of the Input Manifest into the target artifact the manifest is describing.
+//!
+//! If you _do_ embed the manifest's Artifact ID, you ensure changes to the
+//! build inputs are reflected in the Artifact ID of the target artifact.
+//!
+//! There are currently three options, all implementing the
+//! [`Embed`](crate::embed::Embed) trait:
+//!
+//! - [`NoEmbed`](crate::embed::NoEmbed): Do not do embedding. The resulting
+//!   manifest is considered "detached."
+//! - [`AutoEmbed`](crate::embed::AutoEmbed): Do embedding, with the `omnibor`
+//!   crate inferring the filetype of the target artifact to determine how to
+//!   embed in it. Requires the `infer-filetypes` feature is on.
+//! - [`CustomEmbed`](crate::embed::CustomEmbed): Do embedding, providing your
+//!   own embedding function which takes the path to the target artifact, and
+//!   an [`EmbedProvider`](crate::embed::EmbedProvider) which gives a hex string
+//!   or bytes to embed, as appropriate.
+//!
+//! # Meta
+//!
+//! ## Specification Compliance
 //!
 //! OmniBOR is a [draft specification][omnibor_spec], and this implementation
 //! is the primary implementation of it.
@@ -140,7 +201,7 @@
 //! All differences from the specification and this library are in the process
 //! of being resolved through specification updates.
 //!
-//! # Comparison with other Software Identifiers
+//! ## Comparison with other Software Identifiers
 //!
 //! OmniBOR Artifact IDs are just one scheme for identifying software. Others
 //! include the [Common Platform Enumeration (CPE)][cpe],
@@ -222,7 +283,7 @@
 //!   same inputs is not guaranteed, and will not be detectable by Derivation
 //!   Store Path alone).
 //!
-//! # Contribute
+//! ## Contribute
 //!
 //! The following items are things we'd want to complete before committing to
 //! stability in this crate with a 1.0.0 release:
@@ -231,6 +292,8 @@
 //!   - [ ] Support for auto-embedding in ELF files
 //!   - [ ] Support for auto-embedding in Mach-O binary files
 //!   - [ ] Support for auto-embedding in Portable Executable files
+//! - [ ] ADG Support
+//!   - [ ] Support creating an Artifact Dependency Graph
 //! - [ ] FFI Support
 //!   - [ ] Exposing the `InputManifestBuilder` API over FFI
 //!   - [ ] Exposing the `InputManifest` API over FFI
@@ -264,6 +327,9 @@
 //! [swhid]: https://www.swhid.org/
 //! [Issue Tracker]: https://github.com/omnibor/omnibor-rs/issues
 //! [Contributor Guide]: https://github.com/omnibor/omnibor-rs/blob/main/CONTRIBUTING.md
+//! [RustCrypto]: https://github.com/rustcrypto
+//! [OpenSSL]: https://www.openssl.org/
+//! [BoringSSL]: https://boringssl.googlesource.com/boringssl
 
 /*===============================================================================================
  * Lint Configuration
