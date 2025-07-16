@@ -187,6 +187,10 @@
 //!
 //! # Meta
 //!
+//! The following sections contain information about the status of this
+//! implementation, its conformance to the specification, and its relationship
+//! to other software identification schemes.
+//!
 //! ## Specification Compliance
 //!
 //! OmniBOR is a [draft specification][omnibor_spec], and this implementation
