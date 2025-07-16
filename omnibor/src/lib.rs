@@ -1,18 +1,19 @@
-//! This crate provides types for __identifying artifacts__ like binaries and
-//! source code files and for __tracking build dependencies__ in compilers and
-//! other build tools.
+//! This crate implements the [OmniBOR][omnibor] specification, so you can
+//! __identify artifacts__ like binaries and source code files and __track
+//! build dependencies__ in compilers and other build tools.
 //!
-//! If you're trying to identify a file, here's what that can look like:
+//! You can identify a file like so:
 //!
 //! ```
 //! # use omnibor::{ArtifactId, error::ArtifactIdError, hash_provider::RustCrypto};
+//! # use std::str::FromStr;
 //! let artifact_id = ArtifactId::new(RustCrypto::new(), "./test/data/hello_world.txt")?;
-//!
-//! println!("{}", artifact_id);
+//! // gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03
+//! # assert_eq!(artifact_id, ArtifactId::from_str("gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03").unwrap());
 //! # Ok::<(), ArtifactIdError>(())
 //! ```
 //!
-//! If you're trying to build an input manifest, it might look like this:
+//! ... and track build dependencies like so:
 //!
 //! ```
 //! # use omnibor::{
@@ -23,182 +24,42 @@
 //! #     embed::NoEmbed,
 //! #     error::InputManifestError,
 //! # };
-//! let storage = InMemoryStorage::new(RustCrypto::new());
-//!
-//! let input_manifest = InputManifestBuilder::new(storage)
-//!     .add_relation("./test/data/hello_world.txt")?
-//!     .build_for_target("./test/data/unix_line.txt", NoEmbed)?;
-//!
-//! println!("{:?}", input_manifest);
+//! # use std::str::FromStr;
+//! let input_manifest = InputManifestBuilder::new(InMemoryStorage::new(RustCrypto::new()))
+//!     .add_relation("./test/data/c/main.c")?
+//!     .add_relation("./test/data/c/util.c")?
+//!     .build_for_target("./test/data/c/my_executable", NoEmbed)?;
+//! // gitoid:blob:sha256
+//! // 6e87984feca6b64467f9028fd6b76a4ec8d13ee23f0ae3b99b548ca0c2d0230b
+//! // 726eb0db4f3130fb4caef53ee9d103b6bc2d732e665dd88f53efce4c7b59818b
+//! # assert!(input_manifest.contains_artifact(ArtifactId::from_str("gitoid:blob:sha256:6e87984feca6b64467f9028fd6b76a4ec8d13ee23f0ae3b99b548ca0c2d0230b").unwrap()));
+//! # assert!(input_manifest.contains_artifact(ArtifactId::from_str("gitoid:blob:sha256:726eb0db4f3130fb4caef53ee9d103b6bc2d732e665dd88f53efce4c7b59818b").unwrap()));
 //! # Ok::<_, InputManifestError>(())
 //! ```
 //!
-//! ---
+//! [`ArtifactId`]s are _universally reproducible_, so anyone with the file
+//! will produce the same ID. They're [GitOIDs (Git Object Identifiers)][gitoid]
+//! with "blob" as the type, SHA-256 as the hash algorithm, and all newlines
+//! normalized to Unix style.
 //!
-//! [OmniBOR](https://omnibor.io) is a specification for a reproducible
-//! software identifier we call an "Artifact ID" plus a compact record of
-//! build inputs called an "Input Manifest". Together, they let _anyone_
-//! precisely identify software binaries and text files, and track precise
-//! inputs used to build them. They also form a [Merkle Tree], so _any_
-//! change in a dependency causes all artifacts built from it to have a new,
-//! different Artifact ID, and anyone can use the Input Manifests to detect
-//! _exactly what dependency changed_.
+//! [`InputManifest`]s are very small text files that record Artifact IDs for
+//! all build inputs. If an input has its own Input Manifest, its Artifact ID
+//! gets recorded too. When an Input Manifest is created, you can embed its
+//! Artifact ID in the "target artifact" whose build input it's describing.
 //!
-//! This crate exposes APIs for producing and consuming both Artifact IDs and
-//! Input Manifests.
+//! With Input Manifests, you get a [Merkle tree]-like record of build inputs,
+//! describing the full Artifact Dependency Graph (ADG)—every input used to build
+//! the final artifact. Any time a build input changes, all the Artifact IDs
+//! of anything derived from it change too! This enables easy detection of
+//! build differences, arbitrarily deep in an ADG.
 //!
-//! If you just want documentation for the API of this crate, check out these
-//! two types:
+//! There are three ways to use the Rust OmniBOR implementation:
 //!
-//! - [`ArtifactId`]
-//! - [`InputManifest`]
+//! - The `omnibor` crate (**you are here**)
+//! - The [`omnibor` crate Foreign Function Interface (FFI)][ffi]
+//! - The [OmniBOR CLI][cli]
 //!
-//! We also [provide a CLI][cli], based on this crate, as another option for
-//! working with Artifact IDs and Input Manifests.
-//!
-//! # Table of Contents
-//!
-//! 1. [Examples](#examples)
-//! 2. [What is an Artifact ID?](#what-is-an-artifact-id)
-//!    1. [The GitOID Construction](#the-gitoid-construction)
-//!    2. [Choice of Hash Function](#choice-of-hash-function)
-//!    3. [Unconditional Newline Normalization](#unconditional-newline-normalization)
-//! 3. [Crate Overview](#crate-overview)
-//!    1. [Creating Artifact IDs](#creating-artifact-ids)
-//!    2. [Creating Input Manifests](#creating-input-manifests)
-//!    3. [Hash Algorithms and Hash Providers](#hash-algorithms-and-hash-providers)
-//!    4. [Storing Input Manifests](#storing-input-manifests)
-//! 4. [Foreign Function Interface](#foreign-function-interface)
-//! 5. [Specification Compliance](#specification-compliance)
-//! 6. [Comparison with Other Software Identifiers](#comparison-with-other-software-identifiers)
-//! 7. [What's Missing for 1.0.0](#whats-missing-for-100)
-//!
-//! # Examples
-//!
-//! The Artifact ID of one of the test files in this repo, `hello_world.txt`, is:
-//!
-//! ```ignore,custom
-//! gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03
-//! ```
-//!
-//! An input manifest for a `.o` file with three inputs in C might look like:
-//!
-//! ```ignore,custom
-//! gitoid:blob:sha256
-//! 09c825ac02df9150e4f93d12ba1da5d1ff5846c3e62503c814aa3a300c535772
-//! 230f3515d1306690815bd9c3da0d15d8b6fcf43894d17100eb44b6d329a92f61
-//! 2f4a51b16b76bbc87c4c27af8ae062b1b50b280f1ab78e3eec155334588dc88e
-//! ```
-//!
-//! # What is an Artifact ID?
-//!
-//! An Artifact ID is a Git Object Identifier (GitOID), with only a type of
-//! "blob," with SHA-256 as the hash function, and with unconditional newline
-//! normalization.
-//!
-//! If that explanation makes sense, then congrats, that's all you need to know!
-//!
-//! Otherwise, to explain in more detail:
-//!
-//! ## The GitOID Construction
-//!
-//! The Git Version Control System identifies all objects checked into a
-//! repository by calculating a Git Object Identifier. This identifier is based
-//! around a hash function and what we'll call the "GitOID Construction" that
-//! determines what gets input into the hash function.
-//!
-//! In the GitOID Construction, you first hash in a prefix string of the form:
-//!
-//! ```ignore,custom
-//! <object_type> <size_of_input_in_bytes>\0
-//! ```
-//!
-//! The `<object_type>` can be `blob`, `commit`, `tag`, or `tree`. The last
-//! three are used for commits, tags, and directories respectively; `blob` is
-//! used for files.
-//!
-//! The `<size_of_input_in_bytes>` is what it sounds like; Git calculates the
-//! size of an input file and includes that in the hash.
-//!
-//! After hashing in the prefix string, Git then hashes the contents of the
-//! file being identified. That's the GitOID Construction! Artifact IDs use
-//! this same construction, with the `<object_type>` always set to `blob`.
-//!
-//! ## Choice of Hash Function
-//!
-//! We also restrict the hash function to _only_ SHA-256 today,
-//! though the specification leaves open the possibility of transitioning to
-//! an alternative in the future if SHA-256 is cryptographically broken.
-//!
-//! This is a difference from Git's default today. Git normally uses SHA-1,
-//! and is in the slow process of transitioning to SHA-256. So why not use
-//! SHA-1 to match Git's current default?
-//!
-//! First, it's worth saying that Git can use SHA-1 _or_ a variant of SHA-1
-//! called "SHA-1CD" (sometimes spelled "SHA-1DC"). Back in 2017, researchers
-//! from Google and CWI Amsterdam announced the "SHAttered" attack against
-//! SHA-1, where they had successively engineered a collision (two different
-//! documents which produced the same SHA-1 hash). The SHA-1CD algorithm was
-//! developed in response. It's a variant of SHA-1 which attempts to detect
-//! when the input is attempting to produce a collision like the one in the
-//! SHAttered attack, and on detection modifies the hashing algorithm to
-//! produce a different hash and stop that collision.
-//!
-//! Different versions of Git will use either SHA-1 or SHA-1CD by default. This
-//! means that for Artifact IDs our choice of hash algorithm was between three
-//! choices: SHA-1, SHA-1CD, or SHA-256.
-//!
-//! The split of SHA-1 and SHA-1CD doesn't matter for most Git users, since
-//! a single repository will just use one or the other and most files will
-//! not trigger the collision detection code path that causes their outputs to
-//! diverge. For Artifact IDs though, it's a problem, since we care strongly
-//! about our IDs being universally reproducible. Thus, the split creates a
-//! challenge for our potential use of SHA-1.
-//!
-//! Additionally, it's worth noting that attacks against SHA-1 continue to
-//! become more practical as computing hardware improves. In October 2024
-//! NIST, the National Institute of Standards and Technology in the United
-//! States, published an initial draft of a document "Transitioning the Use of
-//! Cryptographic Algorithms and Key Lengths." While it is not yet an official
-//! NIST recommendation, it does explicitly disallow the use of SHA-1 for
-//! digital signature generation, considers its use for digital signature
-//! verification to be a "legacy use" requiring special approval, and otherwise
-//! prepares to sunset any use of SHA-1 by 2030.
-//!
-//! NIST is not a regulatory agency, but their recommendations _are_ generally
-//! incorporated into policies both in government and in private industry, and
-//! a NIST recommendation to fully transition away from SHA-1 is something we
-//! think should be taken seriously.
-//!
-//! For all of the above reasons, we opted to base Artifact IDs on SHA-256,
-//! rather than SHA-1 or SHA-1CD.
-//!
-//! ## Unconditional Newline Normalization
-//!
-//! The final requirement of note is the unconditional newline normalization
-//! performed for Artifact IDs. This is a feature that Git offers which is
-//! configurable, permitting users of Git to decide whether checked-out files
-//! should have newlines converted to the ones for their current platform, and
-//! whether the checked-in copies should have _their_ newlines converted.
-//!
-//! For our case, we care that users of Artifact IDs can produce the same ID
-//! regardless of what platform they're on. To ensure this, we always normalize
-//! newlines from `\r\n` to `\n` (CRLF to LF / Windows to Unix). We perform
-//! this regardless of the _type_ of input file, whether it's a binary or text
-//! file. Since we aren't storing files, only identifying them, we don't have
-//! to worry about not newline normalizing binaries.
-//!
-//! So that's it! Artifact IDs are Git Object Identifiers made with the `blob`
-//! type, SHA-256 as the hash algorithm, and unconditional newline
-//! normalization.
-//!
-//! # Crate Overview
-//!
-//! This crate is built around two central types, [`ArtifactId`]
-//! and [`InputManifest`]. The rest of
-//! the crate is in service of producing, consuming, and storing these types.
-//!
-//! ## Creating Artifact IDs
+//! # Creating Artifact IDs
 //!
 //! Artifact IDs can be made from many different kinds of input types, and
 //! both synchronously and asynchronously, using the
@@ -206,7 +67,7 @@
 //! methods, which take types that implement the [`Identify`] and
 //! [`IdentifyAsync`] traits, respectively.
 //!
-//! ## Creating Input Manifests
+//! # Creating Input Manifests
 //!
 //! [`InputManifest`]s are created with an [`InputManifestBuilder`]. This type
 //! is parameterized over three things: the hash algorithm to use, the hash
@@ -215,7 +76,7 @@
 //! entries with [`InputManifestBuilder::add_relation`], and complete
 //! the build with [`InputManifestBuilder::build_for_target`].
 //!
-//! ## Hash Algorithms and Hash Providers
+//! # Hash Algorithms and Hash Providers
 //!
 //! Artifact IDs and Input Manifests are based on a chosen hash algorithm.
 //! Today, OmniBOR only supports SHA-256, though alternatives may be added in
@@ -249,7 +110,7 @@
 //! In the future we plan to support linking to system instances of OpenSSL and
 //! BoringSSL.
 //!
-//! ## Storing Input Manifests
+//! # Storing Input Manifests
 //!
 //! We expose a [`Storage`](crate::storage::Storage) trait, representing the
 //! abstract interface needed for interacting with Input Manifests in memory or
@@ -264,15 +125,6 @@
 //!
 //! If you do not need to persist Input Manifests, use
 //! [`InMemoryStorage`](crate::storage::InMemoryStorage).
-//!
-//! # Foreign Function Interface
-//!
-//! This crate experimentally exposes a Foreign Function Interface (FFI), to
-//! make it usable from languages besides Rust. Today this only includes
-//! working with Artifact IDs when using the RustCrypto hash provider. This
-//! interface is unstable, though we plan to grow it to cover the complete API
-//! surface of the crate, including all hash providers and arbitrary other
-//! hash providers, and to become stable.
 //!
 //! # Specification Compliance
 //!
@@ -370,7 +222,7 @@
 //!   same inputs is not guaranteed, and will not be detectable by Derivation
 //!   Store Path alone).
 //!
-//! # What's Missing for 1.0.0
+//! # Contribute
 //!
 //! The following items are things we'd want to complete before committing to
 //! stability in this crate with a 1.0.0 release:
@@ -405,6 +257,7 @@
 //! [omnibor_crate]: https://crates.io/crates/omnibor
 //! [omnibor_spec]: https://github.com/omnibor/spec
 //! [purl]: https://github.com/package-url/purl-spec
+//! [ffi]: crate::ffi
 //! [cli]: https://github.com/omnibor/omnibor-rs/releases?q=omnibor-cli
 //! [swid]: https://csrc.nist.gov/projects/software-identification-swid
 //! [nix]: https://www.tweag.io/blog/2024-03-12-nix-as-software-identifier/

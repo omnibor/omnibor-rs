@@ -30,10 +30,105 @@ use crate::hash_algorithm::Sha256;
 
 /// A universally reproducible software identifier.
 ///
-/// This is a content-based unique identifier for any software artifact.
+/// An Artifact ID is a Git Object Identifier (GitOID), with only a type of
+/// "blob," with SHA-256 as the hash function, and with unconditional newline
+/// normalization.
 ///
-/// It is built around, per the specification, any supported hash algorithm.
-/// Currently, only SHA-256 is supported, but others may be added in the future.
+/// If that explanation makes sense, then congrats, that's all you need to know!
+///
+/// Otherwise, to explain in more detail:
+///
+/// ## The GitOID Construction
+///
+/// The Git Version Control System identifies all objects checked into a
+/// repository by calculating a Git Object Identifier. This identifier is based
+/// around a hash function and what we'll call the "GitOID Construction" that
+/// determines what gets input into the hash function.
+///
+/// In the GitOID Construction, you first hash in a prefix string of the form:
+///
+/// ```ignore,custom
+/// <object_type> <size_of_input_in_bytes>\0
+/// ```
+///
+/// The `<object_type>` can be `blob`, `commit`, `tag`, or `tree`. The last
+/// three are used for commits, tags, and directories respectively; `blob` is
+/// used for files.
+///
+/// The `<size_of_input_in_bytes>` is what it sounds like; Git calculates the
+/// size of an input file and includes that in the hash.
+///
+/// After hashing in the prefix string, Git then hashes the contents of the
+/// file being identified. That's the GitOID Construction! Artifact IDs use
+/// this same construction, with the `<object_type>` always set to `blob`.
+///
+/// ## Choice of Hash Function
+///
+/// We also restrict the hash function to _only_ SHA-256 today,
+/// though the specification leaves open the possibility of transitioning to
+/// an alternative in the future if SHA-256 is cryptographically broken.
+///
+/// This is a difference from Git's default today. Git normally uses SHA-1,
+/// and is in the slow process of transitioning to SHA-256. So why not use
+/// SHA-1 to match Git's current default?
+///
+/// First, it's worth saying that Git can use SHA-1 _or_ a variant of SHA-1
+/// called "SHA-1CD" (sometimes spelled "SHA-1DC"). Back in 2017, researchers
+/// from Google and CWI Amsterdam announced the "SHAttered" attack against
+/// SHA-1, where they had successively engineered a collision (two different
+/// documents which produced the same SHA-1 hash). The SHA-1CD algorithm was
+/// developed in response. It's a variant of SHA-1 which attempts to detect
+/// when the input is attempting to produce a collision like the one in the
+/// SHAttered attack, and on detection modifies the hashing algorithm to
+/// produce a different hash and stop that collision.
+///
+/// Different versions of Git will use either SHA-1 or SHA-1CD by default. This
+/// means that for Artifact IDs our choice of hash algorithm was between three
+/// choices: SHA-1, SHA-1CD, or SHA-256.
+///
+/// The split of SHA-1 and SHA-1CD doesn't matter for most Git users, since
+/// a single repository will just use one or the other and most files will
+/// not trigger the collision detection code path that causes their outputs to
+/// diverge. For Artifact IDs though, it's a problem, since we care strongly
+/// about our IDs being universally reproducible. Thus, the split creates a
+/// challenge for our potential use of SHA-1.
+///
+/// Additionally, it's worth noting that attacks against SHA-1 continue to
+/// become more practical as computing hardware improves. In October 2024
+/// NIST, the National Institute of Standards and Technology in the United
+/// States, published an initial draft of a document "Transitioning the Use of
+/// Cryptographic Algorithms and Key Lengths." While it is not yet an official
+/// NIST recommendation, it does explicitly disallow the use of SHA-1 for
+/// digital signature generation, considers its use for digital signature
+/// verification to be a "legacy use" requiring special approval, and otherwise
+/// prepares to sunset any use of SHA-1 by 2030.
+///
+/// NIST is not a regulatory agency, but their recommendations _are_ generally
+/// incorporated into policies both in government and in private industry, and
+/// a NIST recommendation to fully transition away from SHA-1 is something we
+/// think should be taken seriously.
+///
+/// For all of the above reasons, we opted to base Artifact IDs on SHA-256,
+/// rather than SHA-1 or SHA-1CD.
+///
+/// ## Unconditional Newline Normalization
+///
+/// The final requirement of note is the unconditional newline normalization
+/// performed for Artifact IDs. This is a feature that Git offers which is
+/// configurable, permitting users of Git to decide whether checked-out files
+/// should have newlines converted to the ones for their current platform, and
+/// whether the checked-in copies should have _their_ newlines converted.
+///
+/// For our case, we care that users of Artifact IDs can produce the same ID
+/// regardless of what platform they're on. To ensure this, we always normalize
+/// newlines from `\r\n` to `\n` (CRLF to LF / Windows to Unix). We perform
+/// this regardless of the _type_ of input file, whether it's a binary or text
+/// file. Since we aren't storing files, only identifying them, we don't have
+/// to worry about not newline normalizing binaries.
+///
+/// So that's it! Artifact IDs are Git Object Identifiers made with the `blob`
+/// type, SHA-256 as the hash algorithm, and unconditional newline
+/// normalization.
 pub struct ArtifactId<H: HashAlgorithm> {
     #[doc(hidden)]
     gitoid: GitOid<H, Blob>,
