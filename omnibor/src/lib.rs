@@ -6,7 +6,7 @@
 //!
 //! ```
 //! # use omnibor::{ArtifactId, error::ArtifactIdError, hash_provider::RustCrypto};
-//! let artifact_id = ArtifactId::identify(RustCrypto::new(), "./test/data/hello_world.txt")?;
+//! let artifact_id = ArtifactId::new(RustCrypto::new(), "./test/data/hello_world.txt")?;
 //!
 //! println!("{}", artifact_id);
 //! # Ok::<(), ArtifactIdError>(())

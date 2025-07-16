@@ -90,7 +90,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
     /// # use omnibor::hash_provider::RustCrypto;
-    /// let id: ArtifactId<Sha256> = ArtifactId::identify(RustCrypto::new(), b"hello, world").unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::new(RustCrypto::new(), b"hello, world").unwrap();
     /// println!("Artifact ID bytes: {:?}", id.as_bytes());
     /// ```
     pub fn as_bytes(&self) -> &[u8] {
@@ -109,7 +109,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
     /// # use omnibor::hash_provider::RustCrypto;
-    /// let id: ArtifactId<Sha256> = ArtifactId::identify(RustCrypto::new(), b"hello, world").unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::new(RustCrypto::new(), b"hello, world").unwrap();
     /// println!("Artifact ID bytes as hex: {}", id.as_hex());
     /// ```
     pub fn as_hex(&self) -> String {
@@ -126,7 +126,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
     /// # use omnibor::hash_provider::RustCrypto;
-    /// let id: ArtifactId<Sha256> = ArtifactId::identify(RustCrypto::new(), b"hello, world").unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::new(RustCrypto::new(), b"hello, world").unwrap();
     /// println!("Artifact ID hash algorithm: {}", id.hash_algorithm());
     /// ```
     pub const fn hash_algorithm(&self) -> &'static str {
@@ -144,7 +144,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
     /// # use omnibor::hash_provider::RustCrypto;
-    /// let id: ArtifactId<Sha256> = ArtifactId::identify(RustCrypto::new(), b"hello, world").unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::new(RustCrypto::new(), b"hello, world").unwrap();
     /// println!("Artifact ID object type: {}", id.object_type());
     /// ```
     pub const fn object_type(&self) -> &'static str {
@@ -163,7 +163,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
     /// # use omnibor::hash_provider::RustCrypto;
-    /// let id: ArtifactId<Sha256> = ArtifactId::identify(RustCrypto::new(), b"hello, world").unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::new(RustCrypto::new(), b"hello, world").unwrap();
     /// println!("Artifact ID hash length in bytes: {}", id.hash_len());
     /// ```
     pub fn hash_len(&self) -> usize {
