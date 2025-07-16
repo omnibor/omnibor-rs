@@ -112,13 +112,19 @@ where
             S2: Storage<H2>,
         {
             // Get the Artifact ID of the target.
-            let target_aid =
-                ArtifactId::new(manifest_builder.storage.get_hash_provider(), target)?;
+            let target_aid = if embed.will_embed() {
+                Some(ArtifactId::new(
+                    manifest_builder.storage.get_hash_provider(),
+                    target,
+                )?)
+            } else {
+                None
+            };
 
             // Construct a new input manifest.
             let manifest = InputManifest::with_relations(
                 manifest_builder.relations.iter().cloned(),
-                Some(target_aid),
+                target_aid,
             );
 
             // Get the Artifact ID of the manifest.
