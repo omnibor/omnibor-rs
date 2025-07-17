@@ -81,7 +81,7 @@ where
     ) -> Result<InputManifest<H>, InputManifestError> {
         let s = self
             .to_str()
-            .ok_or_else(|| InputManifestError::InvalidCharInManifest)?;
+            .ok_or(InputManifestError::InvalidCharInManifest)?;
         parse_input_manifest(s, target)
     }
 }
@@ -190,7 +190,7 @@ where
 
     let mut relations = Vec::new();
     for line in lines {
-        let relation = parse_relation::<H>(&line)?;
+        let relation = parse_relation::<H>(line)?;
         relations.push(relation);
     }
 

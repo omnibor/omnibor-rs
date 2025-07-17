@@ -169,7 +169,7 @@ impl<H: HashAlgorithm> Debug for InputManifest<H> {
 impl<H: HashAlgorithm> Display for InputManifest<H> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         let str = String::from_utf8(self.as_bytes().to_vec()).unwrap();
-        write!(f, "{}", str)
+        write!(f, "{str}")
     }
 }
 
