@@ -16,7 +16,7 @@ use {
     tracing::warn,
 };
 
-/// A builder for [`InputManifest`]s.
+/// A builder for `InputManifest`s.
 pub struct InputManifestBuilder<H, S>
 where
     H: HashAlgorithm,

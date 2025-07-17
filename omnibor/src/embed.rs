@@ -1,4 +1,4 @@
-//! Control whether an [`InputManifest`](crate::InputManifest)'s [`ArtifactId`](crate::ArtifactId) is stored in the target artifact.
+//! Control whether an `InputManifest`'s `ArtifactId` is stored in the target artifact.
 
 #[cfg(feature = "infer-filetypes")]
 pub(crate) mod auto_embed;

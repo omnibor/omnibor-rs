@@ -21,7 +21,7 @@ pub async fn run(app: &App, args: &StoreAddArgs) -> Result<()> {
         None => None,
     };
 
-    let manifest = InputManifest::<Sha256>::from_path(&args.manifest, target_aid)
+    let manifest = InputManifest::<Sha256>::load(&args.manifest, target_aid)
         .map_err(Error::UnableToReadManifest)?;
 
     storage

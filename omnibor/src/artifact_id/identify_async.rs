@@ -13,7 +13,7 @@ use tokio::{
     io::{AsyncRead, AsyncSeek, BufReader},
 };
 
-/// Types that can be identified with an [`ArtifactId`] asynchronously.
+/// Types that can be identified with an `ArtifactId` asynchronously.
 pub trait IdentifyAsync<H>
 where
     H: HashAlgorithm,

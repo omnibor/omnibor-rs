@@ -15,7 +15,7 @@ where
     H: HashAlgorithm,
 {
     /// Construct a new embed provider.
-    pub fn new(manifest_aid: ArtifactId<H>) -> Self {
+    pub(crate) fn new(manifest_aid: ArtifactId<H>) -> Self {
         EmbedProvider { manifest_aid }
     }
 

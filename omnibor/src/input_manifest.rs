@@ -1,24 +1,25 @@
 //! Record of software build inputs by Artifact ID.
 
-pub mod input_manifest_builder;
+mod input_manifest_builder;
+mod manifest_source;
 
 pub use input_manifest_builder::InputManifestBuilder;
+pub use manifest_source::ManifestSource;
 
 use {
     crate::{
         artifact_id::ArtifactId,
         error::InputManifestError,
         hash_algorithm::HashAlgorithm,
+        hash_provider::HashProvider,
         object_type::{Blob, ObjectType},
-        util::clone_as_boxstr::CloneAsBoxstr,
+        storage::Storage,
+        Identify,
     },
     std::{
         cmp::Ordering,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
-        fs::File,
-        io::{BufRead, BufReader, Write},
-        path::Path,
-        str::FromStr,
+        io::Write,
     },
 };
 
@@ -50,6 +51,14 @@ where
 }
 
 impl<H: HashAlgorithm> InputManifest<H> {
+    /// Get a builder for [`InputManifest`]s.
+    pub fn builder<S>(storage: S) -> InputManifestBuilder<H, S>
+    where
+        S: Storage<H>,
+    {
+        InputManifestBuilder::new(storage)
+    }
+
     pub(crate) fn with_relations(
         relations: impl Iterator<Item = Input<H>>,
         target: Option<ArtifactId<H>>,
@@ -100,62 +109,25 @@ impl<H: HashAlgorithm> InputManifest<H> {
 
     /// Check if the manifest contains the given input.
     #[inline]
-    pub fn contains_artifact(&self, artifact_id: ArtifactId<H>) -> bool {
-        self.inputs().iter().any(|rel| rel.artifact == artifact_id)
+    pub fn contains_artifact<P, I>(
+        &self,
+        hash_provider: P,
+        artifact: I,
+    ) -> Result<bool, InputManifestError>
+    where
+        P: HashProvider<H>,
+        I: Identify<H>,
+    {
+        let artifact_id = ArtifactId::new(hash_provider, artifact)?;
+        Ok(self.inputs().iter().any(|rel| rel.artifact == artifact_id))
     }
 
     /// Construct an [`InputManifest`] from a file at a specified path.
-    pub fn from_path(
-        path: &Path,
-        target: Option<ArtifactId<H>>,
-    ) -> Result<Self, InputManifestError> {
-        let file = BufReader::new(
-            File::open(path)
-                .map_err(|source| InputManifestError::FailedManifestRead(Box::new(source)))?,
-        );
-        let mut lines = file.lines();
-
-        let first_line = lines
-            .next()
-            .ok_or(InputManifestError::ManifestMissingHeader)?
-            .map_err(|source| InputManifestError::FailedManifestRead(Box::new(source)))?;
-
-        let parts = first_line.split(':').collect::<Vec<_>>();
-
-        if parts.len() != 3 {
-            return Err(InputManifestError::MissingHeaderParts);
-        }
-
-        // Panic Safety: we've already checked the length.
-        let (gitoid, blob, hash_algorithm) = (parts[0], parts[1], parts[2]);
-
-        if gitoid != "gitoid" {
-            return Err(InputManifestError::MissingGitOidInHeader);
-        }
-
-        if blob != "blob" {
-            return Err(InputManifestError::MissingObjectTypeInHeader);
-        }
-
-        if hash_algorithm != H::NAME {
-            return Err(InputManifestError::WrongHashAlgorithm {
-                expected: H::NAME.clone_as_boxstr(),
-                got: hash_algorithm.clone_as_boxstr(),
-            });
-        }
-
-        let mut relations = Vec::new();
-        for line in lines {
-            let line =
-                line.map_err(|source| InputManifestError::FailedManifestRead(Box::new(source)))?;
-            let relation = parse_relation::<H>(&line)?;
-            relations.push(relation);
-        }
-
-        Ok(InputManifest {
-            target,
-            inputs: relations,
-        })
+    pub fn load<M>(source: M, target: Option<ArtifactId<H>>) -> Result<Self, InputManifestError>
+    where
+        M: ManifestSource<H>,
+    {
+        source.resolve(target)
     }
 
     /// Get the manifest as bytes.
@@ -194,6 +166,13 @@ impl<H: HashAlgorithm> Debug for InputManifest<H> {
     }
 }
 
+impl<H: HashAlgorithm> Display for InputManifest<H> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let str = String::from_utf8(self.as_bytes().to_vec()).unwrap();
+        write!(f, "{}", str)
+    }
+}
+
 impl<H: HashAlgorithm> Clone for InputManifest<H> {
     fn clone(&self) -> Self {
         InputManifest {
@@ -203,39 +182,7 @@ impl<H: HashAlgorithm> Clone for InputManifest<H> {
     }
 }
 
-/// Parse a single relation line.
-fn parse_relation<H: HashAlgorithm>(input: &str) -> Result<Input<H>, InputManifestError> {
-    let parts = input.split(' ').collect::<Vec<_>>();
-
-    if parts.is_empty() {
-        return Err(InputManifestError::MissingRelationParts(
-            input.to_string().into_boxed_str(),
-        ));
-    }
-
-    // Panic Safety: we've already checked the length.
-    let (aid_hex, manifest_indicator, manifest_aid_hex) = (parts[0], parts.get(1), parts.get(2));
-
-    let artifact =
-        ArtifactId::<H>::from_str(&format!("gitoid:{}:{}:{}", Blob::NAME, H::NAME, aid_hex))?;
-
-    let manifest = match (manifest_indicator, manifest_aid_hex) {
-        (None, None) | (Some(_), None) | (None, Some(_)) => None,
-        (Some(manifest_indicator), Some(manifest_aid_hex)) => {
-            if *manifest_indicator != "manifest" {
-                return Err(InputManifestError::MissingBomIndicatorInRelation);
-            }
-
-            let gitoid_url = &format!("gitoid:{}:{}:{}", Blob::NAME, H::NAME, manifest_aid_hex);
-
-            ArtifactId::<H>::from_str(gitoid_url).ok()
-        }
-    };
-
-    Ok(Input { artifact, manifest })
-}
-
-/// A single input recorded in an [`InputManifest`].
+/// A single input recorded in an `InputManifest`.
 #[derive(Copy)]
 pub struct Input<H>
 where

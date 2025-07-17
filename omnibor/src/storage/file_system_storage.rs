@@ -188,8 +188,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
 
         self.manifests()
             .find(|entry| {
-                ArtifactId::new(self.hash_provider, &entry.manifest_path).ok()
-                    == Some(manifest_aid)
+                ArtifactId::new(self.hash_provider, &entry.manifest_path).ok() == Some(manifest_aid)
             })
             .map(|entry| {
                 enrich_manifest_with_target(&target_index, self.hash_provider, entry.manifest()?)
@@ -333,7 +332,7 @@ struct ManifestsEntry<H: HashAlgorithm> {
 impl<H: HashAlgorithm> ManifestsEntry<H> {
     /// Load the [`InputManifest`] represented by this entry.
     fn manifest(&self) -> Result<InputManifest<H>, InputManifestError> {
-        InputManifest::from_path(&self.manifest_path, self.target_aid)
+        InputManifest::load(&self.manifest_path, self.target_aid)
     }
 }
 

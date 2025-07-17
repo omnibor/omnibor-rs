@@ -1,4 +1,4 @@
-//! Error types.
+//! Error types for working with `ArtifactId`s and `InputManifest`s.
 
 pub(crate) mod artifact_id_error;
 pub(crate) mod input_manifest_error;

@@ -148,6 +148,9 @@ pub enum InputManifestError {
 
     /// Unknown programming language.
     UnknownProgLang(Box<str>),
+
+    /// Invalid character in Input Manifest.
+    InvalidCharInManifest,
 }
 
 impl InputManifestError {
@@ -222,7 +225,8 @@ impl Display for InputManifestError {
             }
             InputManifestError::UnknownProgLang(s) => {
                 write!(f, "unknown programming language: '{s}'")
-            }
+            },
+            InputManifestError::InvalidCharInManifest => write!(f, "invalid character in manifest"),
         }
     }
 }
@@ -251,7 +255,8 @@ impl Error for InputManifestError {
             | InputManifestError::UnsupportedBinaryFormat(_)
             | InputManifestError::FormatDoesntSupportEmbedding(_)
             | InputManifestError::UnknownEmbeddingSupport(_)
-            | InputManifestError::UnknownProgLang(_) => None,
+            | InputManifestError::UnknownProgLang(_)
+            | InputManifestError::InvalidCharInManifest => None,
             InputManifestError::FailedManifestRead(source) => Some(source),
             InputManifestError::FailedTargetArtifactRead(source) => Some(source),
             InputManifestError::ArtifactIdError(source) => Some(source),

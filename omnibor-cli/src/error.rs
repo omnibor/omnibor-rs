@@ -67,6 +67,13 @@ pub enum Error {
         source: ArtifactIdError,
     },
 
+    #[error("failed to make Artifact ID for '{}'", path.display())]
+    FileFailedToIdDuringSearch {
+        path: PathBuf,
+        #[source]
+        source: InputManifestError,
+    },
+
     #[error("work channel closed for sending")]
     WorkChannelCloseSend(#[source] SendError<PathBuf>),
 

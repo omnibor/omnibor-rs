@@ -18,29 +18,30 @@
 //! ```
 //! # use omnibor::{
 //! #     ArtifactId,
-//! #     InputManifestBuilder,
+//! #     InputManifest,
 //! #     storage::InMemoryStorage,
 //! #     hash_provider::RustCrypto,
 //! #     embed::NoEmbed,
 //! #     error::InputManifestError,
 //! # };
 //! # use std::str::FromStr;
-//! let input_manifest = InputManifestBuilder::new(InMemoryStorage::new(RustCrypto::new()))
+//! let input_manifest = InputManifest::builder(InMemoryStorage::new(RustCrypto::new()))
 //!     .add_relation("./test/data/c/main.c")?
 //!     .add_relation("./test/data/c/util.c")?
 //!     .build_for_target("./test/data/c/my_executable", NoEmbed)?;
 //! // gitoid:blob:sha256
 //! // 6e87984feca6b64467f9028fd6b76a4ec8d13ee23f0ae3b99b548ca0c2d0230b
 //! // 726eb0db4f3130fb4caef53ee9d103b6bc2d732e665dd88f53efce4c7b59818b
-//! # assert!(input_manifest.contains_artifact(ArtifactId::from_str("gitoid:blob:sha256:6e87984feca6b64467f9028fd6b76a4ec8d13ee23f0ae3b99b548ca0c2d0230b").unwrap()));
-//! # assert!(input_manifest.contains_artifact(ArtifactId::from_str("gitoid:blob:sha256:726eb0db4f3130fb4caef53ee9d103b6bc2d732e665dd88f53efce4c7b59818b").unwrap()));
+//! # assert!(input_manifest.contains_artifact(RustCrypto::new(), "./test/data/c/main.c")?);
+//! # assert!(input_manifest.contains_artifact(RustCrypto::new(), "./test/data/c/util.c")?);
 //! # Ok::<_, InputManifestError>(())
 //! ```
 //!
 //! [`ArtifactId`]s are _universally reproducible_, so anyone with the file
 //! will produce the same ID. They're [GitOIDs (Git Object Identifiers)][gitoid]
 //! with "blob" as the type, SHA-256 as the hash algorithm, and all newlines
-//! normalized to Unix style.
+//! normalized to Unix style. This means a file's Artifact ID will match the
+//! ID Git uses for it when configured to use SHA-256 and Unix newlines.
 //!
 //! [`InputManifest`]s are very small text files that record Artifact IDs for
 //! all build inputs. If an input has its own Input Manifest, its Artifact ID
@@ -59,10 +60,123 @@
 //! - The [`omnibor` crate Foreign Function Interface (FFI)][ffi]
 //! - The [OmniBOR CLI][cli]
 //!
+//! # Examples
+//!
+//! The following are examples of common operations you might do with
+//! [`ArtifactId`]s and [`InputManifest`]s.
+//!
+//! ## Create an Artifact ID of a file
+//!
+//! ```
+//! use anyhow::Result;
+//! use omnibor::{ArtifactId, hash_provider::RustCrypto};
+//! use std::str::FromStr;
+//!
+//! fn main() -> Result<()> {
+//!     // Create the Artifact ID.
+//!     let path = "./test/data/hello_world.txt";
+//!     let artifact_id = ArtifactId::new(RustCrypto::new(), path)?;
+//!
+//!     // Check it against what we expect it to be.
+//!     let aid_str = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
+//!     let expected_artifact_id = ArtifactId::from_str(aid_str)?;
+//!     assert_eq!(artifact_id, expected_artifact_id);
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Find a file matching an Artifact ID
+//!
+//! ```
+//! use anyhow::{Result, bail};
+//! use walkdir::WalkDir;
+//! use omnibor::{ArtifactId, hash_provider::RustCrypto};
+//! use std::str::FromStr;
+//!
+//! fn main() -> Result<()> {
+//!     let aid_str = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
+//!     let artifact_id = ArtifactId::from_str(aid_str)?;
+//!
+//!     for entry in WalkDir::new("./") {
+//!         let entry = entry?;
+//!
+//!         if entry.file_type().is_dir() {
+//!             continue;
+//!         }
+//!
+//!         // Get the Artifact ID of the file.
+//!         let entry_artifact_id = ArtifactId::new(RustCrypto::new(), entry.path())?;
+//!
+//!         // Check if it matches the one we're looking for.
+//!         if entry_artifact_id == artifact_id {
+//!             println!("match found: {}", entry.path().display());
+//!         }
+//!     }
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Create an Input Manifest for a binary
+//!
+//! ```
+//! use anyhow::Result;
+//! use omnibor::{
+//!     ArtifactId,
+//!     InputManifest,
+//!     storage::InMemoryStorage,
+//!     hash_provider::RustCrypto,
+//!     embed::NoEmbed,
+//! };
+//! use std::str::FromStr;
+//!
+//! fn main() -> Result<()> {
+//!     // Create an input manifest, don't persist to disk, use RustCrypto's SHA-256 impl.
+//!     let input_manifest = InputManifest::builder(InMemoryStorage::new(RustCrypto::new()))
+//!         .add_relation("./test/data/c/main.c")?
+//!         .add_relation("./test/data/c/util.c")?
+//!         .build_for_target("./test/data/c/my_executable", NoEmbed)?;
+//!
+//!     println!("{}", input_manifest);
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Check if an Input Manifest contains an input file
+//!
+//! ```
+//! use anyhow::Result;
+//! use omnibor::{
+//!     ArtifactId,
+//!     InputManifest,
+//!     storage::InMemoryStorage,
+//!     hash_algorithm::Sha256,
+//!     hash_provider::RustCrypto,
+//!     embed::NoEmbed,
+//! };
+//! use std::str::FromStr;
+//!
+//! fn main() -> Result<()> {
+//!     let manifest_txt = r#"gitoid:blob:sha256
+//! 6e87984feca6b64467f9028fd6b76a4ec8d13ee23f0ae3b99b548ca0c2d0230b
+//! 726eb0db4f3130fb4caef53ee9d103b6bc2d732e665dd88f53efce4c7b59818b
+//! "#;
+//!     let input_manifest = InputManifest::<Sha256>::load(manifest_txt, None)?;
+//!
+//!     if input_manifest.contains_artifact(RustCrypto::new(), "./test/data/c/main.c")? {
+//!         println!("found a match!");
+//!     }
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
 //! # Concepts
 //!
-//! In addition to [`ArtifactId`], [`InputManifest`], and
-//! [`InputManifestBuilder`], there are some key traits and types to know:
+//! In addition to [`ArtifactId`] and [`InputManifest`], there are some key
+//! traits and types to know:
 //!
 //! - __[Identify and IdentifyAsync](#identify-and-identifyasync)__: Traits for
 //!   types that can produce an [`ArtifactId`], synchronously or asynchronously.
@@ -143,14 +257,18 @@
 //!
 //! | Feature               | Provider   | Type                                             |
 //! |:----------------------|:-----------|:-------------------------------------------------|
-//! | `provider-rustcrypto` | RustCrypto | [`RustCrypto`](crate::hash_provider::RustCrypto) |
-//! | `provider-openssl`    | OpenSSL    | [`OpenSsl`](crate::hash_provider::OpenSsl)       |
-//! | `provider-boringssl`  | BoringSSL  | [`BoringSsl`](crate::hash_provider::BoringSsl)   |
+//! | `provider-rustcrypto` | [RustCrypto] | [`RustCrypto`](crate::hash_provider::RustCrypto) |
+//! | `provider-openssl`    | [OpenSSL]    | [`OpenSsl`](crate::hash_provider::OpenSsl)       |
+//! | `provider-boringssl`  | [BoringSSL]  | [`BoringSsl`](crate::hash_provider::BoringSsl)   |
+//!
+//! [RustCrypto]: https://github.com/RustCrypto/hashes
+//! [OpenSSL]: https://openssl-library.org/
+//! [BoringSSL]: https://boringssl.googlesource.com/boringssl
 //!
 //! ## Storage
 //!
-//! We expose a [`Storage`](crate::storage::Storage) trait, representing the
-//! abstract interface needed for interacting with Input Manifests in memory or
+//! We expose a [`Storage`](crate::storage::Storage) trait, containing the
+//! operations needed for interacting with Input Manifests in memory or
 //! on-disk. There are two types,
 //! [`FileSystemStorage`](crate::storage::FileSystemStorage) and
 //! [`InMemoryStorage`](crate::storage::InMemoryStorage), that implement it.

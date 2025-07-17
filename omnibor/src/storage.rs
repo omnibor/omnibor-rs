@@ -1,4 +1,4 @@
-//! Store and retrieve [`InputManifest`]s.
+//! Store and retrieve `InputManifest`s.
 //!
 //! __See [Storing Input Manifests][idx] documentation for more info.__
 //!
