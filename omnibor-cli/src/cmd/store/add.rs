@@ -3,7 +3,7 @@ use crate::{
     cli::StoreAddArgs,
     error::{Error, Result},
 };
-use omnibor::{hash_algorithm::Sha256, storage::Storage, InputManifest};
+use omnibor::{storage::Storage, InputManifest};
 
 /// Run the `store add` subcommand.
 pub async fn run(app: &App, args: &StoreAddArgs) -> Result<()> {
@@ -21,8 +21,11 @@ pub async fn run(app: &App, args: &StoreAddArgs) -> Result<()> {
         None => None,
     };
 
-    let manifest = InputManifest::<Sha256>::load(&args.manifest, target_aid)
-        .map_err(Error::UnableToReadManifest)?;
+    let manifest = match target_aid {
+        Some(target_aid) => InputManifest::load(&args.manifest, target_aid),
+        None => InputManifest::load_detached(&args.manifest),
+    }
+    .map_err(Error::UnableToReadManifest)?;
 
     storage
         .write_manifest(&manifest)

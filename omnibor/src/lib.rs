@@ -160,7 +160,7 @@
 //! 6e87984feca6b64467f9028fd6b76a4ec8d13ee23f0ae3b99b548ca0c2d0230b
 //! 726eb0db4f3130fb4caef53ee9d103b6bc2d732e665dd88f53efce4c7b59818b
 //! "#;
-//!     let input_manifest = InputManifest::<Sha256>::load(manifest_txt, None::<&String>)?;
+//!     let input_manifest = InputManifest::sha256_detached(manifest_txt)?;
 //!
 //!     if input_manifest.contains_artifact("./test/data/c/main.c")? {
 //!         println!("found a match!");

@@ -309,7 +309,10 @@ struct ManifestsEntry<H: HashAlgorithm> {
 impl<H: HashAlgorithm> ManifestsEntry<H> {
     /// Load the [`InputManifest`] represented by this entry.
     fn manifest(&self) -> Result<InputManifest<H>, InputManifestError> {
-        InputManifest::load(&self.manifest_path, self.target_aid)
+        match self.target_aid {
+            Some(target) => InputManifest::load(&self.manifest_path, target),
+            None => InputManifest::load_detached(&self.manifest_path),
+        }
     }
 }
 

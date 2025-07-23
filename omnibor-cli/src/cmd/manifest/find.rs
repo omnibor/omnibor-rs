@@ -58,7 +58,7 @@ async fn open_and_match_manifests(
     pin_mut!(path_rx);
 
     while let Some(path) = path_rx.next().await {
-        if let Ok(manifest) = InputManifest::sha256(&path, None) {
+        if let Ok(manifest) = InputManifest::sha256_detached(&path) {
             if manifest.contains_artifact(target_aid).map_err(|source| {
                 Error::FileFailedToIdDuringSearch {
                     path: path.to_path_buf(),

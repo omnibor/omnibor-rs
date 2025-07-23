@@ -55,31 +55,38 @@ where
 
 impl InputManifest<Sha256> {
     /// Load the input manifest at the path with the SHA-256 hash function.
-    pub fn sha256<I>(
-        source: I,
-        target: Option<ArtifactId<Sha256>>,
-    ) -> Result<Self, InputManifestError>
+    pub fn sha256<M, I>(source: M, target: I) -> Result<Self, InputManifestError>
     where
-        I: ManifestSource<Sha256>,
+        M: ManifestSource<Sha256>,
+        I: Identify<Sha256>,
     {
         InputManifest::load(source, target)
     }
 
-    /// Load the input manifest at the path with the SHA-256 hash function asynchronously.
-    pub async fn sha256_async<I, A>(
-        source: I,
-        target: Option<A>,
-    ) -> Result<Self, InputManifestError>
+    /// Load the input manifest at the path with the SHA-256 hash function, detached.
+    pub fn sha256_detached<M>(source: M) -> Result<Self, InputManifestError>
     where
-        I: ManifestSourceAsync<Sha256>,
-        A: IdentifyAsync<Sha256>,
+        M: ManifestSource<Sha256>,
     {
-        let target = match target {
-            Some(t) => Some(t.identify_async().await?),
-            None => None,
-        };
+        InputManifest::load_detached(source)
+    }
 
+    /// Load the input manifest at the path with the SHA-256 hash function asynchronously.
+    pub async fn sha256_async<M, I>(source: M, target: I) -> Result<Self, InputManifestError>
+    where
+        M: ManifestSourceAsync<Sha256>,
+        I: IdentifyAsync<Sha256>,
+    {
+        let target = target.identify_async().await?;
         InputManifest::load_async(source, target).await
+    }
+
+    /// Load the input manifest at the path with the SHA-256 hash function asynchronously, detached.
+    pub async fn sha256_detached_async<M>(source: M) -> Result<Self, InputManifestError>
+    where
+        M: ManifestSourceAsync<Sha256>,
+    {
+        InputManifest::load_detached_async(source).await
     }
 }
 
@@ -151,27 +158,39 @@ impl<H: HashAlgorithm> InputManifest<H> {
     }
 
     /// Construct an [`InputManifest`] from a source.
-    pub fn load<M, I>(source: M, target: Option<I>) -> Result<Self, InputManifestError>
+    pub fn load<M, I>(source: M, target: I) -> Result<Self, InputManifestError>
     where
         M: ManifestSource<H>,
         I: Identify<H>,
     {
-        let target = target.map(|t| t.identify()).transpose()?;
-        source.resolve(target)
+        let target = target.identify()?;
+        source.resolve(Some(target))
+    }
+
+    /// Construct an [`InputManifest`] from a source, without a target.
+    pub fn load_detached<M>(source: M) -> Result<Self, InputManifestError>
+    where
+        M: ManifestSource<H>,
+    {
+        source.resolve(None)
     }
 
     /// Construct an [`InputManifest`] from a source, asynchronously.
-    pub async fn load_async<M, I>(source: M, target: Option<I>) -> Result<Self, InputManifestError>
+    pub async fn load_async<M, I>(source: M, target: I) -> Result<Self, InputManifestError>
     where
         M: ManifestSourceAsync<H>,
         I: IdentifyAsync<H>,
     {
-        let target = match target {
-            Some(t) => Some(t.identify_async().await?),
-            None => None,
-        };
+        let target = target.identify_async().await?;
+        source.resolve_async(Some(target)).await
+    }
 
-        source.resolve_async(target).await
+    /// Construct an [`InputManifest`] from a source, asynchronously, without a target.
+    pub async fn load_detached_async<M>(source: M) -> Result<Self, InputManifestError>
+    where
+        M: ManifestSourceAsync<H>,
+    {
+        source.resolve_async(None).await
     }
 
     /// Get the manifest as bytes.
