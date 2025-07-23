@@ -1,7 +1,7 @@
 //! Benchmarks comparing cryptography backends.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use omnibor::{hash_provider::RustCrypto, ArtifactId};
+use omnibor::{hash_algorithm::Sha256, set_hash_provider, ArtifactId};
 
 #[cfg(not(any(
     feature = "provider-rustcrypto",
@@ -21,68 +21,90 @@ compile_error!(
 
 #[cfg(feature = "provider-rustcrypto")]
 fn bench_rustcrypto_sha256_small(c: &mut Criterion) {
+    use omnibor::hash_provider::RustCrypto;
+
     let name = "OmniBOR RustCrypto SHA-256 11B";
     let input = b"hello world";
+    set_hash_provider::<Sha256, RustCrypto>().unwrap();
+
     c.bench_function(name, |b| {
         b.iter(|| {
-            let provider = RustCrypto::new();
-            let _ = ArtifactId::new(provider, black_box(input)).unwrap();
+            let _ = ArtifactId::<Sha256>::new(black_box(input)).unwrap();
         })
     });
 }
 
 #[cfg(feature = "provider-boringssl")]
 fn bench_boring_sha256_small(c: &mut Criterion) {
+    use omnibor::hash_provider::BoringSsl;
+
     let name = "OmniBOR BoringSSL SHA-256 11B";
     let input = b"hello world";
+    set_hash_provider::<Sha256, BoringSsl>().unwrap();
+
     c.bench_function(name, |b| {
         b.iter(|| {
-            let _ = ArtifactIdBuilder::with_boringssl().identify_bytes(black_box(input));
+            let _ = ArtifactId::<Sha256>::new(black_box(input));
         })
     });
 }
 
 #[cfg(feature = "provider-openssl")]
 fn bench_openssl_sha256_small(c: &mut Criterion) {
+    use omnibor::hash_provider::OpenSsl;
+
     let name = "OmniBOR OpenSSL SHA-256 11B";
     let input = b"hello world";
+    set_hash_provider::<Sha256, OpenSsl>().unwrap();
+
     c.bench_function(name, |b| {
         b.iter(|| {
-            let _ = ArtifactIdBuilder::with_openssl().identify_bytes(black_box(input));
+            let _ = ArtifactId::<Sha256>::new(black_box(input));
         })
     });
 }
 
 #[cfg(feature = "provider-rustcrypto")]
 fn bench_rustcrypto_sha256_large(c: &mut Criterion) {
+    use omnibor::hash_provider::RustCrypto;
+
     let name = "OmniBOR RustCrypto SHA-256 100MB";
     let input = &[0; 1024 * 1024 * 100]; // 100 MB
+    set_hash_provider::<Sha256, RustCrypto>().unwrap();
+
     c.bench_function(name, |b| {
         b.iter(|| {
-            let provider = RustCrypto::new();
-            let _ = ArtifactId::new(provider, black_box(input)).unwrap();
+            let _ = ArtifactId::<Sha256>::new(black_box(input)).unwrap();
         })
     });
 }
 
 #[cfg(feature = "provider-boringssl")]
 fn bench_boring_sha256_large(c: &mut Criterion) {
+    use omnibor::hash_provider::BoringSsl;
+
     let name = "OmniBOR BoringSSL SHA-256 100MB";
     let input = &[0; 1024 * 1024 * 100]; // 100 MB
+    set_hash_provider::<Sha256, BoringSsl>().unwrap();
+
     c.bench_function(name, |b| {
         b.iter(|| {
-            let _ = ArtifactIdBuilder::with_boringssl().identify_bytes(black_box(input));
+            let _ = ArtifactId::<Sha256>::new(black_box(input)).unwrap();
         })
     });
 }
 
 #[cfg(feature = "provider-openssl")]
 fn bench_openssl_sha256_large(c: &mut Criterion) {
+    use omnibor::hash_provider::OpenSsl;
+
     let name = "OmniBOR OpenSSL SHA-256 100MB";
     let input = &[0; 1024 * 1024 * 100]; // 100 MB
+    set_hash_provider::<Sha256, OpenSsl>().unwrap();
+
     c.bench_function(name, |b| {
         b.iter(|| {
-            let _ = ArtifactIdBuilder::with_openssl().identify_bytes(black_box(input));
+            let _ = ArtifactId::<Sha256>::new(black_box(input)).unwrap();
         })
     });
 }

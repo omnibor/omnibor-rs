@@ -1,7 +1,7 @@
 use {
     crate::{
         artifact_id::ArtifactId, error::InputManifestError, hash_algorithm::HashAlgorithm,
-        hash_provider::HashProvider, input_manifest::InputManifest, pathbuf, storage::Storage,
+        input_manifest::InputManifest, pathbuf, storage::Storage,
         util::clone_as_boxstr::CloneAsBoxstr,
     },
     std::{
@@ -20,18 +20,14 @@ use {
 
 /// File system storage for [`InputManifest`]s.
 #[derive(Debug)]
-pub struct FileSystemStorage<H: HashAlgorithm, P: HashProvider<H>> {
+pub struct FileSystemStorage<H: HashAlgorithm> {
     _hash_algorithm: PhantomData<H>,
-    hash_provider: P,
     root: PathBuf,
 }
 
-impl<H: HashAlgorithm, P: HashProvider<H>> FileSystemStorage<H, P> {
+impl<H: HashAlgorithm> FileSystemStorage<H> {
     /// Start building a new [`FileSystemStorage`].
-    pub fn new(
-        hash_provider: P,
-        root: impl AsRef<Path>,
-    ) -> Result<FileSystemStorage<H, P>, InputManifestError> {
+    pub fn new(root: impl AsRef<Path>) -> Result<FileSystemStorage<H>, InputManifestError> {
         let root = root.as_ref().to_owned();
 
         if root.exists() {
@@ -55,19 +51,17 @@ impl<H: HashAlgorithm, P: HashProvider<H>> FileSystemStorage<H, P> {
 
         Ok(FileSystemStorage {
             _hash_algorithm: PhantomData,
-            hash_provider,
             root,
         })
     }
 
     /// Build a [`FileSystemStorage`] with a root set from
     /// the `OMNIBOR_DIR` environment variable.
-    pub fn from_env(hash_provider: P) -> Result<FileSystemStorage<H, P>, InputManifestError> {
+    pub fn from_env() -> Result<FileSystemStorage<H>, InputManifestError> {
         var_os("OMNIBOR_DIR")
             .ok_or(InputManifestError::NoStorageRoot)
             .map(|root| FileSystemStorage {
                 _hash_algorithm: PhantomData,
-                hash_provider,
                 root: PathBuf::from(root),
             })
     }
@@ -135,14 +129,13 @@ impl<H: HashAlgorithm, P: HashProvider<H>> FileSystemStorage<H, P> {
 }
 
 /// Enrich an InputManifest with its target if stored in the index.
-fn enrich_manifest_with_target<H: HashAlgorithm, P: HashProvider<H>>(
+fn enrich_manifest_with_target<H: HashAlgorithm>(
     target_index: &TargetIndex,
-    provider: P,
     mut manifest: InputManifest<H>,
 ) -> Result<InputManifest<H>, InputManifestError> {
     // Get the Artifact ID of the manifest
     // SAFETY: identifying a manifest is infallible.
-    let manifest_aid = ArtifactId::new(provider, &manifest).unwrap();
+    let manifest_aid = ArtifactId::new(&manifest).unwrap();
 
     // Get the target Artifact ID for the manifest
     let target_aid = target_index.find(manifest_aid)?;
@@ -153,15 +146,13 @@ fn enrich_manifest_with_target<H: HashAlgorithm, P: HashProvider<H>>(
     Ok(manifest)
 }
 
-impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P> {
-    type HashProvider = P;
-
+impl<H: HashAlgorithm> Storage<H> for FileSystemStorage<H> {
     fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError> {
         let target_index = self.target_index()?;
 
         self.manifests()
             .map(|entry: ManifestsEntry<H>| {
-                enrich_manifest_with_target(&target_index, self.hash_provider, entry.manifest()?)
+                enrich_manifest_with_target(&target_index, entry.manifest()?)
             })
             .collect()
     }
@@ -174,9 +165,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
 
         self.manifests()
             .find(|entry| entry.target_aid == Some(target_aid))
-            .map(|entry| {
-                enrich_manifest_with_target(&target_index, self.hash_provider, entry.manifest()?)
-            })
+            .map(|entry| enrich_manifest_with_target(&target_index, entry.manifest()?))
             .transpose()
     }
 
@@ -187,12 +176,8 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         let target_index = self.target_index()?;
 
         self.manifests()
-            .find(|entry| {
-                ArtifactId::new(self.hash_provider, &entry.manifest_path).ok() == Some(manifest_aid)
-            })
-            .map(|entry| {
-                enrich_manifest_with_target(&target_index, self.hash_provider, entry.manifest()?)
-            })
+            .find(|entry| ArtifactId::new(&entry.manifest_path).ok() == Some(manifest_aid))
+            .map(|entry| enrich_manifest_with_target(&target_index, entry.manifest()?))
             .transpose()
     }
 
@@ -201,7 +186,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         manifest: &InputManifest<H>,
     ) -> Result<ArtifactId<H>, InputManifestError> {
         // SAFETY: Identifying a manifest is infallible.
-        let manifest_aid = ArtifactId::new(self.hash_provider, manifest).unwrap();
+        let manifest_aid = ArtifactId::new(manifest).unwrap();
 
         let path = self.manifest_path(manifest_aid);
 
@@ -269,8 +254,6 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         &mut self,
         manifest_aid: ArtifactId<H>,
     ) -> Result<InputManifest<H>, InputManifestError> {
-        let provider = self.hash_provider;
-
         // Remove the relevant entry from the target index.
         self.target_index()?
             .start_remove()
@@ -280,9 +263,7 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
         // Find the manifest in the store.
         let manifest_entry: ManifestsEntry<H> = self
             .manifests()
-            .find(|entry| {
-                ArtifactId::new(provider, &entry.manifest_path).ok() == Some(manifest_aid)
-            })
+            .find(|entry| ArtifactId::new(&entry.manifest_path).ok() == Some(manifest_aid))
             .ok_or(InputManifestError::NoManifestFoundToRemove)?;
 
         // Get a copy of it to return.
@@ -293,10 +274,6 @@ impl<H: HashAlgorithm, P: HashProvider<H>> Storage<H> for FileSystemStorage<H, P
             .map_err(|source| InputManifestError::CantRemoveManifest(Box::new(source)))?;
 
         Ok(removed_manifest)
-    }
-
-    fn get_hash_provider(&self) -> Self::HashProvider {
-        self.hash_provider
     }
 }
 

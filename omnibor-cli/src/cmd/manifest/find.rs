@@ -10,7 +10,7 @@ use crate::{
 use async_channel::{bounded, Receiver};
 use futures_lite::stream::StreamExt as _;
 use futures_util::pin_mut;
-use omnibor::{hash_algorithm::Sha256, hash_provider::RustCrypto, ArtifactId, InputManifest};
+use omnibor::{hash_algorithm::Sha256, ArtifactId, InputManifest};
 use std::path::PathBuf;
 use tokio::task::JoinSet;
 use tracing::debug;
@@ -58,14 +58,13 @@ async fn open_and_match_manifests(
     pin_mut!(path_rx);
 
     while let Some(path) = path_rx.next().await {
-        if let Ok(manifest) = InputManifest::<Sha256>::load(&path, None) {
-            if manifest
-                .contains_artifact(RustCrypto::new(), target_aid)
-                .map_err(|source| Error::FileFailedToIdDuringSearch {
+        if let Ok(manifest) = InputManifest::sha256(&path, None) {
+            if manifest.contains_artifact(target_aid).map_err(|source| {
+                Error::FileFailedToIdDuringSearch {
                     path: path.to_path_buf(),
                     source,
-                })?
-            {
+                }
+            })? {
                 tx.send(PrinterCmd::msg(
                     ManifestFindMsg {
                         path: path.to_path_buf(),

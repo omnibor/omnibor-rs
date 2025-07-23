@@ -1,3 +1,5 @@
+use digest::InvalidBufferSize;
+
 use {
     hex::FromHexError as HexError,
     std::{
@@ -64,6 +66,9 @@ pub enum ArtifactIdError {
 
     /// Invalid hex string.
     InvalidHex(Box<str>, Box<HexError>),
+
+    /// Failed to hash input.
+    FailedToHashInput(InvalidBufferSize),
 }
 
 impl Display for ArtifactIdError {
@@ -99,6 +104,7 @@ impl Display for ArtifactIdError {
                 "mismatched hash algorithm; expected '{expected}', got '{got}'",
             ),
             ArtifactIdError::InvalidHex(s, _) => write!(f, "invalid hex string '{s}'"),
+            ArtifactIdError::FailedToHashInput(_) => write!(f, "failed to hash input"),
         }
     }
 }
@@ -111,6 +117,7 @@ impl Error for ArtifactIdError {
             ArtifactIdError::FailedSeek(_, source) => Some(source),
             ArtifactIdError::FailedCheckReaderPos(source) => Some(source),
             ArtifactIdError::InvalidHex(_, source) => Some(source),
+            ArtifactIdError::FailedToHashInput(source) => Some(source),
             ArtifactIdError::MissingScheme(_)
             | ArtifactIdError::InvalidScheme(_)
             | ArtifactIdError::MissingObjectType(_)

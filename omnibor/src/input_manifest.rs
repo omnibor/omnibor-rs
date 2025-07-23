@@ -2,16 +2,19 @@
 
 mod input_manifest_builder;
 mod manifest_source;
+mod manifest_source_async;
 
 pub use input_manifest_builder::InputManifestBuilder;
 pub use manifest_source::ManifestSource;
+pub use manifest_source_async::ManifestSourceAsync;
+
+use crate::{hash_algorithm::Sha256, IdentifyAsync};
 
 use {
     crate::{
         artifact_id::ArtifactId,
         error::InputManifestError,
         hash_algorithm::HashAlgorithm,
-        hash_provider::HashProvider,
         object_type::{Blob, ObjectType},
         storage::Storage,
         Identify,
@@ -48,6 +51,36 @@ where
 
     /// The inputs recorded in the manifest.
     inputs: Vec<Input<H>>,
+}
+
+impl InputManifest<Sha256> {
+    /// Load the input manifest at the path with the SHA-256 hash function.
+    pub fn sha256<I>(
+        source: I,
+        target: Option<ArtifactId<Sha256>>,
+    ) -> Result<Self, InputManifestError>
+    where
+        I: ManifestSource<Sha256>,
+    {
+        InputManifest::load(source, target)
+    }
+
+    /// Load the input manifest at the path with the SHA-256 hash function asynchronously.
+    pub async fn sha256_async<I, A>(
+        source: I,
+        target: Option<A>,
+    ) -> Result<Self, InputManifestError>
+    where
+        I: ManifestSourceAsync<Sha256>,
+        A: IdentifyAsync<Sha256>,
+    {
+        let target = match target {
+            Some(t) => Some(t.identify_async().await?),
+            None => None,
+        };
+
+        InputManifest::load_async(source, target).await
+    }
 }
 
 impl<H: HashAlgorithm> InputManifest<H> {
@@ -109,25 +142,36 @@ impl<H: HashAlgorithm> InputManifest<H> {
 
     /// Check if the manifest contains the given input.
     #[inline]
-    pub fn contains_artifact<P, I>(
-        &self,
-        hash_provider: P,
-        artifact: I,
-    ) -> Result<bool, InputManifestError>
+    pub fn contains_artifact<I>(&self, artifact: I) -> Result<bool, InputManifestError>
     where
-        P: HashProvider<H>,
         I: Identify<H>,
     {
-        let artifact_id = ArtifactId::new(hash_provider, artifact)?;
+        let artifact_id = ArtifactId::new(artifact)?;
         Ok(self.inputs().iter().any(|rel| rel.artifact == artifact_id))
     }
 
-    /// Construct an [`InputManifest`] from a file at a specified path.
-    pub fn load<M>(source: M, target: Option<ArtifactId<H>>) -> Result<Self, InputManifestError>
+    /// Construct an [`InputManifest`] from a source.
+    pub fn load<M, I>(source: M, target: Option<I>) -> Result<Self, InputManifestError>
     where
         M: ManifestSource<H>,
+        I: Identify<H>,
     {
+        let target = target.map(|t| t.identify()).transpose()?;
         source.resolve(target)
+    }
+
+    /// Construct an [`InputManifest`] from a source, asynchronously.
+    pub async fn load_async<M, I>(source: M, target: Option<I>) -> Result<Self, InputManifestError>
+    where
+        M: ManifestSourceAsync<H>,
+        I: IdentifyAsync<H>,
+    {
+        let target = match target {
+            Some(t) => Some(t.identify_async().await?),
+            None => None,
+        };
+
+        source.resolve_async(target).await
     }
 
     /// Get the manifest as bytes.

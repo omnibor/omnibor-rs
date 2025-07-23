@@ -6,7 +6,10 @@ use {
     super::HashProvider,
     crate::hash_algorithm::Sha256,
     boring::sha,
-    digest::{consts::U32, FixedOutput, HashMarker, Output, OutputSizeUser, Update},
+    digest::{
+        consts::U32, FixedOutput, FixedOutputReset, HashMarker, Output, OutputSizeUser, Reset,
+        Update,
+    },
 };
 
 /// Use the BoringSSL hash implementation.
@@ -38,6 +41,14 @@ pub struct Sha256Digester {
     hash: sha::Sha256,
 }
 
+impl Clone for Sha256Digester {
+    fn clone(&self) -> Self {
+        Self {
+            hash: self.hash.clone(),
+        }
+    }
+}
+
 impl Update for Sha256Digester {
     fn update(&mut self, data: &[u8]) {
         self.hash.update(data);
@@ -61,6 +72,19 @@ impl FixedOutput for Sha256Digester {
 }
 
 impl HashMarker for Sha256Digester {}
+
+impl Reset for Sha256Digester {
+    fn reset(&mut self) {
+        self.hash = sha::Sha256::new();
+    }
+}
+
+impl FixedOutputReset for Sha256Digester {
+    fn finalize_into_reset(&mut self, out: &mut Output<Self>) {
+        self.clone().finalize_into(out);
+        self.reset()
+    }
+}
 
 impl Default for Sha256Digester {
     fn default() -> Self {

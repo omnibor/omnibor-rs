@@ -1,7 +1,5 @@
 //! Tests against the OmniBOR crate as a whole.
 
-use crate::hash_provider::RustCrypto;
-
 use {
     crate::{artifact_id::ArtifactId, hash_algorithm::Sha256},
     anyhow::Result,
@@ -27,8 +25,7 @@ fn artifact_id_sha256_size() {
 #[test]
 fn generate_sha256_artifact_id_from_bytes() {
     let input = b"hello world";
-    let provider = RustCrypto::new();
-    let result = ArtifactId::new(provider, input).unwrap();
+    let result = ArtifactId::<Sha256>::new(input).unwrap();
 
     assert_eq!(result.to_string(), ARTIFACT_ID_HELLO_WORLD_SHA256);
 }
@@ -36,8 +33,7 @@ fn generate_sha256_artifact_id_from_bytes() {
 #[test]
 fn generate_sha256_artifact_id_from_buffer() -> Result<()> {
     let mut file = File::open("test/data/hello_world.txt")?;
-    let provider = RustCrypto::new();
-    let result = ArtifactId::new(provider, &mut file)?;
+    let result = ArtifactId::<Sha256>::new(&mut file)?;
 
     assert_eq!(result.to_string(), ARTIFACT_ID_HELLO_WORLD_SHA256);
 
@@ -49,8 +45,7 @@ fn generate_sha256_artifact_id_from_async_buffer() -> Result<()> {
     let runtime = Runtime::new()?;
     runtime.block_on(async {
         let mut file = AsyncFile::open("test/data/hello_world.txt").await?;
-        let provider = RustCrypto::new();
-        let result = ArtifactId::new_async(provider, &mut file).await?;
+        let result = ArtifactId::<Sha256>::new_async(&mut file).await?;
 
         assert_eq!(result.to_string(), ARTIFACT_ID_HELLO_WORLD_SHA256);
 
@@ -63,10 +58,8 @@ fn newline_normalization_from_file() -> Result<()> {
     let mut unix_file = File::open("test/data/unix_line.txt")?;
     let mut windows_file = File::open("test/data/windows_line.txt")?;
 
-    let provider = RustCrypto::new();
-
-    let unix_artifact_id = ArtifactId::new(provider, &mut unix_file)?;
-    let windows_artifact_id = ArtifactId::new(provider, &mut windows_file)?;
+    let unix_artifact_id = ArtifactId::<Sha256>::new(&mut unix_file)?;
+    let windows_artifact_id = ArtifactId::<Sha256>::new(&mut windows_file)?;
 
     assert_eq!(
         unix_artifact_id.to_string(),
@@ -83,10 +76,8 @@ fn newline_normalization_from_async_file() -> Result<()> {
         let mut unix_file = AsyncFile::open("test/data/unix_line.txt").await?;
         let mut windows_file = AsyncFile::open("test/data/windows_line.txt").await?;
 
-        let provider = RustCrypto::new();
-
-        let unix_artifact_id = ArtifactId::new_async(provider, &mut unix_file).await?;
-        let windows_artifact_id = ArtifactId::new_async(provider, &mut windows_file).await?;
+        let unix_artifact_id = ArtifactId::<Sha256>::new_async(&mut unix_file).await?;
+        let windows_artifact_id = ArtifactId::<Sha256>::new_async(&mut windows_file).await?;
 
         assert_eq!(
             unix_artifact_id.to_string(),
@@ -102,10 +93,8 @@ fn newline_normalization_in_memory() -> Result<()> {
     let with_crlf = b"some\r\nstring\r\n";
     let wout_crlf = b"some\nstring\n";
 
-    let provider = RustCrypto::new();
-
-    let with_crlf_artifact_id = ArtifactId::new(provider, &with_crlf[..]).unwrap();
-    let wout_crlf_artifact_id = ArtifactId::new(provider, &wout_crlf[..]).unwrap();
+    let with_crlf_artifact_id = ArtifactId::<Sha256>::new(&with_crlf[..]).unwrap();
+    let wout_crlf_artifact_id = ArtifactId::<Sha256>::new(&wout_crlf[..]).unwrap();
 
     assert_eq!(
         with_crlf_artifact_id.to_string(),
@@ -118,8 +107,7 @@ fn newline_normalization_in_memory() -> Result<()> {
 #[test]
 fn validate_uri() -> Result<()> {
     let content = b"hello world";
-    let provider = RustCrypto::new();
-    let artifact_id = ArtifactId::new(provider, content).unwrap();
+    let artifact_id = ArtifactId::<Sha256>::new(content).unwrap();
 
     assert_eq!(artifact_id.to_string(), ARTIFACT_ID_HELLO_WORLD_SHA256);
 

@@ -5,6 +5,7 @@ use {
     std::io::Error as IoError,
 };
 
+use crate::error::HashProviderError;
 #[cfg(doc)]
 use crate::{artifact_id::ArtifactId, input_manifest::InputManifest};
 
@@ -151,6 +152,12 @@ pub enum InputManifestError {
 
     /// Invalid character in Input Manifest.
     InvalidCharInManifest,
+
+    /// Failed to initialize hash providers.
+    FailedToInitHashProviders,
+
+    /// Hash provider errors.
+    HashProviderError(HashProviderError),
 }
 
 impl InputManifestError {
@@ -227,6 +234,8 @@ impl Display for InputManifestError {
                 write!(f, "unknown programming language: '{s}'")
             },
             InputManifestError::InvalidCharInManifest => write!(f, "invalid character in manifest"),
+            InputManifestError::FailedToInitHashProviders => write!(f, "failed to initialize hash providers"),
+            InputManifestError::HashProviderError(source) => write!(f, "{source}"),
         }
     }
 }
@@ -256,7 +265,8 @@ impl Error for InputManifestError {
             | InputManifestError::FormatDoesntSupportEmbedding(_)
             | InputManifestError::UnknownEmbeddingSupport(_)
             | InputManifestError::UnknownProgLang(_)
-            | InputManifestError::InvalidCharInManifest => None,
+            | InputManifestError::InvalidCharInManifest
+            | InputManifestError::FailedToInitHashProviders => None,
             InputManifestError::FailedManifestRead(source) => Some(source),
             InputManifestError::FailedTargetArtifactRead(source) => Some(source),
             InputManifestError::ArtifactIdError(source) => Some(source),
@@ -274,6 +284,7 @@ impl Error for InputManifestError {
             InputManifestError::FailedStorageCleanup(_, source) => Some(source),
             InputManifestError::CantRemoveManifest(source) => Some(source),
             InputManifestError::CantEmbedInTarget(_, source) => Some(source),
+            InputManifestError::HashProviderError(source) => Some(source),
         }
     }
 }
@@ -281,5 +292,11 @@ impl Error for InputManifestError {
 impl From<ArtifactIdError> for InputManifestError {
     fn from(value: ArtifactIdError) -> Self {
         InputManifestError::ArtifactIdError(value)
+    }
+}
+
+impl From<HashProviderError> for InputManifestError {
+    fn from(value: HashProviderError) -> Self {
+        InputManifestError::HashProviderError(value)
     }
 }

@@ -6,7 +6,6 @@ use crate::{
 };
 use omnibor::{
     hash_algorithm::Sha256,
-    hash_provider::RustCrypto,
     storage::{FileSystemStorage, Storage},
 };
 use std::fmt::Debug;
@@ -26,8 +25,7 @@ impl App {
     /// Get a handle to the on-disk storage for manifests.
     pub fn storage(&self) -> Result<impl Storage<Sha256>> {
         let root = self.args.dir().ok_or(Error::NoRoot)?;
-        let storage =
-            FileSystemStorage::new(RustCrypto::new(), root).map_err(Error::StorageInitFailed)?;
+        let storage = FileSystemStorage::new(root).map_err(Error::StorageInitFailed)?;
         Ok(storage)
     }
 }

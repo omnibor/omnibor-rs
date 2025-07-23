@@ -5,11 +5,11 @@ pub(crate) mod identify_async;
 
 pub use crate::artifact_id::identify::Identify;
 pub use crate::artifact_id::identify_async::IdentifyAsync;
+use crate::hash_algorithm::Sha256;
 
 use {
     crate::{
-        error::ArtifactIdError, gitoid::GitOid, hash_algorithm::HashAlgorithm,
-        hash_provider::HashProvider, object_type::Blob,
+        error::ArtifactIdError, gitoid::GitOid, hash_algorithm::HashAlgorithm, object_type::Blob,
     },
     core::{
         cmp::Ordering,
@@ -24,9 +24,6 @@ use {
     serde::{de::Deserializer, Deserialize, Serialize, Serializer},
     std::result::Result as StdResult,
 };
-
-#[cfg(doc)]
-use crate::hash_algorithm::Sha256;
 
 /// A universally reproducible software identifier.
 ///
@@ -134,23 +131,39 @@ pub struct ArtifactId<H: HashAlgorithm> {
     gitoid: GitOid<H, Blob>,
 }
 
+impl ArtifactId<Sha256> {
+    /// Identify the target artifact with the SHA-256 hash function.
+    pub fn sha256<I>(target: I) -> Result<Self, ArtifactIdError>
+    where
+        I: Identify<Sha256>,
+    {
+        ArtifactId::new(target)
+    }
+
+    /// Identify the target artifact with the SHA-256 hash function asynchronously.
+    pub async fn sha256_async<I>(target: I) -> Result<Self, ArtifactIdError>
+    where
+        I: IdentifyAsync<Sha256>,
+    {
+        ArtifactId::new_async(target).await
+    }
+}
+
 impl<H: HashAlgorithm> ArtifactId<H> {
     /// Identify the target artifact.
-    pub fn new<P, I>(provider: P, target: I) -> Result<ArtifactId<H>, ArtifactIdError>
+    pub fn new<I>(target: I) -> Result<ArtifactId<H>, ArtifactIdError>
     where
-        P: HashProvider<H>,
         I: Identify<H>,
     {
-        target.identify(provider)
+        target.identify()
     }
 
     /// Identify the target artifact asynchronously.
-    pub async fn new_async<P, I>(provider: P, target: I) -> Result<ArtifactId<H>, ArtifactIdError>
+    pub async fn new_async<I>(target: I) -> Result<ArtifactId<H>, ArtifactIdError>
     where
-        P: HashProvider<H>,
         I: IdentifyAsync<H>,
     {
-        target.identify_async(provider).await
+        target.identify_async().await
     }
 
     /// Construct an [`ArtifactId`] from an existing `GitOid`.
@@ -184,8 +197,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
-    /// # use omnibor::hash_provider::RustCrypto;
-    /// let id: ArtifactId<Sha256> = ArtifactId::new(RustCrypto::new(), b"hello, world").unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::new(b"hello, world").unwrap();
     /// println!("Artifact ID bytes: {:?}", id.as_bytes());
     /// ```
     pub fn as_bytes(&self) -> &[u8] {
@@ -203,8 +215,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
-    /// # use omnibor::hash_provider::RustCrypto;
-    /// let id: ArtifactId<Sha256> = ArtifactId::new(RustCrypto::new(), b"hello, world").unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::new(b"hello, world").unwrap();
     /// println!("Artifact ID bytes as hex: {}", id.as_hex());
     /// ```
     pub fn as_hex(&self) -> String {
@@ -220,8 +231,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
-    /// # use omnibor::hash_provider::RustCrypto;
-    /// let id: ArtifactId<Sha256> = ArtifactId::new(RustCrypto::new(), b"hello, world").unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::new(b"hello, world").unwrap();
     /// println!("Artifact ID hash algorithm: {}", id.hash_algorithm());
     /// ```
     pub const fn hash_algorithm(&self) -> &'static str {
@@ -238,8 +248,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
-    /// # use omnibor::hash_provider::RustCrypto;
-    /// let id: ArtifactId<Sha256> = ArtifactId::new(RustCrypto::new(), b"hello, world").unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::new(b"hello, world").unwrap();
     /// println!("Artifact ID object type: {}", id.object_type());
     /// ```
     pub const fn object_type(&self) -> &'static str {
@@ -257,8 +266,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     /// ```rust
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
-    /// # use omnibor::hash_provider::RustCrypto;
-    /// let id: ArtifactId<Sha256> = ArtifactId::new(RustCrypto::new(), b"hello, world").unwrap();
+    /// let id: ArtifactId<Sha256> = ArtifactId::new(b"hello, world").unwrap();
     /// println!("Artifact ID hash length in bytes: {}", id.hash_len());
     /// ```
     pub fn hash_len(&self) -> usize {

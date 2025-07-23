@@ -1,6 +1,6 @@
 use crate::print::{CommandOutput, Status};
 use console::Style;
-use omnibor::{hash_algorithm::Sha256, hash_provider::RustCrypto, ArtifactId, InputManifest};
+use omnibor::{hash_algorithm::Sha256, ArtifactId, InputManifest};
 
 #[derive(Debug, Clone)]
 pub struct StoreGetMsg {
@@ -28,10 +28,8 @@ impl CommandOutput for StoreGetMsg {
     }
 
     fn short_output(&self) -> String {
-        let provider = RustCrypto::new();
-
         // SAFETY: Identifying a manifest is infallible.
-        let manifest_aid = ArtifactId::new(provider, &self.manifest).unwrap();
+        let manifest_aid = ArtifactId::new(&self.manifest).unwrap();
 
         Style::new()
             .blue()

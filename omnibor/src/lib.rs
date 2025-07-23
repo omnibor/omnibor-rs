@@ -5,9 +5,9 @@
 //! You can identify a file like so:
 //!
 //! ```
-//! # use omnibor::{ArtifactId, error::ArtifactIdError, hash_provider::RustCrypto};
+//! # use omnibor::{ArtifactId, hash_algorithm::Sha256, error::ArtifactIdError};
 //! # use std::str::FromStr;
-//! let artifact_id = ArtifactId::new(RustCrypto::new(), "./test/data/hello_world.txt")?;
+//! let artifact_id = ArtifactId::sha256("./test/data/hello_world.txt")?;
 //! // gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03
 //! # assert_eq!(artifact_id, ArtifactId::from_str("gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03").unwrap());
 //! # Ok::<(), ArtifactIdError>(())
@@ -20,20 +20,19 @@
 //! #     ArtifactId,
 //! #     InputManifest,
 //! #     storage::InMemoryStorage,
-//! #     hash_provider::RustCrypto,
 //! #     embed::NoEmbed,
 //! #     error::InputManifestError,
 //! # };
 //! # use std::str::FromStr;
-//! let input_manifest = InputManifest::builder(InMemoryStorage::new(RustCrypto::new()))
+//! let input_manifest = InputManifest::builder(InMemoryStorage::new())
 //!     .add_relation("./test/data/c/main.c")?
 //!     .add_relation("./test/data/c/util.c")?
 //!     .build_for_target("./test/data/c/my_executable", NoEmbed)?;
 //! // gitoid:blob:sha256
 //! // 6e87984feca6b64467f9028fd6b76a4ec8d13ee23f0ae3b99b548ca0c2d0230b
 //! // 726eb0db4f3130fb4caef53ee9d103b6bc2d732e665dd88f53efce4c7b59818b
-//! # assert!(input_manifest.contains_artifact(RustCrypto::new(), "./test/data/c/main.c")?);
-//! # assert!(input_manifest.contains_artifact(RustCrypto::new(), "./test/data/c/util.c")?);
+//! # assert!(input_manifest.contains_artifact("./test/data/c/main.c")?);
+//! # assert!(input_manifest.contains_artifact("./test/data/c/util.c")?);
 //! # Ok::<_, InputManifestError>(())
 //! ```
 //!
@@ -69,13 +68,13 @@
 //!
 //! ```
 //! use anyhow::Result;
-//! use omnibor::{ArtifactId, hash_provider::RustCrypto};
+//! use omnibor::{ArtifactId, hash_algorithm::Sha256};
 //! use std::str::FromStr;
 //!
 //! fn main() -> Result<()> {
 //!     // Create the Artifact ID.
 //!     let path = "./test/data/hello_world.txt";
-//!     let artifact_id = ArtifactId::new(RustCrypto::new(), path)?;
+//!     let artifact_id = ArtifactId::sha256(path)?;
 //!
 //!     // Check it against what we expect it to be.
 //!     let aid_str = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
@@ -91,12 +90,12 @@
 //! ```
 //! use anyhow::{Result, bail};
 //! use walkdir::WalkDir;
-//! use omnibor::{ArtifactId, hash_provider::RustCrypto};
+//! use omnibor::{ArtifactId, hash_algorithm::Sha256};
 //! use std::str::FromStr;
 //!
 //! fn main() -> Result<()> {
 //!     let aid_str = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
-//!     let artifact_id = ArtifactId::from_str(aid_str)?;
+//!     let artifact_id = ArtifactId::<Sha256>::from_str(aid_str)?;
 //!
 //!     for entry in WalkDir::new("./") {
 //!         let entry = entry?;
@@ -106,7 +105,7 @@
 //!         }
 //!
 //!         // Get the Artifact ID of the file.
-//!         let entry_artifact_id = ArtifactId::new(RustCrypto::new(), entry.path())?;
+//!         let entry_artifact_id = ArtifactId::new(entry.path())?;
 //!
 //!         // Check if it matches the one we're looking for.
 //!         if entry_artifact_id == artifact_id {
@@ -126,14 +125,13 @@
 //!     ArtifactId,
 //!     InputManifest,
 //!     storage::InMemoryStorage,
-//!     hash_provider::RustCrypto,
 //!     embed::NoEmbed,
 //! };
 //! use std::str::FromStr;
 //!
 //! fn main() -> Result<()> {
 //!     // Create an input manifest, don't persist to disk, use RustCrypto's SHA-256 impl.
-//!     let input_manifest = InputManifest::builder(InMemoryStorage::new(RustCrypto::new()))
+//!     let input_manifest = InputManifest::builder(InMemoryStorage::new())
 //!         .add_relation("./test/data/c/main.c")?
 //!         .add_relation("./test/data/c/util.c")?
 //!         .build_for_target("./test/data/c/my_executable", NoEmbed)?;
@@ -153,7 +151,6 @@
 //!     InputManifest,
 //!     storage::InMemoryStorage,
 //!     hash_algorithm::Sha256,
-//!     hash_provider::RustCrypto,
 //!     embed::NoEmbed,
 //! };
 //! use std::str::FromStr;
@@ -163,9 +160,9 @@
 //! 6e87984feca6b64467f9028fd6b76a4ec8d13ee23f0ae3b99b548ca0c2d0230b
 //! 726eb0db4f3130fb4caef53ee9d103b6bc2d732e665dd88f53efce4c7b59818b
 //! "#;
-//!     let input_manifest = InputManifest::<Sha256>::load(manifest_txt, None)?;
+//!     let input_manifest = InputManifest::<Sha256>::load(manifest_txt, None::<&String>)?;
 //!
-//!     if input_manifest.contains_artifact(RustCrypto::new(), "./test/data/c/main.c")? {
+//!     if input_manifest.contains_artifact("./test/data/c/main.c")? {
 //!         println!("found a match!");
 //!     }
 //!
@@ -180,6 +177,9 @@
 //!
 //! - __[Identify and IdentifyAsync](#identify-and-identifyasync)__: Traits for
 //!   types that can produce an [`ArtifactId`], synchronously or asynchronously.
+//! - __[ManifestSource and ManifestSourceAsync](#manifestsource-and-manifestsourceasync)__:
+//!   Traits for types that can produce an [`InputManifest`], synchronously or
+//!   asynchronously.
 //! - __[Hash Algorithms](#hash-algorithms)__: Types implementing
 //!   [`HashAlgorithm`](crate::hash_algorithm::HashAlgorithm), currently only
 //!   [`Sha256`](crate::hash_algorithm::Sha256).
@@ -237,6 +237,10 @@
 //! | `&InputManifest<H>`                                              | ✅              |                      | Hash the on-disk representation of the manifest.             |
 //! | `ArtifactId<H>`                                                  | ✅              |                      | Copy the Artifact ID.                                        |
 //! | `&ArtifactId<H>`                                                 | ✅              |                      | Copy the Artifact ID.                                        |
+//!
+//! ## ManifestSource and ManifestSourceAsync
+//!
+//! TODO: Write this.
 //!
 //! ## Hash Algorithms
 //!
@@ -512,6 +516,8 @@ pub mod storage;
 pub use crate::artifact_id::ArtifactId;
 pub use crate::artifact_id::Identify;
 pub use crate::artifact_id::IdentifyAsync;
+pub use crate::hash_provider::registry::set_hash_provider;
+pub use crate::hash_provider::registry::set_hash_provider_async;
 pub use crate::input_manifest::Input;
 pub use crate::input_manifest::InputManifest;
 pub use crate::input_manifest::InputManifestBuilder;

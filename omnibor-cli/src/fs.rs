@@ -9,7 +9,7 @@ use crate::{
 use async_channel::{bounded, Receiver, Sender as WorkSender};
 use async_walkdir::{DirEntry as AsyncDirEntry, WalkDir};
 use futures_util::{pin_mut, StreamExt};
-use omnibor::{hash_algorithm::Sha256, hash_provider::RustCrypto, ArtifactId};
+use omnibor::{hash_algorithm::Sha256, ArtifactId};
 use std::path::{Path, PathBuf};
 use tokio::{fs::File as AsyncFile, task::JoinSet};
 use tracing::debug;
@@ -107,8 +107,8 @@ async fn open_and_id_files(
     pin_mut!(path_rx);
 
     while let Some(path) = path_rx.next().await {
-        let mut file = open_async_file(&path).await?;
-        id_file(&print_tx, &mut file, &path, format, hash).await?;
+        let file = open_async_file(&path).await?;
+        id_file(&print_tx, file, &path, format, hash).await?;
     }
 
     Ok(())
@@ -117,7 +117,7 @@ async fn open_and_id_files(
 /// Identify a single file.
 pub async fn id_file(
     tx: &PrintSender,
-    file: &mut AsyncFile,
+    file: AsyncFile,
     path: &Path,
     format: Format,
     hash: SelectedHash,
@@ -137,7 +137,7 @@ pub async fn id_file(
 }
 
 /// Hash the file and produce a `gitoid`-scheme URL.
-pub async fn hash_file(hash: SelectedHash, file: &mut AsyncFile, path: &Path) -> Result<String> {
+pub async fn hash_file(hash: SelectedHash, file: AsyncFile, path: &Path) -> Result<String> {
     match hash {
         SelectedHash::Sha256 => sha256_id_async_file(file, path)
             .await
@@ -179,9 +179,8 @@ pub async fn open_async_file(path: &Path) -> Result<AsyncFile> {
 }
 
 /// Identify a file using a SHA-256 hash.
-pub async fn sha256_id_async_file(file: &mut AsyncFile, path: &Path) -> Result<ArtifactId<Sha256>> {
-    let provider = RustCrypto::new();
-    ArtifactId::new_async(provider, file)
+pub async fn sha256_id_async_file(file: AsyncFile, path: &Path) -> Result<ArtifactId<Sha256>> {
+    ArtifactId::new_async(file)
         .await
         .map_err(|source| Error::FileFailedToId {
             path: path.to_path_buf(),

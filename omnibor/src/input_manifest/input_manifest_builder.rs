@@ -75,14 +75,14 @@ where
     where
         I: Identify<H>,
     {
-        let artifact = ArtifactId::new(self.storage.get_hash_provider(), target)?;
+        let artifact = ArtifactId::new(target)?;
 
         let manifest_aid = self
             .storage
             .get_manifest_for_target(artifact)?
             .map(|manifest| {
                 // SAFETY: identifying a manifest is infallible.
-                ArtifactId::new(self.storage.get_hash_provider(), &manifest).unwrap()
+                ArtifactId::new(&manifest).unwrap()
             });
 
         self.relations.insert(Input::new(artifact, manifest_aid));
@@ -113,10 +113,7 @@ where
         {
             // Get the Artifact ID of the target.
             let target_aid = if embed.will_embed() {
-                Some(ArtifactId::new(
-                    manifest_builder.storage.get_hash_provider(),
-                    target,
-                )?)
+                Some(ArtifactId::new(target)?)
             } else {
                 None
             };
@@ -128,8 +125,7 @@ where
             );
 
             // Get the Artifact ID of the manifest.
-            let manifest_aid =
-                ArtifactId::new(manifest_builder.storage.get_hash_provider(), &manifest)?;
+            let manifest_aid = ArtifactId::new(&manifest)?;
 
             // Try to embed the manifest's Artifact ID in the target if we're in embedding mode.
             if let Some(Err(err)) = embed.try_embed(target, EmbedProvider::new(manifest_aid)) {
@@ -172,7 +168,7 @@ mod tests {
     #[cfg(feature = "provider-rustcrypto")]
     /// A basic builder test that creates a single manifest and validates it.
     fn basic_builder_test(storage: impl Storage<Sha256>) {
-        use crate::{embed::NoEmbed, hash_provider::RustCrypto};
+        use crate::embed::NoEmbed;
 
         let target = pathbuf![
             env!("CARGO_MANIFEST_DIR"),
@@ -193,37 +189,29 @@ mod tests {
         let first_relation = &manifest.inputs()[0];
         assert_eq!(
             first_relation.artifact().as_hex(),
-            ArtifactId::new(RustCrypto::new(), b"test_2")
-                .unwrap()
-                .as_hex()
+            ArtifactId::<Sha256>::new(b"test_2").unwrap().as_hex()
         );
 
         // Check the second relation in the manifest.
         let second_relation = &manifest.inputs()[1];
         assert_eq!(
             second_relation.artifact().as_hex(),
-            ArtifactId::new(RustCrypto::new(), b"test_1")
-                .unwrap()
-                .as_hex()
+            ArtifactId::<Sha256>::new(b"test_1").unwrap().as_hex()
         );
     }
 
     #[cfg(feature = "provider-rustcrypto")]
     #[test]
     fn in_memory_builder_works() {
-        use crate::hash_provider::RustCrypto;
-
-        let storage = InMemoryStorage::new(RustCrypto::new());
+        let storage = InMemoryStorage::new();
         basic_builder_test(storage);
     }
 
     #[cfg(feature = "provider-rustcrypto")]
     #[test]
     fn file_system_builder_works() {
-        use crate::hash_provider::RustCrypto;
-
         let storage_root = pathbuf![env!("CARGO_MANIFEST_DIR"), "test", "fs_storage"];
-        let mut storage = FileSystemStorage::new(RustCrypto::new(), &storage_root).unwrap();
+        let mut storage = FileSystemStorage::new(&storage_root).unwrap();
         basic_builder_test(&mut storage);
         storage.cleanup().unwrap();
     }

@@ -58,8 +58,8 @@ async fn open_and_match_files(
     pin_mut!(path_rx);
 
     while let Some(path) = path_rx.next().await {
-        let mut file = open_async_file(&path).await?;
-        let file_url = hash_file(SelectedHash::Sha256, &mut file, &path).await?;
+        let file = open_async_file(&path).await?;
+        let file_url = hash_file(SelectedHash::Sha256, file, &path).await?;
 
         if s == file_url {
             tx.send(PrinterCmd::msg(

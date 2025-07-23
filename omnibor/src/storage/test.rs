@@ -5,10 +5,8 @@ use std::str::FromStr;
 #[cfg(feature = "provider-rustcrypto")]
 #[test]
 fn correct_aid_storage_path() {
-    use crate::hash_provider::RustCrypto;
-
     let root = pathbuf![env!("CARGO_MANIFEST_DIR"), "test", "fs_storage"];
-    let storage = FileSystemStorage::new(RustCrypto::new(), &root).unwrap();
+    let storage = FileSystemStorage::new(&root).unwrap();
 
     let aid = ArtifactId::<Sha256>::from_str(
         "gitoid:blob:sha256:9d09789f20162dca6d80d2d884f46af22c824f6409d4f447332d079a2d1e364f",

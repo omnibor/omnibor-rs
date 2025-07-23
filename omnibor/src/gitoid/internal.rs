@@ -10,7 +10,10 @@ use crate::{
         stream_len::{async_stream_len, stream_len},
     },
 };
-use digest::Digest;
+use digest::{
+    generic_array::{sequence::GenericSequence, GenericArray},
+    DynDigest,
+};
 use std::{
     io::{BufReader, Read, Seek, SeekFrom},
     marker::PhantomData,
@@ -24,7 +27,7 @@ use tokio::io::{
 /// If data is small enough to fit in memory, then generating a GitOid for it
 /// this way should be much faster, as it doesn't require seeking.
 pub(crate) fn gitoid_from_buffer<H, O>(
-    mut digester: impl Digest,
+    digester: &mut dyn DynDigest,
     buffer: &[u8],
 ) -> Result<GitOid<H, O>, ArtifactIdError>
 where
@@ -32,9 +35,16 @@ where
     O: ObjectType,
 {
     let hashed_len = buffer.len() - num_carriage_returns_in_buffer(buffer);
-    digest_gitoid_header(&mut digester, O::NAME, hashed_len);
-    digest_with_normalized_newlines(&mut digester, buffer);
-    let hash = digester.finalize();
+    digest_gitoid_header(digester, O::NAME, hashed_len);
+    digest_with_normalized_newlines(digester, buffer);
+
+    let mut hash: GenericArray<u8, <H::Array as GenericSequence<u8>>::Length> =
+        GenericArray::default();
+
+    digester
+        .finalize_into_reset(&mut hash[..])
+        .map_err(ArtifactIdError::FailedToHashInput)?;
+
     Ok(GitOid {
         _phantom: PhantomData,
         value: <H as HashAlgorithm>::Array::from_iter(hash),
@@ -43,7 +53,7 @@ where
 
 /// Generate a GitOid by reading from an arbitrary reader.
 pub(crate) fn gitoid_from_reader<H, O, R>(
-    mut digester: impl Digest,
+    digester: &mut dyn DynDigest,
     mut reader: R,
 ) -> Result<GitOid<H, O>, ArtifactIdError>
 where
@@ -55,11 +65,16 @@ where
     let (num_carriage_returns, reader) = num_carriage_returns_in_reader(reader)?;
     let hashed_len = expected_len - num_carriage_returns;
 
-    digest_gitoid_header(&mut digester, O::NAME, hashed_len);
+    digest_gitoid_header(digester, O::NAME, hashed_len);
     let _ = BufReader::new(reader)
-        .for_each_buf_fill(|b| digest_with_normalized_newlines(&mut digester, b))?;
+        .for_each_buf_fill(|b| digest_with_normalized_newlines(digester, b))?;
 
-    let hash = digester.finalize();
+    let mut hash: GenericArray<u8, <H::Array as GenericSequence<u8>>::Length> =
+        GenericArray::default();
+
+    digester
+        .finalize_into_reset(&mut hash[..])
+        .map_err(ArtifactIdError::FailedToHashInput)?;
 
     Ok(GitOid {
         _phantom: PhantomData,
@@ -69,7 +84,7 @@ where
 
 /// Async version of `gitoid_from_reader`.
 pub(crate) async fn gitoid_from_async_reader<H, O, R>(
-    mut digester: impl Digest,
+    digester: &mut (dyn DynDigest + Send),
     mut reader: R,
 ) -> Result<GitOid<H, O>, ArtifactIdError>
 where
@@ -82,7 +97,7 @@ where
     let (num_carriage_returns, reader) = num_carriage_returns_in_async_reader(reader).await?;
     let hashed_len = expected_len - num_carriage_returns;
 
-    digest_gitoid_header(&mut digester, O::NAME, hashed_len);
+    digest_gitoid_header(&mut *digester, O::NAME, hashed_len);
 
     let mut reader = AsyncBufReader::new(reader);
 
@@ -97,12 +112,17 @@ where
             break;
         }
 
-        digest_with_normalized_newlines(&mut digester, buffer);
+        digest_with_normalized_newlines(&mut *digester, buffer);
 
         reader.consume(amount_read);
     }
 
-    let hash = digester.finalize();
+    let mut hash: GenericArray<u8, <H::Array as GenericSequence<u8>>::Length> =
+        GenericArray::default();
+
+    digester
+        .finalize_into_reset(&mut hash[..])
+        .map_err(ArtifactIdError::FailedToHashInput)?;
 
     Ok(GitOid {
         _phantom: PhantomData,
@@ -112,7 +132,7 @@ where
 
 /// Digest the "header" required for a GitOID.
 #[inline]
-fn digest_gitoid_header(digester: &mut impl Digest, object_type: &str, object_len: usize) {
+fn digest_gitoid_header(digester: &mut dyn DynDigest, object_type: &str, object_len: usize) {
     digester.update(object_type.as_bytes());
     digester.update(b" ");
     digester.update(object_len.to_string().as_bytes());
@@ -121,7 +141,7 @@ fn digest_gitoid_header(digester: &mut impl Digest, object_type: &str, object_le
 
 /// Update a hash digest with data in a buffer, normalizing newlines.
 #[inline]
-fn digest_with_normalized_newlines(digester: &mut impl Digest, buf: &[u8]) {
+fn digest_with_normalized_newlines(digester: &mut dyn DynDigest, buf: &[u8]) {
     for chunk in buf.chunk_by(|char1, _| *char1 != b'\r') {
         let chunk = match chunk.last() {
             // Omit the carriage return at the end of the chunk.

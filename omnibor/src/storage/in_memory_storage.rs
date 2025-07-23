@@ -3,7 +3,6 @@ use {
         artifact_id::ArtifactId,
         error::InputManifestError,
         hash_algorithm::{HashAlgorithm, Sha256},
-        hash_provider::HashProvider,
         input_manifest::InputManifest,
         storage::Storage,
     },
@@ -16,20 +15,16 @@ use {
 /// may be useful in other applications where you only care about producing and using
 /// manifests in the short-term, and not in persisting them to a disk or some other
 /// durable location.
-#[derive(Debug)]
-pub struct InMemoryStorage<P: HashProvider<Sha256>> {
-    /// The cryptography library providing a hash implementation.
-    hash_provider: P,
-
+#[derive(Debug, Default)]
+pub struct InMemoryStorage {
     /// Stored SHA-256 [`InputManifest`]s.
     sha256_manifests: Vec<ManifestEntry<Sha256>>,
 }
 
-impl<P: HashProvider<Sha256>> InMemoryStorage<P> {
+impl InMemoryStorage {
     /// Construct a new `InMemoryStorage` instance.
-    pub fn new(hash_provider: P) -> Self {
+    pub fn new() -> Self {
         Self {
-            hash_provider,
             sha256_manifests: Vec::new(),
         }
     }
@@ -54,9 +49,7 @@ impl<P: HashProvider<Sha256>> InMemoryStorage<P> {
     }
 }
 
-impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
-    type HashProvider = P;
-
+impl Storage<Sha256> for InMemoryStorage {
     fn get_manifests(&self) -> Result<Vec<InputManifest<Sha256>>, InputManifestError> {
         Ok(self
             .sha256_manifests
@@ -88,7 +81,7 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
         manifest: &InputManifest<Sha256>,
     ) -> Result<ArtifactId<Sha256>, InputManifestError> {
         // SAFETY: Identifying a manifest is infallible.
-        let manifest_aid = ArtifactId::new(self.hash_provider, manifest).unwrap();
+        let manifest_aid = ArtifactId::new(manifest).unwrap();
 
         self.sha256_manifests.push(ManifestEntry {
             manifest_aid,
@@ -147,10 +140,6 @@ impl<P: HashProvider<Sha256>> Storage<Sha256> for InMemoryStorage<P> {
         let manifest = self.sha256_manifests.remove(pos).manifest;
 
         Ok(manifest)
-    }
-
-    fn get_hash_provider(&self) -> Self::HashProvider {
-        self.hash_provider
     }
 }
 
