@@ -215,6 +215,7 @@
 //! | `&PathBuf`                                                       | ✅              | ✅                   | Hash the contents of the file at that path.                  |
 //! | `File`                                                           | ✅              |                      | Hash the contents of the file.                               |
 //! | `&File`                                                          | ✅              |                      | Hash the contents of the file.                               |
+//! | `&mut File`                                                      | ✅              |                      | Hash the contents of the file.                               |
 //! | `Box<File>`                                                      | ✅              |                      | Hash the contents of the file.                               |
 //! | `Rc<File>`                                                       | ✅              |                      | Hash the contents of the file.                               |
 //! | `Arc<File>`                                                      | ✅              |                      | Hash the contents of the file.                               |
@@ -222,7 +223,6 @@
 //! | `tokio::fs::File`                                                |                 | ✅                   | Hash the contents of the file.                               |
 //! | `BufReader<R> where R: Read + Seek`                              | ✅              |                      | Hash the bytes read off the reader.                          |
 //! | `tokio::io::BufReader<R> where R: AsyncRead + AsyncSync + Unpin` |                 | ✅                   | Hash the bytes read off the reader.                          |
-//! | `&mut R where R: Read + Seek`                                    | ✅              |                      | Hash the bytes read off the reader.                          |
 //! | `Cursor<T> where T: AsRef<[u8]>`                                 | ✅              |                      | Hash the bytes read off the cursor.                          |
 //! | `InputManifest<H>`                                               | ✅              |                      | Hash the on-disk representation of the manifest.             |
 //! | `&InputManifest<H>`                                              | ✅              |                      | Hash the on-disk representation of the manifest.             |
@@ -231,7 +231,32 @@
 //!
 //! ## ManifestSource and ManifestSourceAsync
 //!
-//! TODO: Write this.
+//! There are two traits for types that can be used to load an [`InputManifest`]
+//! from disk:
+//!
+//! - [`ManifestSource`]: Can be used to load an Input Manifest from disk.
+//! - [`ManifestSourceAsync`]: Can be used to load an Input Manifest from disk
+//!   asynchronously.
+//!
+//! The full list of types that implement these traits, with an explanation of
+//! how they're used, is as follows:
+//!
+//! | Type                   | `impl ManifestSource` | `impl ManifestSourceAsync` | Explanation                                                  |
+//! |:-----------------------|:----------------------|:---------------------------|:-------------------------------------------------------------|
+//! | `&[u8]`                | ✅                    |                            | Parse the bytes.                                             |
+//! | `Vec<u8>`              | ✅                    |                            | Parse the bytes.                                             |
+//! | `[u8; N]`              | ✅                    |                            | Parse the bytes.                                             |
+//! | `&[u8; N]`             | ✅                    |                            | Parse the bytes.                                             |
+//! | `&str`                 | ✅                    | ✅                         | Treat as a path, load the file, parse contents.              |
+//! | `&String`              | ✅                    | ✅                         | Treat as a path, load the file, parse contents.              |
+//! | `&OsStr`               | ✅                    | ✅                         | Treat as a path, load the file, parse contents.              |
+//! | `&OsString`            | ✅                    | ✅                         | Treat as a path, load the file, parse contents.              |
+//! | `&Path`                | ✅                    | ✅                         | Load the file, parse contents.                               |
+//! | `&PathBuf`             | ✅                    | ✅                         | Load the file, parse contents.                               |
+//! | `File`                 | ✅                    |                            | Parse contents.                                              |
+//! | `&mut File`            | ✅                    |                            | Parse contents.                                              |
+//! | `tokio::fs::File`      |                       | ✅                         | Load the file asynchronously, parse contents.                |
+//! | `&mut tokio::fs::File` |                       | ✅                         | Load the file asynchronously, parse contents.                |
 //!
 //! ## Hash Algorithms
 //!
@@ -305,8 +330,8 @@
 //!   embed in it. Requires the `infer-filetypes` feature is on.
 //! - [`CustomEmbed`](crate::embed::CustomEmbed): Do embedding, providing your
 //!   own embedding function which takes the path to the target artifact, and
-//!   an [`EmbedProvider`](crate::embed::EmbedProvider) which gives a hex string
-//!   or bytes to embed, as appropriate.
+//!   a [`CustomEmbedProvider`](crate::embed::CustomEmbedProvider) which gives a
+//!   hex string or bytes to embed, as appropriate.
 //!
 //! # Meta
 //!

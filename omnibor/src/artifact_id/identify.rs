@@ -1,4 +1,5 @@
 use crate::{
+    artifact_id::identify::seal::IdentifySealed,
     error::ArtifactIdError,
     gitoid::internal::{gitoid_from_buffer, gitoid_from_reader},
     hash_algorithm::HashAlgorithm,
@@ -17,14 +18,20 @@ use std::{
     sync::Arc,
 };
 
+pub(crate) mod seal {
+    pub trait IdentifySealed {}
+}
+
 /// Types that can be identified with an `ArtifactId`.
-pub trait Identify<H>
+pub trait Identify<H>: IdentifySealed
 where
     H: HashAlgorithm,
 {
     /// Produce an [`ArtifactId`] with the given hash provider.
     fn identify(self) -> Result<ArtifactId<H>, ArtifactIdError>;
 }
+
+impl IdentifySealed for &[u8] {}
 
 impl<H> Identify<H> for &[u8]
 where
@@ -37,6 +44,8 @@ where
     }
 }
 
+impl<const N: usize> IdentifySealed for [u8; N] {}
+
 impl<H, const N: usize> Identify<H> for [u8; N]
 where
     H: HashAlgorithm,
@@ -45,6 +54,8 @@ where
         self[..].identify()
     }
 }
+
+impl<const N: usize> IdentifySealed for &[u8; N] {}
 
 impl<H, const N: usize> Identify<H> for &[u8; N]
 where
@@ -55,6 +66,8 @@ where
     }
 }
 
+impl IdentifySealed for &str {}
+
 impl<H> Identify<H> for &str
 where
     H: HashAlgorithm,
@@ -63,6 +76,8 @@ where
         Path::new(self).identify()
     }
 }
+
+impl IdentifySealed for &String {}
 
 impl<H> Identify<H> for &String
 where
@@ -73,6 +88,8 @@ where
     }
 }
 
+impl IdentifySealed for &OsStr {}
+
 impl<H> Identify<H> for &OsStr
 where
     H: HashAlgorithm,
@@ -82,6 +99,8 @@ where
     }
 }
 
+impl IdentifySealed for &OsString {}
+
 impl<H> Identify<H> for &OsString
 where
     H: HashAlgorithm,
@@ -90,6 +109,8 @@ where
         Path::new(self).identify()
     }
 }
+
+impl IdentifySealed for &Path {}
 
 impl<H> Identify<H> for &Path
 where
@@ -105,6 +126,8 @@ where
     }
 }
 
+impl IdentifySealed for &PathBuf {}
+
 impl<H> Identify<H> for &PathBuf
 where
     H: HashAlgorithm,
@@ -114,6 +137,8 @@ where
     }
 }
 
+impl IdentifySealed for File {}
+
 impl<H> Identify<H> for File
 where
     H: HashAlgorithm,
@@ -122,6 +147,8 @@ where
         (&self).identify()
     }
 }
+
+impl IdentifySealed for &File {}
 
 impl<H> Identify<H> for &File
 where
@@ -133,6 +160,19 @@ where
     }
 }
 
+impl IdentifySealed for &mut File {}
+
+impl<H> Identify<H> for &mut File
+where
+    H: HashAlgorithm,
+{
+    fn identify(self) -> Result<ArtifactId<H>, ArtifactIdError> {
+        (&*self).identify()
+    }
+}
+
+impl IdentifySealed for Box<File> {}
+
 impl<H> Identify<H> for Box<File>
 where
     H: HashAlgorithm,
@@ -141,6 +181,8 @@ where
         self.deref().identify()
     }
 }
+
+impl IdentifySealed for Rc<File> {}
 
 impl<H> Identify<H> for Rc<File>
 where
@@ -151,6 +193,8 @@ where
     }
 }
 
+impl IdentifySealed for Arc<File> {}
+
 impl<H> Identify<H> for Arc<File>
 where
     H: HashAlgorithm,
@@ -159,6 +203,8 @@ where
         self.deref().identify()
     }
 }
+
+impl<R> IdentifySealed for BufReader<R> where R: Read + Seek {}
 
 impl<H, R> Identify<H> for BufReader<R>
 where
@@ -171,16 +217,7 @@ where
     }
 }
 
-impl<H, R> Identify<H> for &mut R
-where
-    H: HashAlgorithm,
-    R: Read + Seek,
-{
-    fn identify(self) -> Result<ArtifactId<H>, ArtifactIdError> {
-        let mut digester = get_hash_provider().digester();
-        gitoid_from_reader::<H, Blob, _>(&mut *digester, self).map(ArtifactId::from_gitoid)
-    }
-}
+impl<T> IdentifySealed for Cursor<T> where T: AsRef<[u8]> {}
 
 impl<H, T> Identify<H> for Cursor<T>
 where
@@ -193,6 +230,8 @@ where
     }
 }
 
+impl<H> IdentifySealed for InputManifest<H> where H: HashAlgorithm {}
+
 impl<H> Identify<H> for InputManifest<H>
 where
     H: HashAlgorithm,
@@ -201,6 +240,8 @@ where
         self.as_bytes().identify()
     }
 }
+
+impl<H> IdentifySealed for &InputManifest<H> where H: HashAlgorithm {}
 
 impl<H> Identify<H> for &InputManifest<H>
 where
@@ -211,6 +252,8 @@ where
     }
 }
 
+impl<H> IdentifySealed for ArtifactId<H> where H: HashAlgorithm {}
+
 impl<H> Identify<H> for ArtifactId<H>
 where
     H: HashAlgorithm,
@@ -219,6 +262,8 @@ where
         Ok(self)
     }
 }
+
+impl<H> IdentifySealed for &ArtifactId<H> where H: HashAlgorithm {}
 
 impl<H> Identify<H> for &ArtifactId<H>
 where

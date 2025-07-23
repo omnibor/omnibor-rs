@@ -1,8 +1,21 @@
 //! Cryptography libraries providing hash algorithm implementations.
 //!
-//! __See [Hash Algorithms and Hash Providers][idx] documentation for more info.__
+//! "Hash Providers" are cryptography libraries providing implementations of
+//! the hash algorithms approved for use in OmniBOR Artifact IDs and Input
+//! Manifests. Today, that's only the SHA-256 hash algorithm.
 //!
-//! [idx]: crate#hash-algorithms-and-hash-providers
+//! There are three providers supported in the `omnibor` crate today:
+//!
+//! - RustCrypto
+//! - BoringSSL
+//! - OpenSSL
+//!
+//! Each of these is embodied in a type implementing the `HashProvider` trait,
+//! which is parameterized over the hash algorithm.
+//!
+//! [__See the main documentation on Hash Providers for more information.__][idx]
+//!
+//! [idx]: crate#hash-providers
 
 #[cfg(feature = "provider-boringssl")]
 mod boringssl;

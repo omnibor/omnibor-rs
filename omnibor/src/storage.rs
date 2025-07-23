@@ -1,8 +1,14 @@
 //! Store and retrieve `InputManifest`s.
 //!
-//! __See [Storing Input Manifests][idx] documentation for more info.__
+//! The "Store" is an interface for types that store and enable querying of
+//! Input Manifests. They exist in particular to support things like filling
+//! in manifest information for build inputs during Input Manifest construction,
+//! and to ensure (in the case of `FileSystemStorage`) that Input Manifests
+//! are persisted to disk in a manner consistent with the OmniBOR specification.
 //!
-//! [idx]: crate#storing-input-manifests
+//! [__See Storage documentation for more info.__][idx]
+//!
+//! [idx]: crate#storage
 
 pub(crate) mod file_system_storage;
 pub(crate) mod in_memory_storage;

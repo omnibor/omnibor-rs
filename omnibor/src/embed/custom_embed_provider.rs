@@ -2,7 +2,7 @@ use crate::{hash_algorithm::HashAlgorithm, ArtifactId};
 
 /// A handle to get an [`ArtifactId`] as a hex string or bytes for embedding.
 #[derive(Debug)]
-pub struct EmbedProvider<H>
+pub struct CustomEmbedProvider<H>
 where
     H: HashAlgorithm,
 {
@@ -10,13 +10,13 @@ where
     manifest_aid: ArtifactId<H>,
 }
 
-impl<H> EmbedProvider<H>
+impl<H> CustomEmbedProvider<H>
 where
     H: HashAlgorithm,
 {
     /// Construct a new embed provider.
     pub(crate) fn new(manifest_aid: ArtifactId<H>) -> Self {
-        EmbedProvider { manifest_aid }
+        CustomEmbedProvider { manifest_aid }
     }
 
     /// Get the manifest Artifact ID as a hexadecimal string.

@@ -59,6 +59,20 @@ where
     }
 }
 
+impl<const N: usize> ManifestSourceSealed for [u8; N] {}
+
+impl<const N: usize, H> ManifestSource<H> for [u8; N]
+where
+    H: HashAlgorithm,
+{
+    fn resolve(
+        self,
+        target: Option<ArtifactId<H>>,
+    ) -> Result<InputManifest<H>, InputManifestError> {
+        (&self).resolve(target)
+    }
+}
+
 impl<const N: usize> ManifestSourceSealed for &[u8; N] {}
 
 impl<const N: usize, H> ManifestSource<H> for &[u8; N]

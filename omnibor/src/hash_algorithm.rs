@@ -1,8 +1,16 @@
 //! Hash algorithms supported for Artifact IDs.
 //!
-//! __See [Hash Algorithms and Hash Providers][idx] documentation for more info.__
+//! Currently, OmniBOR only supports one hash algorithm, SHA-256, as the basis
+//! for creating Artifact IDs and Input Manifests. If, in the future, SHA-256's
+//! cryptographic properties are broken, then OmniBOR may migrate to an
+//! alternative hash function.
 //!
-//! [idx]: crate#hash-algorithms-and-hash-providers
+//! This module contains the [`HashAlgorithm`] trait and the [`Sha256`] type.
+//! The trait represents hash algorithms available for use in OmniBOR, and
+//! [`Sha256`] is the only type that implements the trait.
+//!
+//! Much of the generic code in the `omnibor` crate relies on the [`Sha256`]
+//! type.
 
 use {
     crate::util::sealed::Sealed,

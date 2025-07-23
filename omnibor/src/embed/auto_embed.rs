@@ -1,6 +1,6 @@
 use {
     crate::{
-        embed::embed_provider::EmbedProvider, error::InputManifestError,
+        embed::custom_embed_provider::CustomEmbedProvider, error::InputManifestError,
         hash_algorithm::HashAlgorithm, util::clone_as_boxstr::CloneAsBoxstr,
     },
     bindet::FileType as BinaryType,
@@ -21,7 +21,7 @@ const EMBED_KEY: &str = "OmniBOR-Input-Manifest";
 /// Embed the manifest's [`ArtifactId`] into the target file.
 pub(crate) fn embed_manifest_in_target<H: HashAlgorithm>(
     target_path: &Path,
-    embed_provider: EmbedProvider<H>,
+    embed_provider: CustomEmbedProvider<H>,
 ) -> Result<(), InputManifestError> {
     match TargetType::infer(target_path)? {
         TargetType::KnownBinaryType(binary_type) => Err(
@@ -45,7 +45,7 @@ pub(crate) fn embed_manifest_in_target<H: HashAlgorithm>(
 
 fn embed_in_text_file_with_prefix_comment<H: HashAlgorithm>(
     path: &Path,
-    embed_provider: EmbedProvider<H>,
+    embed_provider: CustomEmbedProvider<H>,
     prefix: &str,
 ) -> Result<(), InputManifestError> {
     let mut file = OpenOptions::new()
@@ -62,7 +62,7 @@ fn embed_in_text_file_with_prefix_comment<H: HashAlgorithm>(
 
 fn embed_in_text_file_with_wrapped_comment<H: HashAlgorithm>(
     path: &Path,
-    embed_provider: EmbedProvider<H>,
+    embed_provider: CustomEmbedProvider<H>,
     prefix: &str,
     suffix: &str,
 ) -> Result<(), InputManifestError> {

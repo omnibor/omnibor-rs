@@ -1,13 +1,49 @@
 //! Control whether an `InputManifest`'s `ArtifactId` is stored in the target artifact.
+//!
+//! "Embedding" is one of the core operations in OmniBOR. When an Input Manifest
+//! is created, its Artifact ID can be embedded in the "target artifact" (the
+//! artifact whose build inputs the Input Manifest is describing). If embedding
+//! is done, then the Artifact ID of the target artifact will now depend on
+//! the Input Manifest, meaning that any change in the Input Manifest's contents
+//! caused by a change in build dependencies will cause a change in the
+//! Artifact ID of the target artifact.
+//!
+//! This is how OmniBOR produces a Merkle-tree-like structure for tracking
+//! fine-grained build dependencies (individual files, including intermediate
+//! files, used to build things like binaries).
+//!
+//! __Embedding is not required, but it is highly recommended.__ An Input
+//! Manifest without an associated target is considered "detached," and is
+//! generally not going to be very useful unless it's augmented with knowledge
+//! of the target artifact.
+//!
+//! # Embedding Options
+//!
+//! This module contains three key structs:
+//!
+//! - `NoEmbed`: Do not perform embedding.
+//! - `AutoEmbed`: Automatically infer the filetype of the target artifact and
+//!   attempt to embed in it.
+//! - `CustomEmbed`: The user provides a function for doing embedding.
+//!
+//! `AutoEmbed` is only available if the `infer-filetypes` feature is turned on.
+//!
+//! If `CustomEmbed` is selected, the function takes the path to the target
+//! artifact, plus a [`CustomEmbedProvider`], which provides methods for getting
+//! the embedding data as bytes or a UTF-8 string.
+//!
+//! [__See the main documentation on embedding for more information.__][idx]
+//!
+//! [idx]: crate#embedding
 
 #[cfg(feature = "infer-filetypes")]
 pub(crate) mod auto_embed;
-pub(crate) mod embed_provider;
+pub(crate) mod custom_embed_provider;
 
 use crate::{error::InputManifestError, hash_algorithm::HashAlgorithm, util::sealed::Sealed};
 use std::{marker::PhantomData, path::Path};
 
-pub use crate::embed::embed_provider::EmbedProvider;
+pub use crate::embed::custom_embed_provider::CustomEmbedProvider;
 
 #[cfg(feature = "infer-filetypes")]
 use crate::embed::auto_embed::embed_manifest_in_target;
@@ -24,7 +60,7 @@ where
     fn try_embed(
         &self,
         target_path: &Path,
-        embed_provider: EmbedProvider<H>,
+        embed_provider: CustomEmbedProvider<H>,
     ) -> Option<Result<(), InputManifestError>>;
 
     /// Indicates if the embedder will attempt to embed.
@@ -44,7 +80,7 @@ impl<H: HashAlgorithm> Embed<H> for NoEmbed {
     fn try_embed(
         &self,
         _target_path: &Path,
-        _embed_provider: EmbedProvider<H>,
+        _embed_provider: CustomEmbedProvider<H>,
     ) -> Option<Result<(), InputManifestError>> {
         None
     }
@@ -67,7 +103,7 @@ impl<H: HashAlgorithm> Embed<H> for AutoEmbed {
     fn try_embed(
         &self,
         target_path: &Path,
-        embed_provider: EmbedProvider<H>,
+        embed_provider: CustomEmbedProvider<H>,
     ) -> Option<Result<(), InputManifestError>> {
         Some(embed_manifest_in_target(target_path, embed_provider))
     }
@@ -77,7 +113,7 @@ impl<H: HashAlgorithm> Embed<H> for AutoEmbed {
 pub struct CustomEmbed<H, F>
 where
     H: HashAlgorithm,
-    F: Fn(&Path, EmbedProvider<H>) -> Result<(), InputManifestError>,
+    F: Fn(&Path, CustomEmbedProvider<H>) -> Result<(), InputManifestError>,
 {
     op: F,
     _phantom: PhantomData<H>,
@@ -86,7 +122,7 @@ where
 impl<H, F> CustomEmbed<H, F>
 where
     H: HashAlgorithm,
-    F: Fn(&Path, EmbedProvider<H>) -> Result<(), InputManifestError>,
+    F: Fn(&Path, CustomEmbedProvider<H>) -> Result<(), InputManifestError>,
 {
     /// Construct a new custom embedder.
     pub fn new(op: F) -> Self {
@@ -100,19 +136,19 @@ where
 impl<H, F> Sealed for CustomEmbed<H, F>
 where
     H: HashAlgorithm,
-    F: Fn(&Path, EmbedProvider<H>) -> Result<(), InputManifestError>,
+    F: Fn(&Path, CustomEmbedProvider<H>) -> Result<(), InputManifestError>,
 {
 }
 
 impl<H, F> Embed<H> for CustomEmbed<H, F>
 where
     H: HashAlgorithm,
-    F: Fn(&Path, EmbedProvider<H>) -> Result<(), InputManifestError>,
+    F: Fn(&Path, CustomEmbedProvider<H>) -> Result<(), InputManifestError>,
 {
     fn try_embed(
         &self,
         target_path: &Path,
-        embed_provider: EmbedProvider<H>,
+        embed_provider: CustomEmbedProvider<H>,
     ) -> Option<Result<(), InputManifestError>> {
         Some((self.op)(target_path, embed_provider))
     }

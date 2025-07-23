@@ -1,6 +1,7 @@
 use crate::{
-    error::ArtifactIdError, gitoid::internal::gitoid_from_async_reader,
-    hash_algorithm::HashAlgorithm, hash_provider::registry::get_hash_provider, object_type::Blob,
+    artifact_id::identify::seal::IdentifySealed, error::ArtifactIdError,
+    gitoid::internal::gitoid_from_async_reader, hash_algorithm::HashAlgorithm,
+    hash_provider::registry::get_hash_provider, object_type::Blob,
     util::clone_as_boxstr::CloneAsBoxstr, ArtifactId,
 };
 use std::{
@@ -14,7 +15,7 @@ use tokio::{
 };
 
 /// Types that can be identified with an `ArtifactId` asynchronously.
-pub trait IdentifyAsync<H>
+pub trait IdentifyAsync<H>: IdentifySealed
 where
     H: HashAlgorithm,
 {
@@ -87,6 +88,8 @@ where
     }
 }
 
+impl IdentifySealed for &mut File {}
+
 impl<H> IdentifyAsync<H> for &mut File
 where
     H: HashAlgorithm,
@@ -98,6 +101,8 @@ where
     }
 }
 
+impl IdentifySealed for File {}
+
 impl<H> IdentifyAsync<H> for File
 where
     H: HashAlgorithm,
@@ -106,6 +111,8 @@ where
         (&mut self).identify_async().await
     }
 }
+
+impl<R> IdentifySealed for BufReader<R> where R: AsyncRead + AsyncSeek + Unpin {}
 
 impl<H, R> IdentifyAsync<H> for BufReader<R>
 where

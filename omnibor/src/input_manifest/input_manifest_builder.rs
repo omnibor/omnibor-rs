@@ -1,7 +1,7 @@
 use {
     crate::{
         artifact_id::ArtifactId,
-        embed::{embed_provider::EmbedProvider, Embed},
+        embed::{custom_embed_provider::CustomEmbedProvider, Embed},
         error::InputManifestError,
         hash_algorithm::HashAlgorithm,
         input_manifest::{Input, InputManifest},
@@ -128,7 +128,8 @@ where
             let manifest_aid = ArtifactId::new(&manifest)?;
 
             // Try to embed the manifest's Artifact ID in the target if we're in embedding mode.
-            if let Some(Err(err)) = embed.try_embed(target, EmbedProvider::new(manifest_aid)) {
+            if let Some(Err(err)) = embed.try_embed(target, CustomEmbedProvider::new(manifest_aid))
+            {
                 if err.is_embedding_error() && manifest_builder.should_continue {
                     warn!("{}", err);
                 } else {
