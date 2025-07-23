@@ -6,10 +6,9 @@
 //!
 //! ```
 //! # use omnibor::{ArtifactId, hash_algorithm::Sha256, error::ArtifactIdError};
-//! # use std::str::FromStr;
 //! let artifact_id = ArtifactId::sha256("./test/data/hello_world.txt")?;
 //! // gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03
-//! # assert_eq!(artifact_id, ArtifactId::from_str("gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03").unwrap());
+//! # assert_eq!(artifact_id, "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03".parse().unwrap());
 //! # Ok::<(), ArtifactIdError>(())
 //! ```
 //!
@@ -23,7 +22,6 @@
 //! #     embed::NoEmbed,
 //! #     error::InputManifestError,
 //! # };
-//! # use std::str::FromStr;
 //! let input_manifest = InputManifest::builder(InMemoryStorage::new())
 //!     .add_relation("./test/data/c/main.c")?
 //!     .add_relation("./test/data/c/util.c")?
@@ -69,16 +67,13 @@
 //! ```
 //! use anyhow::Result;
 //! use omnibor::{ArtifactId, hash_algorithm::Sha256};
-//! use std::str::FromStr;
 //!
 //! fn main() -> Result<()> {
 //!     // Create the Artifact ID.
-//!     let path = "./test/data/hello_world.txt";
-//!     let artifact_id = ArtifactId::sha256(path)?;
+//!     let artifact_id = ArtifactId::sha256("./test/data/hello_world.txt")?;
 //!
 //!     // Check it against what we expect it to be.
-//!     let aid_str = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
-//!     let expected_artifact_id = ArtifactId::from_str(aid_str)?;
+//!     let expected_artifact_id: ArtifactId<Sha256> = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03".parse()?;
 //!     assert_eq!(artifact_id, expected_artifact_id);
 //!
 //!     Ok(())
@@ -91,11 +86,9 @@
 //! use anyhow::{Result, bail};
 //! use walkdir::WalkDir;
 //! use omnibor::{ArtifactId, hash_algorithm::Sha256};
-//! use std::str::FromStr;
 //!
 //! fn main() -> Result<()> {
-//!     let aid_str = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03";
-//!     let artifact_id = ArtifactId::<Sha256>::from_str(aid_str)?;
+//!     let artifact_id: ArtifactId<Sha256> = "gitoid:blob:sha256:fee53a18d32820613c0527aa79be5cb30173c823a9b448fa4817767cc84c6f03".parse()?;
 //!
 //!     for entry in WalkDir::new("./") {
 //!         let entry = entry?;
@@ -127,7 +120,6 @@
 //!     storage::InMemoryStorage,
 //!     embed::NoEmbed,
 //! };
-//! use std::str::FromStr;
 //!
 //! fn main() -> Result<()> {
 //!     // Create an input manifest, don't persist to disk, use RustCrypto's SHA-256 impl.
@@ -153,7 +145,6 @@
 //!     hash_algorithm::Sha256,
 //!     embed::NoEmbed,
 //! };
-//! use std::str::FromStr;
 //!
 //! fn main() -> Result<()> {
 //!     let manifest_txt = r#"gitoid:blob:sha256
@@ -262,8 +253,18 @@
 //! | Feature               | Provider   | Type                                             |
 //! |:----------------------|:-----------|:-------------------------------------------------|
 //! | `provider-rustcrypto` | [RustCrypto] | [`RustCrypto`](crate::hash_provider::RustCrypto) |
-//! | `provider-openssl`    | [OpenSSL]    | [`OpenSsl`](crate::hash_provider::OpenSsl)       |
 //! | `provider-boringssl`  | [BoringSSL]  | [`BoringSsl`](crate::hash_provider::BoringSsl)   |
+//! | `provider-openssl`    | [OpenSSL]    | [`OpenSsl`](crate::hash_provider::OpenSsl)       |
+//!
+//! The active hash provider is set automatically as a cascading priority list,
+//! ignoring providers which were not activated by compile-time features. That
+//! list, in order of decreasing priority, is:
+//!
+//! 1. RustCrypto
+//! 2. BoringSSL
+//! 3. OpenSSL
+//!
+//! You can override this default by calling [`set_hash_provider`].
 //!
 //! [RustCrypto]: https://github.com/RustCrypto/hashes
 //! [OpenSSL]: https://openssl-library.org/
@@ -411,31 +412,9 @@
 //!
 //! ## Contribute
 //!
-//! The following items are things we'd want to complete before committing to
-//! stability in this crate with a 1.0.0 release:
-//!
-//! - [ ] Embedding Support
-//!   - [ ] Support for auto-embedding in ELF files
-//!   - [ ] Support for auto-embedding in Mach-O binary files
-//!   - [ ] Support for auto-embedding in Portable Executable files
-//! - [ ] ADG Support
-//!   - [ ] Support creating an Artifact Dependency Graph
-//! - [ ] FFI Support
-//!   - [ ] Exposing the `InputManifestBuilder` API over FFI
-//!   - [ ] Exposing the `InputManifest` API over FFI
-//!   - [ ] Exposing the `FileSystemStorage` API over FFI
-//!   - [ ] Exposing the `InMemoryStorage` API over FFI
-//! - [ ] Hash Provider Flexibility
-//!   - [ ] Support linking with system-provided OpenSSL
-//!   - [ ] Support linking with system-provided BoringSSL
-//! - [ ] Documentation
-//!   - [ ] Documenting the cancellation safety of all async APIs
-//!   - [ ] Adding examples to all public methods.
-//!
-//! If helping build out any of this sounds appealing to you, we love getting
-//! contributions!
-//!
-//! Check out our [Issue Tracker] and [Contributor Guide].
+//! We're always happy to accept outside contributions, including mentoring
+//! contributors on issues. Check out our [Issue Tracker] and
+//! [Contributor Guide].
 //!
 //! [Merkle Tree]: https://en.wikipedia.org/wiki/Merkle_tree
 //! [cisa_report]: https://www.cisa.gov/sites/default/files/2023-10/Software-Identification-Ecosystem-Option-Analysis-508c.pdf
@@ -500,7 +479,6 @@ mod test;
  * FFI
  */
 
-// Hidden since we don't want to commit to stability.
 pub mod ffi;
 
 /*===============================================================================================
@@ -517,7 +495,8 @@ pub use crate::artifact_id::ArtifactId;
 pub use crate::artifact_id::Identify;
 pub use crate::artifact_id::IdentifyAsync;
 pub use crate::hash_provider::registry::set_hash_provider;
-pub use crate::hash_provider::registry::set_hash_provider_async;
 pub use crate::input_manifest::Input;
 pub use crate::input_manifest::InputManifest;
 pub use crate::input_manifest::InputManifestBuilder;
+pub use crate::input_manifest::ManifestSource;
+pub use crate::input_manifest::ManifestSourceAsync;

@@ -5,7 +5,6 @@ use {
     std::io::Error as IoError,
 };
 
-use crate::error::HashProviderError;
 #[cfg(doc)]
 use crate::{artifact_id::ArtifactId, input_manifest::InputManifest};
 
@@ -155,9 +154,6 @@ pub enum InputManifestError {
 
     /// Failed to initialize hash providers.
     FailedToInitHashProviders,
-
-    /// Hash provider errors.
-    HashProviderError(HashProviderError),
 }
 
 impl InputManifestError {
@@ -235,7 +231,6 @@ impl Display for InputManifestError {
             },
             InputManifestError::InvalidCharInManifest => write!(f, "invalid character in manifest"),
             InputManifestError::FailedToInitHashProviders => write!(f, "failed to initialize hash providers"),
-            InputManifestError::HashProviderError(source) => write!(f, "{source}"),
         }
     }
 }
@@ -284,7 +279,6 @@ impl Error for InputManifestError {
             InputManifestError::FailedStorageCleanup(_, source) => Some(source),
             InputManifestError::CantRemoveManifest(source) => Some(source),
             InputManifestError::CantEmbedInTarget(_, source) => Some(source),
-            InputManifestError::HashProviderError(source) => Some(source),
         }
     }
 }
@@ -292,11 +286,5 @@ impl Error for InputManifestError {
 impl From<ArtifactIdError> for InputManifestError {
     fn from(value: ArtifactIdError) -> Self {
         InputManifestError::ArtifactIdError(value)
-    }
-}
-
-impl From<HashProviderError> for InputManifestError {
-    fn from(value: HashProviderError) -> Self {
-        InputManifestError::HashProviderError(value)
     }
 }

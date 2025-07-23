@@ -1,7 +1,11 @@
 use crate::{
-    artifact_id::ArtifactId, error::InputManifestError, hash_algorithm::HashAlgorithm,
-    input_manifest::Input, object_type::Blob, object_type::ObjectType,
-    util::clone_as_boxstr::CloneAsBoxstr, InputManifest,
+    artifact_id::ArtifactId,
+    error::InputManifestError,
+    hash_algorithm::HashAlgorithm,
+    input_manifest::{manifest_source::seal::ManifestSourceSealed, Input},
+    object_type::{Blob, ObjectType},
+    util::clone_as_boxstr::CloneAsBoxstr,
+    InputManifest,
 };
 use std::{
     ffi::{OsStr, OsString},
@@ -12,8 +16,12 @@ use std::{
     str::FromStr,
 };
 
-/// Types that can be used to produce an [`InputManifest`].
-pub trait ManifestSource<H>
+pub(crate) mod seal {
+    pub trait ManifestSourceSealed {}
+}
+
+/// Types that can be used to load an `InputManifest` from disk.
+pub trait ManifestSource<H>: ManifestSourceSealed
 where
     H: HashAlgorithm,
 {
@@ -21,6 +29,8 @@ where
     fn resolve(self, target: Option<ArtifactId<H>>)
         -> Result<InputManifest<H>, InputManifestError>;
 }
+
+impl ManifestSourceSealed for &[u8] {}
 
 impl<H> ManifestSource<H> for &[u8]
 where
@@ -33,6 +43,8 @@ where
         self.to_vec().resolve(target)
     }
 }
+
+impl ManifestSourceSealed for Vec<u8> {}
 
 impl<H> ManifestSource<H> for Vec<u8>
 where
@@ -47,6 +59,22 @@ where
     }
 }
 
+impl<const N: usize> ManifestSourceSealed for &[u8; N] {}
+
+impl<const N: usize, H> ManifestSource<H> for &[u8; N]
+where
+    H: HashAlgorithm,
+{
+    fn resolve(
+        self,
+        target: Option<ArtifactId<H>>,
+    ) -> Result<InputManifest<H>, InputManifestError> {
+        (&self[..]).resolve(target)
+    }
+}
+
+impl ManifestSourceSealed for &str {}
+
 impl<H> ManifestSource<H> for &str
 where
     H: HashAlgorithm,
@@ -59,6 +87,8 @@ where
     }
 }
 
+impl ManifestSourceSealed for &String {}
+
 impl<H> ManifestSource<H> for &String
 where
     H: HashAlgorithm,
@@ -70,6 +100,8 @@ where
         self.deref().resolve(target)
     }
 }
+
+impl ManifestSourceSealed for &OsStr {}
 
 impl<H> ManifestSource<H> for &OsStr
 where
@@ -86,6 +118,8 @@ where
     }
 }
 
+impl ManifestSourceSealed for &OsString {}
+
 impl<H> ManifestSource<H> for &OsString
 where
     H: HashAlgorithm,
@@ -97,6 +131,8 @@ where
         self.deref().resolve(target)
     }
 }
+
+impl ManifestSourceSealed for &Path {}
 
 impl<H> ManifestSource<H> for &Path
 where
@@ -112,6 +148,8 @@ where
     }
 }
 
+impl ManifestSourceSealed for &PathBuf {}
+
 impl<H> ManifestSource<H> for &PathBuf
 where
     H: HashAlgorithm,
@@ -124,6 +162,8 @@ where
     }
 }
 
+impl ManifestSourceSealed for File {}
+
 impl<H> ManifestSource<H> for File
 where
     H: HashAlgorithm,
@@ -135,6 +175,8 @@ where
         (&mut self).resolve(target)
     }
 }
+
+impl ManifestSourceSealed for &mut File {}
 
 impl<H> ManifestSource<H> for &mut File
 where

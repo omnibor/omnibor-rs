@@ -4,6 +4,8 @@ mod input_manifest_builder;
 mod manifest_source;
 mod manifest_source_async;
 
+use std::io::BufWriter;
+
 pub use input_manifest_builder::InputManifestBuilder;
 pub use manifest_source::ManifestSource;
 pub use manifest_source_async::ManifestSourceAsync;
@@ -109,54 +111,6 @@ impl<H: HashAlgorithm> InputManifest<H> {
         }
     }
 
-    /// Get the ID of the artifact this manifest is describing.
-    ///
-    /// If the manifest does not have a target, it is a "detached" manifest.
-    ///
-    /// Detached manifests may still be usable if the target artifact was
-    /// created in embedding mode, in which case it will carry the [`ArtifactId`]
-    /// of its own input manifest in its contents.
-    #[inline]
-    pub fn target(&self) -> Option<ArtifactId<H>> {
-        self.target
-    }
-
-    /// Identify if the manifest is a "detached" manifest.
-    ///
-    /// "Detached" manifests are ones without a target [`ArtifactId`].
-    #[inline]
-    pub fn is_detached(&self) -> bool {
-        self.target.is_none()
-    }
-
-    /// Set a new target.
-    pub(crate) fn set_target(&mut self, target: Option<ArtifactId<H>>) -> &mut Self {
-        self.target = target;
-        self
-    }
-
-    /// Get the header used at the top of the [`InputManifest`].
-    #[inline]
-    pub fn header(&self) -> String {
-        format!("gitoid:{}:{}\n", Blob::NAME, H::NAME)
-    }
-
-    /// Get the inputs recorded inside an [`InputManifest`].
-    #[inline]
-    pub fn inputs(&self) -> &[Input<H>] {
-        &self.inputs[..]
-    }
-
-    /// Check if the manifest contains the given input.
-    #[inline]
-    pub fn contains_artifact<I>(&self, artifact: I) -> Result<bool, InputManifestError>
-    where
-        I: Identify<H>,
-    {
-        let artifact_id = ArtifactId::new(artifact)?;
-        Ok(self.inputs().iter().any(|rel| rel.artifact == artifact_id))
-    }
-
     /// Construct an [`InputManifest`] from a source.
     pub fn load<M, I>(source: M, target: I) -> Result<Self, InputManifestError>
     where
@@ -193,30 +147,87 @@ impl<H: HashAlgorithm> InputManifest<H> {
         source.resolve_async(None).await
     }
 
+    /// Get the ID of the artifact this manifest is describing.
+    ///
+    /// If the manifest does not have a target, it is a "detached" manifest.
+    ///
+    /// Detached manifests may still be usable if the target artifact was
+    /// created in embedding mode, in which case it will carry the [`ArtifactId`]
+    /// of its own input manifest in its contents.
+    #[inline]
+    pub fn target(&self) -> Option<ArtifactId<H>> {
+        self.target
+    }
+
+    /// Set a new target.
+    pub(crate) fn set_target(&mut self, target: Option<ArtifactId<H>>) -> &mut Self {
+        self.target = target;
+        self
+    }
+
+    /// Identify if the manifest is a "detached" manifest.
+    ///
+    /// "Detached" manifests are ones without a target [`ArtifactId`].
+    #[inline]
+    pub fn is_detached(&self) -> bool {
+        self.target.is_none()
+    }
+
+    /// Get the header used at the top of the [`InputManifest`].
+    #[inline]
+    pub fn header(&self) -> String {
+        format!("gitoid:{}:{}\n", Blob::NAME, H::NAME)
+    }
+
+    /// Get the inputs recorded inside an [`InputManifest`].
+    #[inline]
+    pub fn inputs(&self) -> &[Input<H>] {
+        &self.inputs[..]
+    }
+
+    /// Check if the manifest contains the given input.
+    #[inline]
+    pub fn contains_artifact<I>(&self, artifact: I) -> Result<bool, InputManifestError>
+    where
+        I: Identify<H>,
+    {
+        let artifact_id = ArtifactId::new(artifact)?;
+        Ok(self.inputs().iter().any(|rel| rel.artifact == artifact_id))
+    }
+
     /// Get the manifest as bytes.
     pub fn as_bytes(&self) -> Vec<u8> {
-        let mut bytes = vec![];
+        let mut writer = BufWriter::new(Vec::new());
+        // PANIC SAFETY: Writing into a `Vec` will always succeed.
+        self.write(&mut writer).unwrap();
+        writer.into_inner().unwrap()
+    }
 
+    /// Write the input manifest out to a buffered writer.
+    ///
+    /// # Why `BufWriter<dyn Write>`?
+    ///
+    /// This avoids monomorphizing the writer function for every concrete sink,
+    /// and ensures that writers are always buffered.
+    pub fn write(&self, out: &mut BufWriter<dyn Write>) -> std::io::Result<()> {
         // Per the spec, this prefix is present to substantially shorten
         // the metadata info that would otherwise be attached to all IDs in
         // a manifest if they were written in full form. Instead, only the
         // hex-encoded hashes are recorded elsewhere, because all the metadata
         // is identical in a manifest and only recorded once at the beginning.
-        let _ = write!(bytes, "{}", self.header());
+        write!(out, "{}", self.header())?;
 
         for relation in &self.inputs {
-            let aid = relation.artifact;
+            write!(out, "{}", relation.artifact.as_hex())?;
 
-            let _ = write!(bytes, "{}", aid.as_hex());
-
-            if let Some(mid) = relation.manifest {
-                let _ = write!(bytes, " manifest {}", mid.as_hex());
+            if let Some(manifest_aid) = relation.manifest {
+                write!(out, " manifest {}", manifest_aid.as_hex())?;
             }
 
-            let _ = writeln!(bytes);
+            writeln!(out)?;
         }
 
-        bytes
+        Ok(())
     }
 }
 

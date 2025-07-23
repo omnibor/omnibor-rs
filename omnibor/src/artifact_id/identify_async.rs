@@ -1,7 +1,7 @@
 use crate::{
     error::ArtifactIdError, gitoid::internal::gitoid_from_async_reader,
-    hash_algorithm::HashAlgorithm, hash_provider::registry::get_hash_provider_async,
-    object_type::Blob, util::clone_as_boxstr::CloneAsBoxstr, ArtifactId,
+    hash_algorithm::HashAlgorithm, hash_provider::registry::get_hash_provider, object_type::Blob,
+    util::clone_as_boxstr::CloneAsBoxstr, ArtifactId,
 };
 use std::{
     ffi::{OsStr, OsString},
@@ -92,7 +92,7 @@ where
     H: HashAlgorithm,
 {
     async fn identify_async(self) -> Result<ArtifactId<H>, ArtifactIdError> {
-        let mut digester = get_hash_provider_async().await.digester();
+        let mut digester = get_hash_provider().digester();
         let gitoid = gitoid_from_async_reader::<H, Blob, _>(&mut *digester, self).await?;
         Ok(ArtifactId::from_gitoid(gitoid))
     }
@@ -113,7 +113,7 @@ where
     R: AsyncRead + AsyncSeek + Unpin,
 {
     async fn identify_async(self) -> Result<ArtifactId<H>, ArtifactIdError> {
-        let mut digester = get_hash_provider_async().await.digester();
+        let mut digester = get_hash_provider().digester();
         let gitoid = gitoid_from_async_reader::<H, Blob, _>(&mut *digester, self).await?;
         Ok(ArtifactId::from_gitoid(gitoid))
     }

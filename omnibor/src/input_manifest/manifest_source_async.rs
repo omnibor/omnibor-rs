@@ -1,7 +1,7 @@
-// TODO: Write impls
-
 use crate::{
-    error::InputManifestError, hash_algorithm::HashAlgorithm, input_manifest::ManifestSource,
+    error::InputManifestError,
+    hash_algorithm::HashAlgorithm,
+    input_manifest::{manifest_source::seal::ManifestSourceSealed, ManifestSource},
     ArtifactId, InputManifest,
 };
 use std::{
@@ -11,8 +11,8 @@ use std::{
 };
 use tokio::{fs::File, io::AsyncReadExt};
 
-/// Types that can be used to produce an [`InputManifest`].
-pub trait ManifestSourceAsync<H>
+/// Types that can be used to load an `InputManifest` from disk asynchronously.
+pub trait ManifestSourceAsync<H>: ManifestSourceSealed
 where
     H: HashAlgorithm,
 {
@@ -100,6 +100,8 @@ where
     }
 }
 
+impl ManifestSourceSealed for &mut File {}
+
 impl<H> ManifestSourceAsync<H> for &mut File
 where
     H: HashAlgorithm,
@@ -115,6 +117,8 @@ where
         contents.resolve(target)
     }
 }
+
+impl ManifestSourceSealed for File {}
 
 impl<H> ManifestSourceAsync<H> for File
 where
