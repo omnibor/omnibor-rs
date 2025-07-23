@@ -4,27 +4,23 @@ mod input_manifest_builder;
 mod manifest_source;
 mod manifest_source_async;
 
-use std::io::BufWriter;
-
 pub use input_manifest_builder::InputManifestBuilder;
 pub use manifest_source::ManifestSource;
 pub use manifest_source_async::ManifestSourceAsync;
-
-use crate::{hash_algorithm::Sha256, IdentifyAsync};
 
 use {
     crate::{
         artifact_id::ArtifactId,
         error::InputManifestError,
-        hash_algorithm::HashAlgorithm,
+        hash_algorithm::{HashAlgorithm, Sha256},
         object_type::{Blob, ObjectType},
         storage::Storage,
-        Identify,
+        Identify, IdentifyAsync,
     },
     std::{
         cmp::Ordering,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
-        io::Write,
+        io::{BufWriter, Write},
     },
 };
 
@@ -218,13 +214,15 @@ impl<H: HashAlgorithm> InputManifest<H> {
         write!(out, "{}", self.header())?;
 
         for relation in &self.inputs {
-            write!(out, "{}", relation.artifact.as_hex())?;
+            let target_hex = relation.artifact.as_hex();
 
-            if let Some(manifest_aid) = relation.manifest {
-                write!(out, " manifest {}", manifest_aid.as_hex())?;
+            match relation.manifest {
+                Some(manifest_aid) => {
+                    let manifest_hex = manifest_aid.as_hex();
+                    writeln!(out, "{target_hex} manifest {manifest_hex}")?
+                }
+                None => writeln!(out, "{target_hex}")?,
             }
-
-            writeln!(out)?;
         }
 
         Ok(())
@@ -242,7 +240,8 @@ impl<H: HashAlgorithm> Debug for InputManifest<H> {
 
 impl<H: HashAlgorithm> Display for InputManifest<H> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let str = String::from_utf8(self.as_bytes().to_vec()).unwrap();
+        // PANIC SAFETY: Always guaranteed to be valid UTF-8.
+        let str = String::from_utf8(self.as_bytes()).unwrap();
         write!(f, "{str}")
     }
 }
