@@ -69,39 +69,39 @@ impl InMemoryStorage {
     fn remove_manifest_for_target(
         &mut self,
         target_aid: ArtifactId<Sha256>,
-    ) -> Result<InputManifest<Sha256>, InputManifestError> {
-        let pos = self
+    ) -> Result<Option<InputManifest<Sha256>>, InputManifestError> {
+        let possible_position = self
             .sha256_manifests
             .iter()
-            .position(|entry| entry.manifest.target() == Some(target_aid))
-            .ok_or_else(|| {
-                InputManifestError::CantFindManifestForTarget(
-                    target_aid.to_string().into_boxed_str(),
-                )
-            })?;
+            .position(|entry| entry.manifest.target() == Some(target_aid));
+
+        let pos = match possible_position {
+            Some(pos) => pos,
+            None => return Ok(None),
+        };
 
         let manifest = self.sha256_manifests.remove(pos).manifest;
 
-        Ok(manifest)
+        Ok(Some(manifest))
     }
 
     fn remove_manifest_with_id(
         &mut self,
         manifest_aid: ArtifactId<Sha256>,
-    ) -> Result<InputManifest<Sha256>, InputManifestError> {
-        let pos = self
+    ) -> Result<Option<InputManifest<Sha256>>, InputManifestError> {
+        let possible_position = self
             .sha256_manifests
             .iter()
-            .position(|entry| entry.manifest_aid == manifest_aid)
-            .ok_or_else(|| {
-                InputManifestError::CantFindManifestWithId(
-                    manifest_aid.to_string().into_boxed_str(),
-                )
-            })?;
+            .position(|entry| entry.manifest_aid == manifest_aid);
+
+        let pos = match possible_position {
+            Some(pos) => pos,
+            None => return Ok(None),
+        };
 
         let manifest = self.sha256_manifests.remove(pos).manifest;
 
-        Ok(manifest)
+        Ok(Some(manifest))
     }
 }
 
@@ -155,7 +155,7 @@ impl Storage<Sha256> for InMemoryStorage {
     fn remove_manifest(
         &mut self,
         matcher: Match<Sha256>,
-    ) -> Result<InputManifest<Sha256>, InputManifestError> {
+    ) -> Result<Option<InputManifest<Sha256>>, InputManifestError> {
         match matcher {
             Match::Target(artifact_id) => self.remove_manifest_for_target(artifact_id),
             Match::Manifest(artifact_id) => self.remove_manifest_with_id(artifact_id),

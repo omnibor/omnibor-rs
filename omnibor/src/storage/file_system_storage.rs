@@ -158,7 +158,7 @@ impl<H: HashAlgorithm> FileSystemStorage<H> {
     fn remove_manifest_for_target(
         &mut self,
         target_aid: ArtifactId<H>,
-    ) -> Result<InputManifest<H>, InputManifestError> {
+    ) -> Result<Option<InputManifest<H>>, InputManifestError> {
         // Remove the relevant entry from the target index.
         self.target_index()?
             .start_remove()
@@ -166,10 +166,13 @@ impl<H: HashAlgorithm> FileSystemStorage<H> {
             .run_remove()?;
 
         // Find the manifest in the store.
-        let manifest_entry: ManifestsEntry<H> = self
+        let manifest_entry: ManifestsEntry<H> = match self
             .manifests()
             .find(|entry| entry.target_aid == Some(target_aid))
-            .ok_or(InputManifestError::NoManifestFoundToRemove)?;
+        {
+            Some(entry) => entry,
+            None => return Ok(None),
+        };
 
         // Get a copy of it to return.
         let removed_manifest = manifest_entry.manifest()?;
@@ -178,13 +181,13 @@ impl<H: HashAlgorithm> FileSystemStorage<H> {
         fs::remove_file(&manifest_entry.manifest_path)
             .map_err(|source| InputManifestError::CantRemoveManifest(Box::new(source)))?;
 
-        Ok(removed_manifest)
+        Ok(Some(removed_manifest))
     }
 
     fn remove_manifest_with_id(
         &mut self,
         manifest_aid: ArtifactId<H>,
-    ) -> Result<InputManifest<H>, InputManifestError> {
+    ) -> Result<Option<InputManifest<H>>, InputManifestError> {
         // Remove the relevant entry from the target index.
         self.target_index()?
             .start_remove()
@@ -192,10 +195,13 @@ impl<H: HashAlgorithm> FileSystemStorage<H> {
             .run_remove()?;
 
         // Find the manifest in the store.
-        let manifest_entry: ManifestsEntry<H> = self
+        let manifest_entry: ManifestsEntry<H> = match self
             .manifests()
             .find(|entry| ArtifactId::new(&entry.manifest_path).ok() == Some(manifest_aid))
-            .ok_or(InputManifestError::NoManifestFoundToRemove)?;
+        {
+            Some(entry) => entry,
+            None => return Ok(None),
+        };
 
         // Get a copy of it to return.
         let removed_manifest = manifest_entry.manifest()?;
@@ -204,7 +210,7 @@ impl<H: HashAlgorithm> FileSystemStorage<H> {
         fs::remove_file(&manifest_entry.manifest_path)
             .map_err(|source| InputManifestError::CantRemoveManifest(Box::new(source)))?;
 
-        Ok(removed_manifest)
+        Ok(Some(removed_manifest))
     }
 }
 
@@ -293,7 +299,7 @@ impl<H: HashAlgorithm> Storage<H> for FileSystemStorage<H> {
     fn remove_manifest(
         &mut self,
         matcher: Match<H>,
-    ) -> Result<InputManifest<H>, InputManifestError> {
+    ) -> Result<Option<InputManifest<H>>, InputManifestError> {
         match matcher {
             Match::Target(artifact_id) => self.remove_manifest_for_target(artifact_id),
             Match::Manifest(artifact_id) => self.remove_manifest_with_id(artifact_id),
@@ -447,7 +453,7 @@ impl<H: HashAlgorithm> TargetIndexRemove<H> {
     /// Run the removal operation, removing based on matching the set criteria.
     ///
     /// This returns the Artifact ID of the removed [`InputManifest`] to the caller.
-    fn run_remove(self) -> Result<ArtifactId<H>, InputManifestError> {
+    fn run_remove(self) -> Result<Option<ArtifactId<H>>, InputManifestError> {
         if matches!((self.manifest_aid, self.target_aid), (None, None)) {
             return Err(InputManifestError::MissingTargetIndexRemoveCriteria);
         }
@@ -479,23 +485,28 @@ impl<H: HashAlgorithm> TargetIndexRemove<H> {
             target_index.insert(line_manifest_aid, line_target_aid);
         }
 
-        // Update the index in memory.
-        let entry_to_remove: ArtifactId<H> = *target_index
-            .iter()
-            .find(|(entry_manifest_aid, entry_target_aid)| {
-                match (self.target_aid, self.manifest_aid) {
-                    (None, None) => unreachable!(
-                        "target_aid and manifest_aid will always have at least one set"
-                    ),
-                    (None, Some(manifest_aid)) => **entry_manifest_aid == manifest_aid,
-                    (Some(target_aid), None) => **entry_target_aid == target_aid,
-                    (Some(target_aid), Some(manifest_aid)) => {
-                        (**entry_manifest_aid == manifest_aid) && (**entry_target_aid == target_aid)
+        let possible_idx_entry =
+            target_index
+                .iter()
+                .find(|(entry_manifest_aid, entry_target_aid)| {
+                    match (self.target_aid, self.manifest_aid) {
+                        (None, None) => unreachable!(
+                            "target_aid and manifest_aid will always have at least one set"
+                        ),
+                        (None, Some(manifest_aid)) => **entry_manifest_aid == manifest_aid,
+                        (Some(target_aid), None) => **entry_target_aid == target_aid,
+                        (Some(target_aid), Some(manifest_aid)) => {
+                            (**entry_manifest_aid == manifest_aid)
+                                && (**entry_target_aid == target_aid)
+                        }
                     }
-                }
-            })
-            .ok_or(InputManifestError::NoManifestFoundToRemove)?
-            .0;
+                });
+
+        // Update the index in memory.
+        let entry_to_remove: ArtifactId<H> = match possible_idx_entry {
+            Some(entry) => *entry.0,
+            None => return Ok(None),
+        };
 
         // PANIC SAFETY: We know the key is there; we just found it.
         let removed_manifest = target_index.remove(&entry_to_remove).unwrap();
@@ -542,7 +553,7 @@ impl<H: HashAlgorithm> TargetIndexRemove<H> {
             });
         }
 
-        Ok(removed_manifest)
+        Ok(Some(removed_manifest))
     }
 }
 

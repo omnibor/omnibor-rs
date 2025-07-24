@@ -125,9 +125,6 @@ pub enum InputManifestError {
     /// Missing target index removal criteria.
     MissingTargetIndexRemoveCriteria,
 
-    /// No manifest found to remove in the target index
-    NoManifestFoundToRemove,
-
     /// Can't remove manifest from storage.
     CantRemoveManifest(Box<IoError>),
 
@@ -209,7 +206,6 @@ impl Display for InputManifestError {
             InputManifestError::CantFindManifestForTarget(s) => write!(f, "can't find manifest for target Artifact ID '{s}'"),
             InputManifestError::CantFindManifestWithId(s) => write!(f, "can't find manifest with Artifact ID '{s}'"),
             InputManifestError::MissingTargetIndexRemoveCriteria => write!(f, "missing target index removal criteria; make sure to set a target or manifest Artifact ID"),
-            InputManifestError::NoManifestFoundToRemove => write!(f, "no manifest found to remove in the target index"),
             InputManifestError::CantRemoveManifest(_) => write!(f, "can't remove manifest from storage"),
             InputManifestError::UnknownEmbeddingTarget => {
                 write!(f, "unknown file type for manifest ID embedding")
@@ -254,7 +250,6 @@ impl Error for InputManifestError {
             | InputManifestError::CantFindManifestForTarget(_)
             | InputManifestError::CantFindManifestWithId(_)
             | InputManifestError::MissingTargetIndexRemoveCriteria
-            | InputManifestError::NoManifestFoundToRemove
             | InputManifestError::UnknownEmbeddingTarget
             | InputManifestError::UnsupportedBinaryFormat(_)
             | InputManifestError::FormatDoesntSupportEmbedding(_)

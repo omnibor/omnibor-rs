@@ -39,6 +39,9 @@ pub trait Storage<H: HashAlgorithm> {
     fn get_manifests(&self) -> Result<Vec<InputManifest<H>>, InputManifestError>;
 
     /// Get a manifest by matching on the criteria.
+    ///
+    /// Returns `Ok(None)` if no match was found. Returns the manifest if found.
+    /// Returns an error otherwise.
     fn get_manifest(
         &self,
         matcher: Match<H>,
@@ -53,11 +56,13 @@ pub trait Storage<H: HashAlgorithm> {
 
     /// Remove the manifest for the target artifact.
     ///
-    /// Returns the manifest to the caller.
+    /// Returns the manifest to the caller, if found. Returns `Ok(None)` if no
+    /// errors were encountered but the manifest was not found in storage.
+    /// Returns errors otherwise.
     fn remove_manifest(
         &mut self,
         matcher: Match<H>,
-    ) -> Result<InputManifest<H>, InputManifestError>;
+    ) -> Result<Option<InputManifest<H>>, InputManifestError>;
 }
 
 impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
@@ -90,7 +95,7 @@ impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
     fn remove_manifest(
         &mut self,
         matcher: Match<H>,
-    ) -> Result<InputManifest<H>, InputManifestError> {
+    ) -> Result<Option<InputManifest<H>>, InputManifestError> {
         (**self).remove_manifest(matcher)
     }
 }
