@@ -4,7 +4,7 @@ use {
         error::InputManifestError,
         hash_algorithm::{HashAlgorithm, Sha256},
         input_manifest::InputManifest,
-        storage::Storage,
+        storage::{query::Match, Storage},
     },
     std::fmt::Debug,
 };
@@ -47,16 +47,6 @@ impl InMemoryStorage {
             .iter()
             .find(|entry| entry.manifest_aid == manifest_aid)
     }
-}
-
-impl Storage<Sha256> for InMemoryStorage {
-    fn get_manifests(&self) -> Result<Vec<InputManifest<Sha256>>, InputManifestError> {
-        Ok(self
-            .sha256_manifests
-            .iter()
-            .map(|entry| entry.manifest.clone())
-            .collect())
-    }
 
     fn get_manifest_for_target(
         &self,
@@ -74,34 +64,6 @@ impl Storage<Sha256> for InMemoryStorage {
         Ok(self
             .match_by_manifest_aid(manifest_aid)
             .map(|entry| entry.manifest.clone()))
-    }
-
-    fn write_manifest(
-        &mut self,
-        manifest: &InputManifest<Sha256>,
-    ) -> Result<ArtifactId<Sha256>, InputManifestError> {
-        // SAFETY: Identifying a manifest is infallible.
-        let manifest_aid = ArtifactId::new(manifest).unwrap();
-
-        self.sha256_manifests.push(ManifestEntry {
-            manifest_aid,
-            manifest: manifest.clone(),
-        });
-
-        Ok(manifest_aid)
-    }
-
-    fn update_target_for_manifest(
-        &mut self,
-        manifest_aid: ArtifactId<Sha256>,
-        target_aid: ArtifactId<Sha256>,
-    ) -> Result<(), InputManifestError> {
-        self.sha256_manifests
-            .iter_mut()
-            .find(|entry| entry.manifest_aid == manifest_aid)
-            .map(|entry| entry.manifest.set_target(Some(target_aid)));
-
-        Ok(())
     }
 
     fn remove_manifest_for_target(
@@ -140,6 +102,64 @@ impl Storage<Sha256> for InMemoryStorage {
         let manifest = self.sha256_manifests.remove(pos).manifest;
 
         Ok(manifest)
+    }
+}
+
+impl Storage<Sha256> for InMemoryStorage {
+    fn write_manifest(
+        &mut self,
+        manifest: &InputManifest<Sha256>,
+    ) -> Result<ArtifactId<Sha256>, InputManifestError> {
+        // SAFETY: Identifying a manifest is infallible.
+        let manifest_aid = ArtifactId::new(manifest).unwrap();
+
+        self.sha256_manifests.push(ManifestEntry {
+            manifest_aid,
+            manifest: manifest.clone(),
+        });
+
+        Ok(manifest_aid)
+    }
+
+    fn get_manifests(&self) -> Result<Vec<InputManifest<Sha256>>, InputManifestError> {
+        Ok(self
+            .sha256_manifests
+            .iter()
+            .map(|entry| entry.manifest.clone())
+            .collect())
+    }
+
+    fn get_manifest(
+        &self,
+        matcher: Match<Sha256>,
+    ) -> Result<Option<InputManifest<Sha256>>, InputManifestError> {
+        match matcher {
+            Match::Target(artifact_id) => self.get_manifest_for_target(artifact_id),
+            Match::Manifest(artifact_id) => self.get_manifest_with_id(artifact_id),
+        }
+    }
+
+    fn update_manifest_target(
+        &mut self,
+        manifest_aid: ArtifactId<Sha256>,
+        target_aid: ArtifactId<Sha256>,
+    ) -> Result<(), InputManifestError> {
+        self.sha256_manifests
+            .iter_mut()
+            .find(|entry| entry.manifest_aid == manifest_aid)
+            .map(|entry| entry.manifest.set_target(Some(target_aid)));
+
+        Ok(())
+    }
+
+    fn remove_manifest(
+        &mut self,
+        matcher: Match<Sha256>,
+    ) -> Result<InputManifest<Sha256>, InputManifestError> {
+        match matcher {
+            Match::Target(artifact_id) => self.remove_manifest_for_target(artifact_id),
+            Match::Manifest(artifact_id) => self.remove_manifest_with_id(artifact_id),
+        }
     }
 }
 

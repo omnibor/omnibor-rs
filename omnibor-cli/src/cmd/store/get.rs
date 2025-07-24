@@ -4,7 +4,11 @@ use crate::{
     error::{Error, Result},
     print::{msg::store_get::StoreGetMsg, PrinterCmd},
 };
-use omnibor::{hash_algorithm::Sha256, storage::Storage, ArtifactId};
+use omnibor::{
+    hash_algorithm::Sha256,
+    storage::{Match, Storage},
+    ArtifactId,
+};
 use tracing::warn;
 
 /// Run the `store get` subcommand.
@@ -48,7 +52,7 @@ async fn get_all(app: &App) -> Result<()> {
 async fn get_by_target(app: &App, target: ArtifactId<Sha256>) -> Result<()> {
     let storage = app.storage()?;
     let manifest = storage
-        .get_manifest_for_target(target)
+        .get_manifest(Match::Target(target))
         .map_err(Error::CantGetManifests)?
         .ok_or_else(|| Error::ManifestNotFoundForTarget(target))?;
 
@@ -62,7 +66,7 @@ async fn get_by_target(app: &App, target: ArtifactId<Sha256>) -> Result<()> {
 async fn get_by_id(app: &App, id: ArtifactId<Sha256>) -> Result<()> {
     let storage = app.storage()?;
     let manifest = storage
-        .get_manifest_with_id(id)
+        .get_manifest(Match::Manifest(id))
         .map_err(Error::CantGetManifests)?
         .ok_or_else(|| Error::ManifestNotFoundWithId(id))?;
 

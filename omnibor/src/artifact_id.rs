@@ -5,11 +5,13 @@ pub(crate) mod identify_async;
 
 pub use crate::artifact_id::identify::Identify;
 pub use crate::artifact_id::identify_async::IdentifyAsync;
-use crate::hash_algorithm::Sha256;
 
 use {
     crate::{
-        error::ArtifactIdError, gitoid::GitOid, hash_algorithm::HashAlgorithm, object_type::Blob,
+        error::ArtifactIdError,
+        gitoid::GitOid,
+        hash_algorithm::{HashAlgorithm, Sha256},
+        object_type::Blob,
     },
     core::{
         cmp::Ordering,
@@ -133,6 +135,14 @@ pub struct ArtifactId<H: HashAlgorithm> {
 
 impl ArtifactId<Sha256> {
     /// Identify the target artifact with the SHA-256 hash function.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use omnibor::{ArtifactId, error::ArtifactIdError};
+    /// let artifact_id = ArtifactId::sha256(b"hello, world")?;
+    /// # Ok::<(), ArtifactIdError>(())
+    /// ```
     pub fn sha256<I>(target: I) -> Result<Self, ArtifactIdError>
     where
         I: Identify<Sha256>,
@@ -141,6 +151,17 @@ impl ArtifactId<Sha256> {
     }
 
     /// Identify the target artifact with the SHA-256 hash function asynchronously.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use omnibor::{ArtifactId, error::ArtifactIdError};
+    /// # tokio_test::block_on(async {
+    /// let artifact_id = ArtifactId::sha256_async("test/data/c/main.c").await?;
+    /// # Ok(())
+    /// # })?;
+    /// # Ok::<(), ArtifactIdError>(())
+    /// ```
     pub async fn sha256_async<I>(target: I) -> Result<Self, ArtifactIdError>
     where
         I: IdentifyAsync<Sha256>,
@@ -151,6 +172,14 @@ impl ArtifactId<Sha256> {
 
 impl<H: HashAlgorithm> ArtifactId<H> {
     /// Identify the target artifact.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use omnibor::{ArtifactId, error::ArtifactIdError, hash_algorithm::Sha256};
+    /// let artifact_id = ArtifactId::<Sha256>::new("test/data/c/main.c")?;
+    /// # Ok::<(), ArtifactIdError>(())
+    /// ```
     pub fn new<I>(target: I) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         I: Identify<H>,
@@ -159,6 +188,17 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     }
 
     /// Identify the target artifact asynchronously.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use omnibor::{ArtifactId, error::ArtifactIdError, hash_algorithm::Sha256};
+    /// # tokio_test::block_on(async {
+    /// let artifact_id = ArtifactId::<Sha256>::new_async("test/data/c/main.c").await?;
+    /// # Ok(())
+    /// # })?;
+    /// # Ok::<(), ArtifactIdError>(())
+    /// ```
     pub async fn new_async<I>(target: I) -> Result<ArtifactId<H>, ArtifactIdError>
     where
         I: IdentifyAsync<H>,
@@ -194,7 +234,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::new(b"hello, world").unwrap();
@@ -212,7 +252,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::new(b"hello, world").unwrap();
@@ -228,7 +268,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::new(b"hello, world").unwrap();
@@ -245,7 +285,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::new(b"hello, world").unwrap();
@@ -263,7 +303,7 @@ impl<H: HashAlgorithm> ArtifactId<H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// # use omnibor::ArtifactId;
     /// # use omnibor::hash_algorithm::Sha256;
     /// let id: ArtifactId<Sha256> = ArtifactId::new(b"hello, world").unwrap();

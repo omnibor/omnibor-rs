@@ -5,7 +5,7 @@ use {
         error::InputManifestError,
         hash_algorithm::HashAlgorithm,
         input_manifest::{Input, InputManifest},
-        storage::Storage,
+        storage::{query::Match, Storage},
         Identify,
     },
     std::{
@@ -79,7 +79,7 @@ where
 
         let manifest_aid = self
             .storage
-            .get_manifest_for_target(artifact)?
+            .get_manifest(Match::Target(artifact))?
             .map(|manifest| {
                 // SAFETY: identifying a manifest is infallible.
                 ArtifactId::new(&manifest).unwrap()

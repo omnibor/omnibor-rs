@@ -24,6 +24,7 @@ where
     ) -> Result<InputManifest<H>, InputManifestError>;
 }
 
+/// Treat as a path, load the file, read the contents.
 impl<H> ManifestSourceAsync<H> for &str
 where
     H: HashAlgorithm,
@@ -36,6 +37,7 @@ where
     }
 }
 
+/// Treat as a path, load the file, read the contents.
 impl<H> ManifestSourceAsync<H> for &String
 where
     H: HashAlgorithm,
@@ -48,6 +50,7 @@ where
     }
 }
 
+/// Treat as a path, load the file, read the contents.
 impl<H> ManifestSourceAsync<H> for &OsStr
 where
     H: HashAlgorithm,
@@ -60,6 +63,7 @@ where
     }
 }
 
+/// Treat as a path, load the file, read the contents.
 impl<H> ManifestSourceAsync<H> for &OsString
 where
     H: HashAlgorithm,
@@ -72,6 +76,7 @@ where
     }
 }
 
+/// Load the file, read the contents.
 impl<H> ManifestSourceAsync<H> for &Path
 where
     H: HashAlgorithm,
@@ -88,6 +93,7 @@ where
     }
 }
 
+/// Load the file, read the contents.
 impl<H> ManifestSourceAsync<H> for &PathBuf
 where
     H: HashAlgorithm,
@@ -102,6 +108,7 @@ where
 
 impl ManifestSourceSealed for &mut File {}
 
+/// Read the contents.
 impl<H> ManifestSourceAsync<H> for &mut File
 where
     H: HashAlgorithm,
@@ -120,6 +127,7 @@ where
 
 impl ManifestSourceSealed for File {}
 
+/// Read the contents.
 impl<H> ManifestSourceAsync<H> for File
 where
     H: HashAlgorithm,

@@ -27,6 +27,7 @@ where
     async fn identify_async(self) -> Result<ArtifactId<H>, ArtifactIdError>;
 }
 
+/// Treat as path, load the file, hash the contents.
 impl<H> IdentifyAsync<H> for &str
 where
     H: HashAlgorithm,
@@ -36,6 +37,7 @@ where
     }
 }
 
+/// Treat as path, load the file, hash the contents.
 impl<H> IdentifyAsync<H> for &String
 where
     H: HashAlgorithm,
@@ -45,6 +47,7 @@ where
     }
 }
 
+/// Treat as path, load the file, hash the contents.
 impl<H> IdentifyAsync<H> for &OsStr
 where
     H: HashAlgorithm,
@@ -54,6 +57,7 @@ where
     }
 }
 
+/// Treat as path, load the file, hash the contents.
 impl<H> IdentifyAsync<H> for &OsString
 where
     H: HashAlgorithm,
@@ -63,6 +67,7 @@ where
     }
 }
 
+/// Load the file, hash the contents.
 impl<H> IdentifyAsync<H> for &Path
 where
     H: HashAlgorithm,
@@ -79,6 +84,7 @@ where
     }
 }
 
+/// Load the file, hash the contents.
 impl<H> IdentifyAsync<H> for &PathBuf
 where
     H: HashAlgorithm,
@@ -90,6 +96,7 @@ where
 
 impl IdentifySealed for &mut File {}
 
+/// Hash the contents.
 impl<H> IdentifyAsync<H> for &mut File
 where
     H: HashAlgorithm,
@@ -103,6 +110,7 @@ where
 
 impl IdentifySealed for File {}
 
+/// Hash the contents.
 impl<H> IdentifyAsync<H> for File
 where
     H: HashAlgorithm,
@@ -114,6 +122,7 @@ where
 
 impl<R> IdentifySealed for BufReader<R> where R: AsyncRead + AsyncSeek + Unpin {}
 
+/// Hash the contents.
 impl<H, R> IdentifyAsync<H> for BufReader<R>
 where
     H: HashAlgorithm,
@@ -126,6 +135,7 @@ where
     }
 }
 
+/// Hash the contents.
 impl<H> IdentifyAsync<H> for ArtifactId<H>
 where
     H: HashAlgorithm,

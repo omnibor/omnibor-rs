@@ -32,6 +32,7 @@ where
 
 impl ManifestSourceSealed for &[u8] {}
 
+/// Read the bytes.
 impl<H> ManifestSource<H> for &[u8]
 where
     H: HashAlgorithm,
@@ -46,6 +47,7 @@ where
 
 impl ManifestSourceSealed for Vec<u8> {}
 
+/// Read the bytes.
 impl<H> ManifestSource<H> for Vec<u8>
 where
     H: HashAlgorithm,
@@ -61,6 +63,7 @@ where
 
 impl<const N: usize> ManifestSourceSealed for [u8; N] {}
 
+/// Read the bytes.
 impl<const N: usize, H> ManifestSource<H> for [u8; N]
 where
     H: HashAlgorithm,
@@ -75,6 +78,7 @@ where
 
 impl<const N: usize> ManifestSourceSealed for &[u8; N] {}
 
+/// Read the bytes.
 impl<const N: usize, H> ManifestSource<H> for &[u8; N]
 where
     H: HashAlgorithm,
@@ -89,6 +93,7 @@ where
 
 impl ManifestSourceSealed for &str {}
 
+/// Treat as a path, load the file, read the contents.
 impl<H> ManifestSource<H> for &str
 where
     H: HashAlgorithm,
@@ -103,6 +108,7 @@ where
 
 impl ManifestSourceSealed for &String {}
 
+/// Treat as a path, load the file, read the contents.
 impl<H> ManifestSource<H> for &String
 where
     H: HashAlgorithm,
@@ -117,6 +123,7 @@ where
 
 impl ManifestSourceSealed for &OsStr {}
 
+/// Treat as a path, load the file, read the contents.
 impl<H> ManifestSource<H> for &OsStr
 where
     H: HashAlgorithm,
@@ -134,6 +141,7 @@ where
 
 impl ManifestSourceSealed for &OsString {}
 
+/// Treat as a path, load the file, read the contents.
 impl<H> ManifestSource<H> for &OsString
 where
     H: HashAlgorithm,
@@ -148,6 +156,7 @@ where
 
 impl ManifestSourceSealed for &Path {}
 
+/// Load the file, read the contents.
 impl<H> ManifestSource<H> for &Path
 where
     H: HashAlgorithm,
@@ -164,6 +173,7 @@ where
 
 impl ManifestSourceSealed for &PathBuf {}
 
+/// Load the file, read the contents.
 impl<H> ManifestSource<H> for &PathBuf
 where
     H: HashAlgorithm,
@@ -178,6 +188,7 @@ where
 
 impl ManifestSourceSealed for File {}
 
+/// Read the contents.
 impl<H> ManifestSource<H> for File
 where
     H: HashAlgorithm,
@@ -192,6 +203,7 @@ where
 
 impl ManifestSourceSealed for &mut File {}
 
+/// Read the contents.
 impl<H> ManifestSource<H> for &mut File
 where
     H: HashAlgorithm,

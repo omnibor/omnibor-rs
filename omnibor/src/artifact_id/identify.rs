@@ -33,6 +33,7 @@ where
 
 impl IdentifySealed for &[u8] {}
 
+/// Hash the bytes.
 impl<H> Identify<H> for &[u8]
 where
     H: HashAlgorithm,
@@ -46,6 +47,7 @@ where
 
 impl<const N: usize> IdentifySealed for [u8; N] {}
 
+/// Hash the bytes.
 impl<H, const N: usize> Identify<H> for [u8; N]
 where
     H: HashAlgorithm,
@@ -57,6 +59,7 @@ where
 
 impl<const N: usize> IdentifySealed for &[u8; N] {}
 
+/// Hash the bytes.
 impl<H, const N: usize> Identify<H> for &[u8; N]
 where
     H: HashAlgorithm,
@@ -68,6 +71,7 @@ where
 
 impl IdentifySealed for &str {}
 
+/// Treat as path, load the file, hash the contents.
 impl<H> Identify<H> for &str
 where
     H: HashAlgorithm,
@@ -79,6 +83,7 @@ where
 
 impl IdentifySealed for &String {}
 
+/// Treat as path, load the file, hash the contents.
 impl<H> Identify<H> for &String
 where
     H: HashAlgorithm,
@@ -90,6 +95,7 @@ where
 
 impl IdentifySealed for &OsStr {}
 
+/// Treat as path, load the file, hash the contents.
 impl<H> Identify<H> for &OsStr
 where
     H: HashAlgorithm,
@@ -101,6 +107,7 @@ where
 
 impl IdentifySealed for &OsString {}
 
+/// Treat as path, load the file, hash the contents.
 impl<H> Identify<H> for &OsString
 where
     H: HashAlgorithm,
@@ -112,6 +119,7 @@ where
 
 impl IdentifySealed for &Path {}
 
+/// Load the file, hash the contents.
 impl<H> Identify<H> for &Path
 where
     H: HashAlgorithm,
@@ -128,6 +136,7 @@ where
 
 impl IdentifySealed for &PathBuf {}
 
+/// Load the file, hash the contents.
 impl<H> Identify<H> for &PathBuf
 where
     H: HashAlgorithm,
@@ -139,6 +148,7 @@ where
 
 impl IdentifySealed for File {}
 
+/// Hash the contents.
 impl<H> Identify<H> for File
 where
     H: HashAlgorithm,
@@ -150,6 +160,7 @@ where
 
 impl IdentifySealed for &File {}
 
+/// Hash the contents.
 impl<H> Identify<H> for &File
 where
     H: HashAlgorithm,
@@ -162,6 +173,7 @@ where
 
 impl IdentifySealed for &mut File {}
 
+/// Hash the contents.
 impl<H> Identify<H> for &mut File
 where
     H: HashAlgorithm,
@@ -173,6 +185,7 @@ where
 
 impl IdentifySealed for Box<File> {}
 
+/// Hash the contents.
 impl<H> Identify<H> for Box<File>
 where
     H: HashAlgorithm,
@@ -184,6 +197,7 @@ where
 
 impl IdentifySealed for Rc<File> {}
 
+/// Hash the contents.
 impl<H> Identify<H> for Rc<File>
 where
     H: HashAlgorithm,
@@ -195,6 +209,7 @@ where
 
 impl IdentifySealed for Arc<File> {}
 
+/// Hash the contents.
 impl<H> Identify<H> for Arc<File>
 where
     H: HashAlgorithm,
@@ -206,6 +221,7 @@ where
 
 impl<R> IdentifySealed for BufReader<R> where R: Read + Seek {}
 
+/// Hash the contents.
 impl<H, R> Identify<H> for BufReader<R>
 where
     H: HashAlgorithm,
@@ -217,6 +233,7 @@ where
     }
 }
 
+/// Hash the bytes.
 impl<T> IdentifySealed for Cursor<T> where T: AsRef<[u8]> {}
 
 impl<H, T> Identify<H> for Cursor<T>
@@ -232,6 +249,7 @@ where
 
 impl<H> IdentifySealed for InputManifest<H> where H: HashAlgorithm {}
 
+/// Hash the contents.
 impl<H> Identify<H> for InputManifest<H>
 where
     H: HashAlgorithm,
@@ -243,6 +261,7 @@ where
 
 impl<H> IdentifySealed for &InputManifest<H> where H: HashAlgorithm {}
 
+/// Hash the contents.
 impl<H> Identify<H> for &InputManifest<H>
 where
     H: HashAlgorithm,
@@ -254,6 +273,7 @@ where
 
 impl<H> IdentifySealed for ArtifactId<H> where H: HashAlgorithm {}
 
+/// Create a copy.
 impl<H> Identify<H> for ArtifactId<H>
 where
     H: HashAlgorithm,
@@ -265,6 +285,7 @@ where
 
 impl<H> IdentifySealed for &ArtifactId<H> where H: HashAlgorithm {}
 
+/// Create a copy.
 impl<H> Identify<H> for &ArtifactId<H>
 where
     H: HashAlgorithm,

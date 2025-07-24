@@ -4,7 +4,11 @@ use crate::{
     error::{Error, Result},
     print::{msg::store_remove::StoreRemoveMsg, PrinterCmd},
 };
-use omnibor::{hash_algorithm::Sha256, storage::Storage, ArtifactId};
+use omnibor::{
+    hash_algorithm::Sha256,
+    storage::{Match, Storage},
+    ArtifactId,
+};
 use tracing::warn;
 
 /// Run the `store remove` subcommand.
@@ -32,7 +36,7 @@ pub async fn run(app: &App, args: &StoreRemoveArgs) -> Result<()> {
 async fn remove_by_target(app: &App, target: ArtifactId<Sha256>) -> Result<()> {
     let mut storage = app.storage()?;
     let manifest = storage
-        .get_manifest_for_target(target)
+        .get_manifest(Match::Target(target))
         .map_err(Error::CantGetManifests)?
         .ok_or_else(|| Error::ManifestNotFoundForTarget(target))?;
 
@@ -40,7 +44,7 @@ async fn remove_by_target(app: &App, target: ArtifactId<Sha256>) -> Result<()> {
     let manifest_aid = ArtifactId::new(&manifest).unwrap();
 
     storage
-        .remove_manifest_for_target(target)
+        .remove_manifest(Match::Target(target))
         .map_err(Error::FailedToRemoveManifest)?;
 
     app.print_tx
@@ -56,7 +60,7 @@ async fn remove_by_target(app: &App, target: ArtifactId<Sha256>) -> Result<()> {
 async fn remove_by_id(app: &App, id: ArtifactId<Sha256>) -> Result<()> {
     let mut storage = app.storage()?;
     let manifest = storage
-        .get_manifest_with_id(id)
+        .get_manifest(Match::Manifest(id))
         .map_err(Error::CantGetManifests)?
         .ok_or_else(|| Error::ManifestNotFoundWithId(id))?;
 
@@ -64,7 +68,7 @@ async fn remove_by_id(app: &App, id: ArtifactId<Sha256>) -> Result<()> {
     let manifest_aid = ArtifactId::new(&manifest).unwrap();
 
     storage
-        .remove_manifest_with_id(id)
+        .remove_manifest(Match::Manifest(id))
         .map_err(Error::FailedToRemoveManifest)?;
 
     app.print_tx
