@@ -510,6 +510,7 @@ pub mod ffi;
  * Public API
  */
 
+pub mod adg;
 pub mod embed;
 pub mod error;
 pub mod hash_algorithm;
