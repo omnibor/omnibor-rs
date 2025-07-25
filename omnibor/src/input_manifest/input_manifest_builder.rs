@@ -79,7 +79,7 @@ where
 
         let manifest_aid = self
             .storage
-            .get_manifest(Match::Target(artifact))?
+            .get_manifest(Match::target(artifact))?
             .map(|manifest| {
                 // SAFETY: identifying a manifest is infallible.
                 ArtifactId::new(&manifest).unwrap()

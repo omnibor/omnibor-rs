@@ -5,6 +5,7 @@ use {
         hash_algorithm::{HashAlgorithm, Sha256},
         input_manifest::InputManifest,
         storage::{query::Match, Storage},
+        Identify,
     },
     std::fmt::Debug,
 };
@@ -129,21 +130,31 @@ impl Storage<Sha256> for InMemoryStorage {
             .collect())
     }
 
-    fn get_manifest(
+    fn get_manifest<I>(
         &self,
-        matcher: Match<Sha256>,
-    ) -> Result<Option<InputManifest<Sha256>>, InputManifestError> {
+        matcher: Match<Sha256, I>,
+    ) -> Result<Option<InputManifest<Sha256>>, InputManifestError>
+    where
+        I: Identify<Sha256>,
+    {
         match matcher {
-            Match::Target(artifact_id) => self.get_manifest_for_target(artifact_id),
-            Match::Manifest(artifact_id) => self.get_manifest_with_id(artifact_id),
+            Match::Target(matcher) => self.get_manifest_for_target(matcher.id()?),
+            Match::Manifest(matcher) => self.get_manifest_with_id(matcher.id()?),
         }
     }
 
-    fn update_manifest_target(
+    fn update_manifest_target<I1, I2>(
         &mut self,
-        manifest_aid: ArtifactId<Sha256>,
-        target_aid: ArtifactId<Sha256>,
-    ) -> Result<(), InputManifestError> {
+        manifest_aid: I1,
+        target_aid: I2,
+    ) -> Result<(), InputManifestError>
+    where
+        I1: Identify<Sha256>,
+        I2: Identify<Sha256>,
+    {
+        let manifest_aid = manifest_aid.identify()?;
+        let target_aid = target_aid.identify()?;
+
         self.sha256_manifests
             .iter_mut()
             .find(|entry| entry.manifest_aid == manifest_aid)
@@ -152,13 +163,16 @@ impl Storage<Sha256> for InMemoryStorage {
         Ok(())
     }
 
-    fn remove_manifest(
+    fn remove_manifest<I>(
         &mut self,
-        matcher: Match<Sha256>,
-    ) -> Result<Option<InputManifest<Sha256>>, InputManifestError> {
+        matcher: Match<Sha256, I>,
+    ) -> Result<Option<InputManifest<Sha256>>, InputManifestError>
+    where
+        I: Identify<Sha256>,
+    {
         match matcher {
-            Match::Target(artifact_id) => self.remove_manifest_for_target(artifact_id),
-            Match::Manifest(artifact_id) => self.remove_manifest_with_id(artifact_id),
+            Match::Target(matcher) => self.remove_manifest_for_target(matcher.id()?),
+            Match::Manifest(matcher) => self.remove_manifest_with_id(matcher.id()?),
         }
     }
 }

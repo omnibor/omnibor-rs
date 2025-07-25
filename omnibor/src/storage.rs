@@ -22,7 +22,7 @@ pub use crate::storage::query::Match;
 
 use crate::{
     artifact_id::ArtifactId, error::InputManifestError, hash_algorithm::HashAlgorithm,
-    input_manifest::InputManifest,
+    input_manifest::InputManifest, Identify,
 };
 
 /// Represents the interface for storing and querying manifests.
@@ -42,27 +42,34 @@ pub trait Storage<H: HashAlgorithm> {
     ///
     /// Returns `Ok(None)` if no match was found. Returns the manifest if found.
     /// Returns an error otherwise.
-    fn get_manifest(
+    fn get_manifest<I>(
         &self,
-        matcher: Match<H>,
-    ) -> Result<Option<InputManifest<H>>, InputManifestError>;
+        matcher: Match<H, I>,
+    ) -> Result<Option<InputManifest<H>>, InputManifestError>
+    where
+        I: Identify<H>;
 
     /// Update the manifest file to reflect the target ID.
-    fn update_manifest_target(
+    fn update_manifest_target<I1, I2>(
         &mut self,
-        manifest_aid: ArtifactId<H>,
-        target_aid: ArtifactId<H>,
-    ) -> Result<(), InputManifestError>;
+        manifest_aid: I1,
+        target_aid: I2,
+    ) -> Result<(), InputManifestError>
+    where
+        I1: Identify<H>,
+        I2: Identify<H>;
 
     /// Remove the manifest for the target artifact.
     ///
     /// Returns the manifest to the caller, if found. Returns `Ok(None)` if no
     /// errors were encountered but the manifest was not found in storage.
     /// Returns errors otherwise.
-    fn remove_manifest(
+    fn remove_manifest<I>(
         &mut self,
-        matcher: Match<H>,
-    ) -> Result<Option<InputManifest<H>>, InputManifestError>;
+        matcher: Match<H, I>,
+    ) -> Result<Option<InputManifest<H>>, InputManifestError>
+    where
+        I: Identify<H>;
 }
 
 impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
@@ -77,25 +84,35 @@ impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
         (**self).get_manifests()
     }
 
-    fn get_manifest(
+    fn get_manifest<I>(
         &self,
-        matcher: Match<H>,
-    ) -> Result<Option<InputManifest<H>>, InputManifestError> {
+        matcher: Match<H, I>,
+    ) -> Result<Option<InputManifest<H>>, InputManifestError>
+    where
+        I: Identify<H>,
+    {
         (**self).get_manifest(matcher)
     }
 
-    fn update_manifest_target(
+    fn update_manifest_target<I1, I2>(
         &mut self,
-        manifest_aid: ArtifactId<H>,
-        target_aid: ArtifactId<H>,
-    ) -> Result<(), InputManifestError> {
+        manifest_aid: I1,
+        target_aid: I2,
+    ) -> Result<(), InputManifestError>
+    where
+        I1: Identify<H>,
+        I2: Identify<H>,
+    {
         (**self).update_manifest_target(manifest_aid, target_aid)
     }
 
-    fn remove_manifest(
+    fn remove_manifest<I>(
         &mut self,
-        matcher: Match<H>,
-    ) -> Result<Option<InputManifest<H>>, InputManifestError> {
+        matcher: Match<H, I>,
+    ) -> Result<Option<InputManifest<H>>, InputManifestError>
+    where
+        I: Identify<H>,
+    {
         (**self).remove_manifest(matcher)
     }
 }

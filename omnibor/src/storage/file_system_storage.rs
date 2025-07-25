@@ -7,6 +7,7 @@ use {
         pathbuf,
         storage::{query::Match, Storage},
         util::clone_as_boxstr::CloneAsBoxstr,
+        Identify,
     },
     std::{
         collections::HashMap,
@@ -274,35 +275,45 @@ impl<H: HashAlgorithm> Storage<H> for FileSystemStorage<H> {
             .collect()
     }
 
-    fn get_manifest(
+    fn get_manifest<I>(
         &self,
-        matcher: Match<H>,
-    ) -> Result<Option<InputManifest<H>>, InputManifestError> {
+        matcher: Match<H, I>,
+    ) -> Result<Option<InputManifest<H>>, InputManifestError>
+    where
+        I: Identify<H>,
+    {
         match matcher {
-            Match::Target(artifact_id) => self.get_manifest_for_target(artifact_id),
-            Match::Manifest(artifact_id) => self.get_manifest_with_id(artifact_id),
+            Match::Target(matcher) => self.get_manifest_for_target(matcher.id()?),
+            Match::Manifest(matcher) => self.get_manifest_with_id(matcher.id()?),
         }
     }
 
-    fn update_manifest_target(
+    fn update_manifest_target<I1, I2>(
         &mut self,
-        manifest_aid: ArtifactId<H>,
-        target_aid: ArtifactId<H>,
-    ) -> Result<(), InputManifestError> {
+        manifest_aid: I1,
+        target_aid: I2,
+    ) -> Result<(), InputManifestError>
+    where
+        I1: Identify<H>,
+        I2: Identify<H>,
+    {
         self.target_index()?
             .start_upsert()
-            .set_manifest_aid(manifest_aid)
-            .set_target_aid(target_aid)
+            .set_manifest_aid(manifest_aid.identify()?)
+            .set_target_aid(target_aid.identify()?)
             .run_upsert()
     }
 
-    fn remove_manifest(
+    fn remove_manifest<I>(
         &mut self,
-        matcher: Match<H>,
-    ) -> Result<Option<InputManifest<H>>, InputManifestError> {
+        matcher: Match<H, I>,
+    ) -> Result<Option<InputManifest<H>>, InputManifestError>
+    where
+        I: Identify<H>,
+    {
         match matcher {
-            Match::Target(artifact_id) => self.remove_manifest_for_target(artifact_id),
-            Match::Manifest(artifact_id) => self.remove_manifest_with_id(artifact_id),
+            Match::Target(matcher) => self.remove_manifest_for_target(matcher.id()?),
+            Match::Manifest(matcher) => self.remove_manifest_with_id(matcher.id()?),
         }
     }
 }

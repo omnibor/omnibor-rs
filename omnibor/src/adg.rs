@@ -81,12 +81,12 @@ where
     S: Storage<H>,
 {
     storage
-        .get_manifest(Match::Target(target_aid))
+        .get_manifest(Match::target(target_aid))
         .map(|manifest| match manifest {
             // If we have a manifest, get all the input artifact IDs.
             Some(manifest) => manifest
                 .inputs()
-                .into_iter()
+                .iter()
                 .map(|input| input.artifact())
                 .collect(),
             // If there's no manifest found, don't get inputs.

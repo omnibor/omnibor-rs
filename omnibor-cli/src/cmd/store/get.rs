@@ -52,7 +52,7 @@ async fn get_all(app: &App) -> Result<()> {
 async fn get_by_target(app: &App, target: ArtifactId<Sha256>) -> Result<()> {
     let storage = app.storage()?;
     let manifest = storage
-        .get_manifest(Match::Target(target))
+        .get_manifest(Match::target(target))
         .map_err(Error::CantGetManifests)?
         .ok_or_else(|| Error::ManifestNotFoundForTarget(target))?;
 
@@ -66,7 +66,7 @@ async fn get_by_target(app: &App, target: ArtifactId<Sha256>) -> Result<()> {
 async fn get_by_id(app: &App, id: ArtifactId<Sha256>) -> Result<()> {
     let storage = app.storage()?;
     let manifest = storage
-        .get_manifest(Match::Manifest(id))
+        .get_manifest(Match::manifest(id))
         .map_err(Error::CantGetManifests)?
         .ok_or_else(|| Error::ManifestNotFoundWithId(id))?;
 
