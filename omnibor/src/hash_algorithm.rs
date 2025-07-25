@@ -28,7 +28,7 @@ use crate::ArtifactId;
 ///
 /// This trait is sealed, meaning it can only be implemented within the
 /// `omnibor` crate.
-pub trait HashAlgorithm: Sealed {
+pub trait HashAlgorithm: Sealed + 'static {
     /// The name of the hash algorithm, to be written in the GitOid string.
     #[doc(hidden)]
     const NAME: &'static str;
