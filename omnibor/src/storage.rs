@@ -23,12 +23,12 @@ pub use crate::storage::in_memory_storage::InMemoryStorage;
 pub use crate::storage::query::Match;
 
 use crate::{
-    adg::{AdgNode, DepGraph, DepGraphInner},
+    adg::{adg_internal::AdgInner, AdgNode},
     artifact_id::ArtifactId,
     error::InputManifestError,
     hash_algorithm::HashAlgorithm,
     input_manifest::InputManifest,
-    Identify,
+    Adg, Identify,
 };
 
 /// Represents the interface for storing and querying manifests.
@@ -78,13 +78,13 @@ pub trait Storage<H: HashAlgorithm> {
         I: Identify<H>;
 
     /// Get the Artifact Dependency Graph of the target.
-    fn get_adg<I>(&self, target_aid: I) -> Result<DepGraph<H>, InputManifestError>
+    fn get_adg<I>(&self, target_aid: I) -> Result<Adg<H>, InputManifestError>
     where
         I: Identify<H>,
     {
         let target_aid = target_aid.identify()?;
-        let graph = build_graph(target_aid, self)?;
-        Ok(DepGraph::from_graph(graph))
+        let (graph, root) = build_graph(target_aid, self)?;
+        Ok(Adg::new(graph, root))
     }
 }
 
@@ -137,29 +137,29 @@ impl<H: HashAlgorithm, S: Storage<H>> Storage<H> for &mut S {
 fn build_graph<H, S>(
     target_aid: ArtifactId<H>,
     storage: &S,
-) -> Result<DepGraphInner<H>, InputManifestError>
+) -> Result<(AdgInner<H>, NodeIndex), InputManifestError>
 where
     H: HashAlgorithm,
     S: Storage<H> + ?Sized,
 {
     let mut graph = Graph::new();
-    populate_graph(&mut graph, target_aid, None, storage)?;
-    Ok(graph)
+    let root = populate_graph(&mut graph, target_aid, None, storage)?;
+    Ok((graph, root))
 }
 
 /// Build one layer of the ADG, recursing down for further layers.
 fn populate_graph<H, S>(
-    graph: &mut DepGraphInner<H>,
+    graph: &mut AdgInner<H>,
     target_aid: ArtifactId<H>,
     parent_idx: Option<NodeIndex>,
     storage: &S,
-) -> Result<(), InputManifestError>
+) -> Result<NodeIndex, InputManifestError>
 where
     H: HashAlgorithm,
     S: Storage<H> + ?Sized,
 {
     // Add current node to the graph.
-    let self_idx = graph.add_node(AdgNode { id: target_aid });
+    let self_idx = graph.add_node(AdgNode::new(target_aid));
 
     // If there's a parent, add an edge from the parent to the current node.
     if let Some(parent_idx) = parent_idx {
@@ -169,9 +169,9 @@ where
     // If there's a manifest for current node, recurse for each child.
     if let Some(manifest) = storage.get_manifest(Match::target(target_aid))? {
         for input in manifest.inputs() {
-            populate_graph(graph, input.artifact(), Some(self_idx), storage)?;
+            let _ = populate_graph(graph, input.artifact(), Some(self_idx), storage)?;
         }
     }
 
-    Ok(())
+    Ok(self_idx)
 }

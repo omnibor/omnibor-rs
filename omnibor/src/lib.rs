@@ -517,6 +517,7 @@ pub mod hash_algorithm;
 pub mod hash_provider;
 pub mod storage;
 
+pub use crate::adg::adg_internal::Adg;
 pub use crate::artifact_id::ArtifactId;
 pub use crate::artifact_id::Identify;
 pub use crate::artifact_id::IdentifyAsync;
