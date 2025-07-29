@@ -103,15 +103,7 @@ It is currently pre-`1.0`, which for us means we do not generally aim for
 stability of the APIs exposed, as we are still iterating and designing what
 we consider to be an ideal API for future stabilization.
 
-That said, we do not break stability in point releases.
-
-New version inferences are supported by the use of conventional commits which
-mark the introduction of new features or fixing of bugs. When new releases of
-`omnibor` are made, `git-cliff` checks our requested version bump against its
-determination of the correct version bump based on the `CHANGELOG.md`, and
-produces a release error if it believes we're requesting to bump the wrong
-version. This helps defend against accidentally-incorrect version bumps which
-would violate semantic versioning.
+That said, we do not break stability in patch releases.
 
 ### Minimum Supported Rust Version (MSRV)
 

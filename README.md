@@ -46,9 +46,8 @@ Analysis."][cisa_report]
 
 | Crate Name    | Type                                                      | Purpose                                   | Links                                                                                                           |
 |:--------------|:----------------------------------------------------------|:------------------------------------------|:----------------------------------------------------------------------------------------------------------------|
-| `omnibor`     | ![Library](https://img.shields.io/badge/Library-darkblue) | OmniBOR Identifiers and Manifests         | [README][omnibor_r] &middot; [Changelog][omnibor_c] &middot; [API Docs][omnibor_d] &middot; [Crate][omnibor_cr] |
-| `omnibor-cli` | ![Binary](https://img.shields.io/badge/Binary-darkgreen)  | CLI for OmniBOR Identifiers and Manifests | [README][omnibor_cli_r] &middot; [Changelog][omnibor_cli_c] &middot; [Crate][omnibor_cli_cr]                    |
-| `xtask`       | ![Binary](https://img.shields.io/badge/Binary-darkgreen)  | OmniBOR Rust Workspace Automation         | [README][xtask_r]                                                                                               |
+| `omnibor`     | ![Library](https://img.shields.io/badge/Library-darkblue) | OmniBOR Identifiers and Manifests         | [README][omnibor_r] &middot; [API Docs][omnibor_d] &middot; [Crate][omnibor_cr] |
+| `omnibor-cli` | ![Binary](https://img.shields.io/badge/Binary-darkgreen)  | CLI for OmniBOR Identifiers and Manifests | [README][omnibor_cli_r] &middot; [Crate][omnibor_cli_cr]                    |
 
 ## Contributing
 
@@ -104,10 +103,8 @@ license text in the [`LICENSE`][license] file.
 [omnibor]: https://omnibor.io
 [omnibor_cr]: https://crates.io/crates/omnibor
 [omnibor_r]: https://github.com/omnibor/omnibor-rs/blob/main/omnibor/README.md
-[omnibor_c]: https://github.com/omnibor/omnibor-rs/blob/main/omnibor/CHANGELOG.md
 [omnibor_d]: https://docs.rs/crate/omnibor/latest
 [omnibor_cli_r]: https://github.com/omnibor/omnibor-rs/blob/main/omnibor-cli/README.md
-[omnibor_cli_c]: https://github.com/omnibor/omnibor-rs/blob/main/omnibor-cli/CHANGELOG.md
 [omnibor_cli_cr]: https://crates.io/crates/omnibor-cli
 [omnibor_spec]: https://github.com/omnibor/spec
 [purl]: https://github.com/package-url/purl-spec
