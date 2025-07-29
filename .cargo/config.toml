@@ -1,7 +1,4 @@
 
-[alias]
-xtask = "run --package xtask --"
-
 [build]
 # Needed for using `tokio_console` with the CLI.
 rustflags = ["--cfg", "tokio_unstable"]
