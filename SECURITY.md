@@ -3,7 +3,7 @@
 The following is the security policy for:
 
 - The `omnibor` library crate.
-- The `omnibor_cli` binary crate.
+- The `omnibor-cli` binary crate.
 
 All of which are found in this workspace.
 
