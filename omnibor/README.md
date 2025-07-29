@@ -48,15 +48,6 @@ Run the following to add the library to your own crate.
 $ cargo add omnibor
 ```
 
-The `omnibor` crate currently exposes the following features:
-
-| Name    | Description                                                 | Default? |
-|:--------|:------------------------------------------------------------|:---------|
-| `serde` | Add support for serializing and deserializing `ArtifactId`s | No       |
-
-To turn on a feature, you can run `cargo add omnibor --features="<feature name>"`, or
-[edit your `Cargo.toml` to activate the feature][features].
-
 ### Using from other languages
 
 The `omnibor` crate is designed to also be used from other programming languages!

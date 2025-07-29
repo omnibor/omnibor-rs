@@ -94,7 +94,7 @@ $ cargo install --path omnibor-cli
 <summary><code>id</code> with Plain Format</summary>
 
 ```sh
-$ omnibor id Cargo.toml
+$ omnibor id create Cargo.toml
 # Cargo.toml => gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c9ef14cfe4bab14893f
 ```
 </details>
@@ -105,7 +105,7 @@ $ omnibor id Cargo.toml
 <summary><code>id</code> with JSON Format</summary>
 
 ```sh
-$ omnibor id Cargo.toml -f json
+$ omnibor id create Cargo.toml -f json
 # {"id":"gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c9ef14cfe4bab14893f","path":"Cargo.toml"}
 ```
 </details>
@@ -116,7 +116,7 @@ $ omnibor id Cargo.toml -f json
 <summary><code>id</code> with Short Format</summary>
 
 ```sh
-$ omnibor id Cargo.toml -f short
+$ omnibor id create Cargo.toml -f short
 # gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c9ef14cfe4bab14893f
 ```
 </details>
@@ -127,7 +127,7 @@ $ omnibor id Cargo.toml -f short
 <summary><code>find</code> with Plain Format</summary>
 
 ```sh
-$ omnibor find gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c9ef14cfe4bab14893f .
+$ omnibor id find gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c9ef14cfe4bab14893f .
 # gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c9ef14cfe4bab14893f => ./Cargo.toml
 ```
 </details>
@@ -138,7 +138,7 @@ $ omnibor find gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c
 <summary><code>find</code> with JSON Format</summary>
 
 ```sh
-$ omnibor find gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c9ef14cfe4bab14893f . -f json
+$ omnibor id find gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c9ef14cfe4bab14893f . -f json
 # {"id":"gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c9ef14cfe4bab14893f","path":"./Cargo.toml"}
 ```
 </details>
@@ -149,71 +149,15 @@ $ omnibor find gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c
 <summary><code>find</code> with Short Format</summary>
 
 ```sh
-$ omnibor find gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c9ef14cfe4bab14893f . -f short
+$ omnibor id find gitoid:blob:sha256:c54d66281dea2bf213083f9bd3345d89dc6657fa554b1c9ef14cfe4bab14893f . -f short
 # ./Cargo.toml
-```
-</details>
-
-## Usage
-
-<details>
-<summary><code>omnibor --help</code></summary>
-
-```
-Usage: omnibor [OPTIONS] <COMMAND>
-
-Commands:
-  id    For files, prints their Artifact ID. For directories, recursively prints IDs for all files under it
-  find  Find file matching an Artifact ID
-  help  Print this message or the help of the given subcommand(s)
-
-Options:
-  -b, --buffer <BUFFER>  How many print messages to buffer at one time, tunes printing perf
-  -h, --help             Print help
-  -V, --version          Print version
-```
-</details>
-
-<details>
-<summary><code>omnibor id --help</code></summary>
-
-```
-For files, prints their Artifact ID. For directories, recursively prints IDs for all files under it
-
-Usage: omnibor id [OPTIONS] <PATH>
-
-Arguments:
-  <PATH>  Path to identify
-
-Options:
-  -f, --format <FORMAT>  Output format (can be "plain", "short", or "json") [default: plain]
-  -H, --hash <HASH>      Hash algorithm (can be "sha256") [default: sha256]
-  -h, --help             Print help
-```
-</details>
-
-<details>
-<summary><code>omnibor find --help</code></summary>
-
-```
-Find file matching an Artifact ID
-
-Usage: omnibor find [OPTIONS] <URL> <PATH>
-
-Arguments:
-  <URL>   `gitoid` URL to match
-  <PATH>  The root path to search under
-
-Options:
-  -f, --format <FORMAT>  Output format (can be "plain", "short", or "json") [default: plain]
-  -h, --help             Print help
 ```
 </details>
 
 ### Output Formats
 
-Both the `id` and `find` subcommand support a `-f`/`--format` flag which can be
-any of the following:
+Many subcommands support the `-f`/`--format` flag which can be any of the
+following:
 
 - `plain` (default): A simple human-readable format which maps between
   paths and identifiers, separated by a fat arrow (`=>`).
