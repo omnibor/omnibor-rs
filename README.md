@@ -87,7 +87,7 @@ security disclosures through GitHub.
 
 All discussions, issues, pull requests, and other communication spaces
 associated with this project require participants abide by the project's
-[Code of Conduct][coc] (Contributor Covenant 2.0).
+[Code of Conduct][coc].
 
 ## License
 
