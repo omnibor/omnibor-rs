@@ -2,7 +2,6 @@
 
 The following is the security policy for:
 
-- The `gitoid` library crate.
 - The `omnibor` library crate.
 - The `omnibor_cli` binary crate.
 
